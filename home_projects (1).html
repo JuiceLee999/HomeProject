@@ -1,0 +1,1469 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>HomeWorks — Project Tracker</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
+<style>
+:root {
+  --bg: #f5f0e8;
+  --paper: #fdfaf4;
+  --ink: #1a1209;
+  --muted: #7a6e5f;
+  --rule: #d6cebf;
+  --accent: #c8440a;
+  --accent-light: #f0d5c8;
+  --green: #2d6a4f;
+  --green-light: #c8e6d8;
+  --yellow: #e9a319;
+  --yellow-light: #faeac8;
+  --blue: #1a4a7a;
+  --blue-light: #c8daf0;
+  --red: #b91c1c;
+  --red-light: #fee2e2;
+  --orange: #c2410c;
+  --orange-light: #ffedd5;
+  --panel-w: 500px;
+  --grid: repeating-linear-gradient(0deg,transparent,transparent 27px,var(--rule) 27px,var(--rule) 28px),
+          repeating-linear-gradient(90deg,transparent,transparent 27px,var(--rule) 27px,var(--rule) 28px);
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; background: var(--bg); background-image: var(--grid); min-height: 100vh; color: var(--ink); overflow-x: hidden; }
+
+/* ── HEADER ── */
+header { background: var(--ink); color: var(--bg); padding: 16px 28px; display: flex; align-items: center; gap: 16px; position: sticky; top: 0; z-index: 200; border-bottom: 4px solid var(--accent); }
+header h1 { font-family: 'Playfair Display', serif; font-size: 24px; letter-spacing: -0.5px; }
+header > span { font-family: 'DM Mono', monospace; font-size: 10px; color: #5a4f42; letter-spacing: 2px; text-transform: uppercase; }
+.header-right { margin-left: auto; display: flex; align-items: center; gap: 18px; }
+.stat-pill { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; color: #8a7a6a; }
+.stat-pill strong { color: var(--accent); font-size: 15px; }
+.stat-pill.cost-stat strong { color: var(--green); }
+
+/* ── MAIN ── */
+main { max-width: 980px; margin: 0 auto; padding: 28px 24px 80px; transition: padding-right 0.35s ease; }
+body.panel-open main { padding-right: calc(var(--panel-w) + 28px); }
+
+/* ── TOOLBAR ── */
+.toolbar { display: flex; flex-wrap: wrap; align-items: center; background: var(--paper); border: 1.5px solid var(--rule); border-radius: 2px; padding: 7px 10px; gap: 6px; margin-bottom: 0; }
+.toolbar-sep { width: 1px; background: var(--rule); height: 20px; margin: 0 2px; }
+.filter-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+.filter-btn { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.5px; border: 1.5px solid transparent; background: transparent; color: var(--muted); border-radius: 2px; padding: 4px 10px; cursor: pointer; transition: all 0.15s; }
+.filter-btn:hover { background: var(--bg); color: var(--ink); }
+.filter-btn.active { background: var(--ink); color: var(--bg); }
+.sort-select { font-family: 'DM Mono', monospace; font-size: 11px; background: transparent; border: 1.5px solid var(--rule); border-radius: 2px; padding: 4px 8px; color: var(--muted); outline: none; cursor: pointer; }
+.sort-select:focus { border-color: var(--accent); }
+.ml-auto { margin-left: auto; }
+
+/* ── NEW PROJECT BUTTON ── */
+.btn-new-project {
+  display: flex; align-items: center; gap: 7px;
+  background: var(--accent); color: white; border: none; border-radius: 2px;
+  padding: 5px 14px; font-family: 'DM Mono', monospace; font-size: 12px;
+  letter-spacing: 0.5px; cursor: pointer; transition: background 0.15s, transform 0.1s;
+  white-space: nowrap; flex-shrink: 0;
+}
+.btn-new-project:hover { background: #a33408; }
+.btn-new-project.open { background: var(--ink); }
+.btn-new-plus {
+  display: inline-block; font-size: 16px; line-height: 1;
+  transition: transform 0.2s ease;
+}
+.btn-new-project.open .btn-new-plus { transform: rotate(45deg); }
+
+/* ── ADD DROPDOWN ── */
+.add-dropdown {
+  max-height: 0;
+  overflow: hidden;
+  transition: max-height 0.32s cubic-bezier(.4,0,.2,1), opacity 0.25s ease;
+  opacity: 0;
+}
+.add-dropdown.open {
+  max-height: 260px;
+  opacity: 1;
+}
+.add-dropdown-inner {
+  background: var(--paper);
+  border: 1.5px solid var(--rule);
+  border-top: 2px solid var(--accent);
+  border-radius: 0 0 2px 2px;
+  padding: 16px 18px 18px;
+}
+.add-row { display: grid; grid-template-columns: 1fr 150px 130px 130px; gap: 9px; align-items: end; }
+.add-row-2 { display: grid; grid-template-columns: 1fr 1fr auto; gap: 9px; margin-top: 9px; align-items: end; }
+.field label { display: block; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.field input, .field select { width: 100%; background: var(--bg); border: 1.5px solid var(--rule); border-radius: 2px; padding: 8px 11px; font-family: 'DM Sans', sans-serif; font-size: 14px; color: var(--ink); outline: none; transition: border-color 0.15s; }
+.field input:focus, .field select:focus { border-color: var(--accent); }
+.btn-add { background: var(--accent); color: white; border: none; border-radius: 2px; padding: 8px 18px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 1px; cursor: pointer; transition: background 0.15s, transform 0.1s; white-space: nowrap; align-self: end; }
+.btn-add:hover { background: #a33408; }
+.btn-add:active { transform: scale(0.97); }
+
+/* ── BUDGET BAR ── */
+.budget-strip { background: var(--paper); border: 1.5px solid var(--rule); border-radius: 2px; padding: 10px 16px; margin-top: 10px; margin-bottom: 18px; display: flex; align-items: center; gap: 20px; }
+.budget-item { display: flex; flex-direction: column; gap: 2px; }
+.budget-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
+.budget-value { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--ink); }
+.budget-value.green { color: var(--green); }
+.budget-sep { width: 1px; height: 32px; background: var(--rule); }
+.progress-bar-wrap { flex: 1; background: var(--rule); height: 6px; border-radius: 3px; overflow: hidden; }
+.progress-bar-fill { height: 100%; background: var(--accent); transition: width 0.4s ease; border-radius: 3px; }
+
+/* ── SECTION ── */
+.section-head { display: flex; align-items: center; gap: 10px; margin: 24px 0 0; cursor: pointer; user-select: none; }
+.section-head:hover h2 { color: var(--ink); }
+.section-head h2 { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); white-space: nowrap; transition: color 0.15s; }
+.section-line { flex: 1; height: 1px; background: var(--rule); }
+.section-chevron { font-size: 10px; color: var(--muted); transition: transform 0.2s ease, color 0.15s; flex-shrink: 0; }
+.section-head:hover .section-chevron { color: var(--ink); }
+.section-head.collapsed .section-chevron { transform: rotate(-90deg); }
+.section-body { overflow: hidden; transition: max-height 0.3s ease, opacity 0.25s ease; max-height: 9999px; opacity: 1; padding-top: 10px; }
+.section-body.collapsed { max-height: 0 !important; opacity: 0; pointer-events: none; padding-top: 0; }
+
+/* ── PROJECT CARD ── */
+.project-card {
+  background: var(--paper); border-left: 4px solid var(--rule); border-radius: 0 2px 2px 0;
+  padding: 12px 14px; margin-bottom: 7px;
+  cursor: pointer;
+  transition: box-shadow 0.2s, transform 0.15s, opacity 0.2s;
+  animation: slideIn 0.22s ease both;
+}
+@keyframes slideIn { from { opacity: 0; transform: translateX(-10px); } to { opacity: 1; transform: translateX(0); } }
+.project-card:hover { box-shadow: 3px 3px 0 var(--rule); transform: translateX(-1px); }
+.project-card.selected { background: #fffdf7; box-shadow: 3px 3px 0 var(--accent-light); }
+.project-card.done { opacity: 0.5; }
+.project-card.done .project-name { text-decoration: line-through; }
+.project-card.someday { opacity: 0.75; }
+.project-card[data-priority="high"] { border-color: var(--accent); }
+.project-card[data-priority="medium"] { border-color: var(--yellow); }
+.project-card[data-priority="low"] { border-color: var(--green); }
+/* overdue & warning borders override priority when not done */
+.project-card.overdue:not(.done):not(.someday) { border-color: var(--red) !important; }
+.project-card.due-soon:not(.done):not(.someday):not(.overdue) { border-color: var(--orange) !important; }
+
+.project-main { display: flex; gap: 10px; align-items: flex-start; min-width: 0; }
+.checkbox-wrap { padding-top: 2px; flex-shrink: 0; }
+.checkbox-wrap input[type="checkbox"] { width: 16px; height: 16px; accent-color: var(--accent); cursor: pointer; margin: 0; }
+.project-inner { min-width: 0; flex: 1; }
+.project-name { font-size: 14px; font-weight: 500; line-height: 1.35; }
+.project-summary { font-size: 12px; color: var(--muted); margin-top: 2px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.project-tags { display: flex; gap: 5px; margin-top: 5px; flex-wrap: wrap; align-items: center; }
+.tag { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.3px; padding: 2px 7px; border-radius: 1px; text-transform: uppercase; white-space: nowrap; }
+.tag-cat { background: var(--blue-light); color: var(--blue); }
+.tag-priority-high { background: var(--accent-light); color: var(--accent); }
+.tag-priority-medium { background: var(--yellow-light); color: #7a5000; }
+.tag-priority-low { background: var(--green-light); color: var(--green); }
+.tag-someday { background: #ede9fe; color: #5b21b6; }
+.tag-cost { background: var(--rule); color: var(--muted); }
+.tag-date { background: var(--blue-light); color: var(--blue); }
+.tag-overdue { background: var(--red-light); color: var(--red); font-weight: 500; }
+.tag-due-soon { background: var(--orange-light); color: var(--orange); }
+.tag-urls { background: var(--green-light); color: var(--green); }
+.tag-tasks { background: #f3f4f6; color: #374151; }
+.tag-modified { background: transparent; color: #b0a090; border: none; font-size: 9px; }
+.tag-property { background: #ede8fc; color: #4a2a8a; }
+
+/* ── EMPTY ── */
+.empty { text-align: center; padding: 48px 0; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 1px; }
+.empty-icon { font-size: 32px; margin-bottom: 10px; opacity: 0.35; }
+
+/* ══════════════════════════════
+   DETAIL PANEL
+══════════════════════════════ */
+.overlay { display: none; position: fixed; inset: 0; background: rgba(26,18,9,0.15); z-index: 299; }
+body.panel-open .overlay { display: block; }
+
+.detail-panel {
+  position: fixed; top: 0; right: 0; bottom: 0; width: var(--panel-w);
+  background: var(--paper); border-left: 3px solid var(--accent); z-index: 300;
+  overflow-y: auto; transform: translateX(100%);
+  transition: transform 0.35s cubic-bezier(.4,0,.2,1);
+  display: flex; flex-direction: column;
+}
+body.panel-open .detail-panel { transform: translateX(0); }
+
+.panel-header { background: var(--ink); padding: 16px 18px 14px; display: flex; align-items: flex-start; gap: 10px; position: sticky; top: 0; z-index: 10; border-bottom: 3px solid var(--accent); }
+.panel-title-wrap { flex: 1; min-width: 0; }
+.panel-eyebrow { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #5a4f42; margin-bottom: 3px; }
+.panel-title-input { background: transparent; border: none; outline: none; font-family: 'Playfair Display', serif; font-size: 18px; color: var(--bg); width: 100%; line-height: 1.3; }
+.panel-title-input::placeholder { color: #3a3028; }
+.panel-modified { font-family: 'DM Mono', monospace; font-size: 9px; color: #4a3f32; margin-top: 3px; }
+.btn-close { background: none; border: 1.5px solid #3a3028; border-radius: 2px; color: #6a5a4a; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 15px; flex-shrink: 0; transition: all 0.15s; margin-top: 1px; }
+.btn-close:hover { border-color: var(--accent); color: var(--accent); }
+
+.panel-body { padding: 18px 18px; flex: 1; display: flex; flex-direction: column; gap: 18px; }
+
+.panel-row { display: grid; grid-template-columns: 1fr 1fr; gap: 12px; }
+.panel-field label { display: block; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 5px; }
+.panel-field input, .panel-field select, .panel-field textarea { width: 100%; background: var(--bg); border: 1.5px solid var(--rule); border-radius: 2px; padding: 7px 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); outline: none; transition: border-color 0.15s; resize: vertical; }
+.panel-field input:focus, .panel-field select:focus, .panel-field textarea:focus { border-color: var(--accent); }
+.panel-field.full { grid-column: 1/-1; }
+
+.date-range { display: grid; grid-template-columns: 1fr auto 1fr; align-items: end; gap: 8px; }
+.date-sep { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); padding-bottom: 9px; text-align: center; }
+
+.panel-divider { height: 1px; background: var(--rule); margin: 0 -18px; }
+.panel-section-title { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin-bottom: 10px; }
+
+/* Custom category input */
+.cat-row { display: flex; gap: 6px; align-items: center; }
+.cat-row select { flex: 1; }
+.cat-custom-wrap { display: none; flex: 1; }
+.cat-custom-wrap.show { display: flex; gap: 6px; }
+.cat-custom-wrap input { flex: 1; background: var(--bg); border: 1.5px solid var(--accent); border-radius: 2px; padding: 7px 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); outline: none; }
+.btn-cat-cancel { background: none; border: 1.5px solid var(--rule); border-radius: 2px; padding: 6px 8px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); cursor: pointer; white-space: nowrap; }
+.btn-cat-cancel:hover { border-color: var(--red); color: var(--red); }
+
+/* Property */
+.property-new-wrap { display: none; flex-direction: column; gap: 6px; margin-top: 6px; }
+.property-new-wrap.show { display: flex; }
+.property-new-row { display: flex; gap: 6px; }
+.property-new-wrap input { flex: 1; background: var(--bg); border: 1.5px solid var(--accent); border-radius: 2px; padding: 7px 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); outline: none; }
+.property-filter-active { border-color: #4a2a8a !important; color: #4a2a8a !important; }
+
+/* Subtasks */
+.subtask-list { display: flex; flex-direction: column; gap: 6px; margin-bottom: 8px; }
+.subtask-item { display: flex; align-items: center; gap: 8px; background: var(--bg); border: 1.5px solid var(--rule); border-radius: 2px; padding: 6px 10px; transition: border-color 0.15s; }
+.subtask-item:focus-within { border-color: var(--accent); }
+.subtask-item input[type="checkbox"] { width: 15px; height: 15px; accent-color: var(--green); flex-shrink: 0; cursor: pointer; }
+.subtask-item input[type="text"] { flex: 1; background: transparent; border: none; outline: none; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); }
+.subtask-item input[type="text"].done-task { text-decoration: line-through; color: var(--muted); }
+.subtask-item input[type="text"]::placeholder { color: #b0a090; }
+.btn-sub-del { background: none; border: none; color: #c0b0a0; font-size: 13px; cursor: pointer; padding: 0 2px; transition: color 0.15s; flex-shrink: 0; }
+.btn-sub-del:hover { color: var(--red); }
+.btn-add-sub { display: flex; align-items: center; gap: 8px; background: none; border: 1.5px dashed var(--rule); border-radius: 2px; padding: 6px 12px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; cursor: pointer; transition: all 0.15s; width: 100%; }
+.btn-add-sub:hover { border-color: var(--accent); color: var(--accent); }
+.subtask-progress { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-bottom: 6px; }
+
+/* URLs */
+.url-list { display: flex; flex-direction: column; gap: 7px; margin-bottom: 8px; }
+.url-item { display: grid; grid-template-columns: 1fr 1fr auto; background: var(--bg); border: 1.5px solid var(--rule); border-radius: 2px; overflow: hidden; transition: border-color 0.15s; }
+.url-item:focus-within { border-color: var(--accent); }
+.url-item input { background: transparent; border: none; border-right: 1px solid var(--rule); outline: none; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); padding: 7px 10px; width: 100%; }
+.url-item input:last-of-type { border-right: none; }
+.url-item input::placeholder { color: #b0a090; }
+.btn-url-del { background: none; border: none; border-left: 1px solid var(--rule); color: var(--muted); font-size: 12px; cursor: pointer; padding: 0 10px; transition: color 0.15s, background 0.15s; }
+.btn-url-del:hover { color: var(--red); background: #fff5f5; }
+.btn-add-url { display: flex; align-items: center; gap: 8px; background: none; border: 1.5px dashed var(--rule); border-radius: 2px; padding: 6px 12px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; cursor: pointer; transition: all 0.15s; width: 100%; }
+.btn-add-url:hover { border-color: var(--accent); color: var(--accent); }
+
+/* Notes */
+.notes-area { width: 100%; background: var(--bg); border: 1.5px solid var(--rule); border-radius: 2px; padding: 9px 11px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); outline: none; resize: vertical; min-height: 100px; line-height: 1.6; transition: border-color 0.15s; }
+.notes-area:focus { border-color: var(--accent); }
+
+/* ── CONTRACTOR ── */
+.contractor-select-row { display: flex; gap: 8px; align-items: center; }
+.contractor-select-row select { flex: 1; }
+.btn-contractor-new { background: none; border: 1.5px solid var(--rule); border-radius: 2px; padding: 6px 10px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); cursor: pointer; white-space: nowrap; transition: all 0.15s; flex-shrink: 0; }
+.btn-contractor-new:hover { border-color: var(--accent); color: var(--accent); }
+.btn-contractor-clear { background: none; border: none; color: #c0b0a0; font-size: 13px; cursor: pointer; padding: 0 4px; transition: color 0.15s; flex-shrink: 0; }
+.btn-contractor-clear:hover { color: var(--red); }
+
+.contractor-card { background: var(--bg); border: 1.5px solid var(--rule); border-radius: 2px; padding: 11px 13px; margin-top: 8px; }
+.contractor-card-name { font-weight: 500; font-size: 13px; margin-bottom: 4px; }
+.contractor-card-meta { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: 12px; color: var(--muted); font-family: 'DM Mono', monospace; }
+.contractor-card-meta a { color: var(--blue); text-decoration: none; }
+.contractor-card-meta a:hover { text-decoration: underline; }
+.contractor-card-tag { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; background: var(--blue-light); color: var(--blue); padding: 2px 7px; border-radius: 1px; display: inline-block; margin-bottom: 5px; }
+
+.contractor-form { background: var(--bg); border: 1.5px solid var(--accent); border-radius: 2px; padding: 13px; margin-top: 8px; display: flex; flex-direction: column; gap: 10px; }
+.contractor-form-title { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 2px; }
+.contractor-form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+.contractor-form-field label { display: block; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.contractor-form-field input, .contractor-form-field select { width: 100%; background: var(--paper); border: 1.5px solid var(--rule); border-radius: 2px; padding: 6px 9px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); outline: none; transition: border-color 0.15s; }
+.contractor-form-field input:focus, .contractor-form-field select:focus { border-color: var(--accent); }
+.contractor-form-field.full { grid-column: 1/-1; }
+.contractor-form-actions { display: flex; gap: 8px; }
+.btn-contractor-save { background: var(--accent); color: white; border: none; border-radius: 2px; padding: 7px 16px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; cursor: pointer; transition: background 0.15s; }
+.btn-contractor-save:hover { background: #a33408; }
+.btn-contractor-cancel { background: none; border: 1.5px solid var(--rule); border-radius: 2px; padding: 6px 14px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+.btn-contractor-cancel:hover { border-color: var(--red); color: var(--red); }
+
+/* Panel footer */
+.panel-footer { padding: 12px 18px; border-top: 1px solid var(--rule); display: flex; gap: 8px; align-items: center; background: var(--paper); position: sticky; bottom: 0; }
+.btn-save { background: var(--accent); color: white; border: none; border-radius: 2px; padding: 9px 22px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 1px; cursor: pointer; transition: background 0.15s, transform 0.1s; flex: 1; }
+.btn-save:hover { background: #a33408; }
+.btn-save:active { transform: scale(0.98); }
+.btn-dup-panel { background: none; border: 1.5px solid var(--rule); border-radius: 2px; padding: 8px 14px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.btn-dup-panel:hover { border-color: var(--blue); color: var(--blue); }
+.btn-pdf-panel { background: none; border: 1.5px solid var(--rule); border-radius: 2px; padding: 8px 14px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.btn-pdf-panel:hover { border-color: var(--green); color: var(--green); }
+.save-msg { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--green); letter-spacing: 1px; opacity: 0; transition: opacity 0.3s; white-space: nowrap; }
+.save-msg.show { opacity: 1; }
+
+@media (max-width: 680px) {
+  .add-row { grid-template-columns: 1fr 1fr; }
+  .add-row .field:first-child { grid-column: 1/-1; }
+  .add-row-2 { grid-template-columns: 1fr 1fr; }
+  .add-row-2 .btn-add { grid-column: 1/-1; width: 100%; }
+  header { padding: 12px 14px; gap: 10px; }
+  header > span { display: none; }
+  .stat-pill.cost-stat { display: none; }
+  main { padding: 16px 10px 64px; }
+  body.panel-open main { padding-right: 10px; }
+  .detail-panel { width: 100%; border-left: none; border-top: 3px solid var(--accent); }
+  .panel-row { grid-template-columns: 1fr; }
+  .url-item { grid-template-columns: 1fr auto; }
+  .url-item input:nth-child(2) { display: none; }
+  .filter-label { display: none; }
+}
+
+/* ── DARK MODE TOGGLE ── */
+.btn-dark-toggle { background: none; border: 1.5px solid #3a3028; border-radius: 2px; color: #6a5a4a; width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 14px; flex-shrink: 0; transition: all 0.15s; }
+.btn-dark-toggle:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── DARK MODE ── */
+body.dark {
+  --bg: #1a1510;
+  --paper: #231e18;
+  --ink: #f0ebe0;
+  --muted: #8a7e6e;
+  --rule: #3a3028;
+  --accent: #e05a18;
+  --accent-light: #3a1a0a;
+  --green: #4a9a6f;
+  --green-light: #1a3828;
+  --yellow: #e9b319;
+  --yellow-light: #3a2a08;
+  --blue: #5a9acc;
+  --blue-light: #1a2a3a;
+  --red: #e05050;
+  --red-light: #3a1010;
+  --orange: #e06028;
+  --orange-light: #3a1a0a;
+}
+body.dark header,
+body.dark .panel-header { background: #0f0c08; }
+body.dark .btn-new-project.open { background: #2a2218; }
+body.dark .project-card.selected { background: #2a241c; box-shadow: 3px 3px 0 var(--accent-light); }
+body.dark .tag-tasks { background: #2a2520; color: #9ca3af; }
+body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
+
+/* ── ATTACHMENTS ── */
+.attach-grid { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 8px; }
+.attach-item { position: relative; width: 80px; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.attach-thumb { width: 80px; height: 60px; object-fit: cover; border-radius: 2px; border: 1.5px solid var(--rule); cursor: pointer; transition: border-color 0.15s; }
+.attach-thumb:hover { border-color: var(--accent); }
+.attach-icon { width: 80px; height: 60px; border: 1.5px solid var(--rule); border-radius: 2px; display: flex; align-items: center; justify-content: center; font-size: 22px; cursor: pointer; background: var(--bg); transition: border-color 0.15s; }
+.attach-icon:hover { border-color: var(--accent); }
+.attach-name { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); text-align: center; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; width: 80px; }
+.attach-size { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); }
+.btn-attach-del { position: absolute; top: -5px; right: -5px; background: var(--red); color: white; border: none; border-radius: 50%; width: 16px; height: 16px; font-size: 9px; cursor: pointer; display: flex; align-items: center; justify-content: center; padding: 0; line-height: 1; }
+.btn-attach-del:hover { background: #9b1c1c; }
+.btn-add-attach { display: flex; align-items: center; gap: 8px; background: none; border: 1.5px dashed var(--rule); border-radius: 2px; padding: 6px 12px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; cursor: pointer; transition: all 0.15s; width: 100%; }
+.btn-add-attach:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── DELETE BUTTON ── */
+.btn-delete-panel { background: none; border: 1.5px solid var(--red); border-radius: 2px; padding: 8px 14px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--red); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.btn-delete-panel:hover { background: var(--red); color: white; }
+</style>
+</head>
+<body>
+<script>if(localStorage.getItem('homeworks_dark')==='1')document.body.classList.add('dark');</script>
+
+<header>
+  <h1>HomeWorks</h1>
+  <span>Project Tracker</span>
+  <div class="header-right">
+    <div class="stat-pill"><strong id="done-count">0</strong> done</div>
+    <div class="stat-pill"><strong id="todo-count">0</strong> remaining</div>
+    <div class="stat-pill cost-stat">Est. <strong id="total-cost">$0</strong></div>
+    <button class="btn-dark-toggle" id="btn-dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
+  </div>
+</header>
+
+<div class="overlay" onclick="closePanel()"></div>
+
+<!-- ══ DETAIL PANEL ══ -->
+<div class="detail-panel" id="detail-panel">
+  <div class="panel-header">
+    <div class="panel-title-wrap">
+      <div class="panel-eyebrow">Project Detail</div>
+      <input class="panel-title-input" id="pd-name" type="text" placeholder="Project name…" />
+      <div class="panel-modified" id="pd-modified"></div>
+    </div>
+    <button class="btn-close" onclick="closePanel()">✕</button>
+  </div>
+
+  <div class="panel-body">
+
+    <!-- Row 1: Category + Priority -->
+    <div class="panel-row">
+      <div class="panel-field">
+        <label>Category</label>
+        <div class="cat-row">
+          <select id="pd-cat" onchange="handleCatChange(this)"></select>
+        </div>
+        <div class="cat-custom-wrap" id="cat-custom-wrap">
+          <input type="text" id="pd-cat-custom" placeholder="New category name…" />
+          <button class="btn-cat-cancel" onclick="cancelCustomCat()">✕</button>
+        </div>
+      </div>
+      <div class="panel-field">
+        <label>Priority</label>
+        <select id="pd-priority">
+          <option value="high">🔴 High</option>
+          <option value="medium">🟡 Medium</option>
+          <option value="low">🟢 Low</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Property -->
+    <div class="panel-field">
+      <label>Property</label>
+      <select id="pd-property" onchange="handlePropertyChange(this)"></select>
+      <div class="property-new-wrap" id="property-new-wrap">
+        <div class="property-new-row">
+          <input type="text" id="pd-property-name" placeholder="Property name, e.g. Main House" />
+        </div>
+        <div class="property-new-row">
+          <input type="text" id="pd-property-addr" placeholder="Address (optional)" />
+          <button class="btn-cat-cancel" onclick="applyNewProperty()">✓ Add</button>
+          <button class="btn-cat-cancel" onclick="cancelNewProperty()">✕</button>
+        </div>
+      </div>
+    </div>
+
+    <!-- Row 2: Cost + Status -->
+    <div class="panel-row">
+      <div class="panel-field">
+        <label>Estimated Cost</label>
+        <input id="pd-cost" type="text" placeholder="e.g. $350" />
+      </div>
+      <div class="panel-field">
+        <label>Status</label>
+        <select id="pd-status">
+          <option value="todo">🔧 To Do</option>
+          <option value="someday">🌙 Someday</option>
+          <option value="done">✅ Complete</option>
+        </select>
+      </div>
+    </div>
+
+    <!-- Timeframe -->
+    <div>
+      <div class="panel-section-title">📅 Timeframe</div>
+      <div class="date-range">
+        <div class="panel-field">
+          <label>Start Date</label>
+          <input id="pd-start" type="date" />
+        </div>
+        <div class="date-sep">→</div>
+        <div class="panel-field">
+          <label>Target Date</label>
+          <input id="pd-end" type="date" />
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <!-- Description -->
+    <div class="panel-field full">
+      <label>Description</label>
+      <textarea id="pd-description" rows="4" placeholder="Full scope of work, dimensions, materials needed, special considerations…" style="min-height:90px"></textarea>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <!-- Subtasks -->
+    <div>
+      <div class="panel-section-title">✅ Subtasks / Checklist</div>
+      <div class="subtask-progress" id="sub-progress"></div>
+      <div class="subtask-list" id="pd-subtask-list"></div>
+      <button class="btn-add-sub" onclick="addSubtaskRow()">+ Add Step</button>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <!-- URLs -->
+    <div>
+      <div class="panel-section-title">🔗 Parts &amp; Material Links</div>
+      <div class="url-list" id="pd-url-list"></div>
+      <button class="btn-add-url" onclick="addUrlRow()">+ Add Link</button>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <!-- Contractor -->
+    <div>
+      <div class="panel-section-title">🔨 Contractor</div>
+      <div class="contractor-select-row">
+        <select id="pd-contractor-select" onchange="handleContractorSelect(this)">
+          <option value="">— None assigned —</option>
+        </select>
+        <button class="btn-contractor-new" onclick="showContractorForm()">+ New</button>
+        <button class="btn-contractor-clear" id="btn-contractor-clear" onclick="clearContractor()" title="Remove contractor" style="display:none">✕</button>
+      </div>
+      <div id="pd-contractor-card" style="display:none"></div>
+      <div class="contractor-form" id="pd-contractor-form" style="display:none">
+        <div class="contractor-form-title">New Contractor</div>
+        <div class="contractor-form-row">
+          <div class="contractor-form-field full">
+            <label>Company Name *</label>
+            <input type="text" id="cf-company" placeholder="e.g. Apex Plumbing Co." />
+          </div>
+        </div>
+        <div class="contractor-form-row">
+          <div class="contractor-form-field">
+            <label>Type</label>
+            <select id="cf-type">
+              <option value="">— Select type —</option>
+              <option>Plumber</option>
+              <option>Electrician</option>
+              <option>Painter</option>
+              <option>Carpenter</option>
+              <option>HVAC</option>
+              <option>Roofer</option>
+              <option>Landscaper</option>
+              <option>General Contractor</option>
+              <option>Handyman</option>
+              <option>Other</option>
+            </select>
+          </div>
+          <div class="contractor-form-field">
+            <label>Point of Contact</label>
+            <input type="text" id="cf-poc" placeholder="e.g. Mike Johnson" />
+          </div>
+        </div>
+        <div class="contractor-form-row">
+          <div class="contractor-form-field">
+            <label>Phone</label>
+            <input type="tel" id="cf-phone" placeholder="e.g. (315) 555-0100" />
+          </div>
+          <div class="contractor-form-field">
+            <label>Email</label>
+            <input type="email" id="cf-email" placeholder="e.g. mike@apex.com" />
+          </div>
+        </div>
+        <div class="contractor-form-actions">
+          <button class="btn-contractor-save" onclick="saveNewContractor()">Save Contractor</button>
+          <button class="btn-contractor-cancel" onclick="hideContractorForm()">Cancel</button>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel-divider"></div>
+    <div>
+      <div class="panel-section-title">📋 Notes</div>
+      <textarea class="notes-area" id="pd-notes" placeholder="Contractor contacts, measurements, paint codes, model numbers…"></textarea>
+    </div>
+
+    <div class="panel-divider"></div>
+    <div>
+      <div class="panel-section-title">📎 Attachments</div>
+      <div class="attach-grid" id="pd-attach-list"></div>
+      <input type="file" id="pd-attach-input" multiple accept="image/*,.pdf,.doc,.docx,.txt,.xls,.xlsx,.csv" style="display:none" onchange="handleAttachFiles(this)" />
+      <button class="btn-add-attach" onclick="document.getElementById('pd-attach-input').click()">+ Add Photo or Document</button>
+    </div>
+
+  </div><!-- /panel-body -->
+
+  <div class="panel-footer">
+    <button class="btn-dup-panel" onclick="duplicateFromPanel()">⧉ Duplicate</button>
+    <button class="btn-save" onclick="savePanel()">Save Changes</button>
+    <span class="save-msg" id="save-msg">✓ Saved</span>
+    <button class="btn-pdf-panel" onclick="exportProjectPDF()" title="Export as PDF">⬇ PDF</button>
+    <button class="btn-delete-panel" onclick="deletePanelProject()" title="Delete project">🗑</button>
+  </div>
+</div>
+
+<!-- ══ MAIN ══ -->
+<main>
+
+  <!-- Toolbar with integrated + New button -->
+  <div class="toolbar">
+    <button class="btn-new-project" id="btn-new-project" onclick="toggleAddForm()">
+      <span class="btn-new-plus" id="btn-new-plus">+</span> New Project
+    </button>
+    <div class="toolbar-sep"></div>
+    <span class="filter-label">Filter:</span>
+    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+    <button class="filter-btn" onclick="setFilter('todo',this)">To-Do</button>
+    <button class="filter-btn" onclick="setFilter('someday',this)">Someday</button>
+    <button class="filter-btn" onclick="setFilter('done',this)">Done</button>
+    <div class="toolbar-sep"></div>
+    <button class="filter-btn" onclick="setFilter('high',this)">🔴 High</button>
+    <button class="filter-btn" onclick="setFilter('medium',this)">🟡 Med</button>
+    <button class="filter-btn" onclick="setFilter('low',this)">🟢 Low</button>
+    <button class="filter-btn" onclick="setFilter('overdue',this)">⚠ Overdue</button>
+    <div class="toolbar-sep ml-auto"></div>
+    <span class="filter-label">Property:</span>
+    <select class="sort-select" id="property-filter" onchange="setPropertyFilter(this.value)">
+      <option value="">All</option>
+    </select>
+    <div class="toolbar-sep"></div>
+    <span class="filter-label">Sort:</span>
+    <select class="sort-select" id="sort-select" onchange="render()">
+      <option value="created">Date Added</option>
+      <option value="priority">Priority</option>
+      <option value="endDate">Due Date</option>
+      <option value="cost">Cost</option>
+      <option value="modified">Last Modified</option>
+      <option value="name">Name A→Z</option>
+    </select>
+  </div>
+
+  <!-- Collapsible add form dropdown -->
+  <div class="add-dropdown" id="add-dropdown">
+    <div class="add-dropdown-inner">
+      <div class="add-row">
+        <div class="field">
+          <label>Project Name</label>
+          <input id="inp-name" type="text" placeholder="e.g. Replace kitchen faucet" />
+        </div>
+        <div class="field">
+          <label>Category</label>
+          <select id="inp-cat"></select>
+        </div>
+        <div class="field">
+          <label>Priority</label>
+          <select id="inp-priority">
+            <option value="high">🔴 High</option>
+            <option value="medium" selected>🟡 Medium</option>
+            <option value="low">🟢 Low</option>
+          </select>
+        </div>
+        <div class="field">
+          <label>Status</label>
+          <select id="inp-status">
+            <option value="todo">🔧 To Do</option>
+            <option value="someday">🌙 Someday</option>
+          </select>
+        </div>
+      </div>
+      <div class="add-row-2">
+        <div class="field">
+          <label>Quick Note (optional)</label>
+          <input id="inp-note" type="text" placeholder="Brief note…" />
+        </div>
+        <div class="field">
+          <label>Est. Cost (optional)</label>
+          <input id="inp-cost" type="text" placeholder="e.g. $200" />
+        </div>
+        <button class="btn-add" onclick="addProject()">Add Project →</button>
+      </div>
+    </div>
+  </div>
+
+  <!-- Budget strip -->
+  <div class="budget-strip">
+    <div class="budget-item">
+      <div class="budget-label">Total Est. Cost</div>
+      <div class="budget-value" id="bs-total">—</div>
+    </div>
+    <div class="budget-sep"></div>
+    <div class="budget-item">
+      <div class="budget-label">Active Projects</div>
+      <div class="budget-value" id="bs-active">0</div>
+    </div>
+    <div class="budget-sep"></div>
+    <div class="budget-item">
+      <div class="budget-label">Completed</div>
+      <div class="budget-value green" id="bs-done">0</div>
+    </div>
+    <div class="budget-sep"></div>
+    <div style="flex:1">
+      <div class="budget-label" style="margin-bottom:5px">Overall Progress</div>
+      <div class="progress-bar-wrap"><div class="progress-bar-fill" id="progress-bar" style="width:0%"></div></div>
+    </div>
+    <div class="budget-item" style="min-width:36px;text-align:right">
+      <div class="budget-label">Done</div>
+      <div class="budget-value" id="bs-pct">0%</div>
+    </div>
+  </div>
+
+  <div id="project-list"></div>
+</main>
+
+<script>
+const STORAGE_KEY = 'homeworks_v3';
+const DEFAULT_CATS = ['Kitchen','Bathroom','Bedroom','Living Room','Basement','Garage','Exterior','Yard','HVAC','Electrical','Plumbing','Other'];
+let projects = [];
+let customCats = [];
+let contractors = [];
+let properties = [];
+let currentFilter = 'all';
+let currentPropertyFilter = '';
+let openId = null;
+let urlRows = [];
+let subtaskRows = [];
+
+let addFormOpen = false;
+
+function toggleAddForm() {
+  addFormOpen = !addFormOpen;
+  const dropdown = document.getElementById('add-dropdown');
+  const btn = document.getElementById('btn-new-project');
+  dropdown.classList.toggle('open', addFormOpen);
+  btn.classList.toggle('open', addFormOpen);
+  if (addFormOpen) {
+    setTimeout(() => document.getElementById('inp-name').focus(), 50);
+  }
+}
+
+function closeAddForm() {
+  addFormOpen = false;
+  document.getElementById('add-dropdown').classList.remove('open');
+  document.getElementById('btn-new-project').classList.remove('open');
+}
+try {
+  const s = localStorage.getItem(STORAGE_KEY);
+  if (s) { const d = JSON.parse(s); projects = d.projects||[]; customCats = d.customCats||[]; contractors = d.contractors||[]; properties = d.properties||[]; }
+} catch(e){}
+
+// Seed
+if (!projects.length) {
+  const now = Date.now();
+  projects = [
+    { id:1, name:'Fix leaky bathroom faucet', note:'Dripping since January', description:'The hot water handle on the master bath faucet drips constantly. Likely needs a new cartridge. Shut-off valve under sink is accessible.', category:'Plumbing', priority:'high', cost:'$30', status:'todo', created:now-864e5*5, modified:now-864e5*2, startDate:'', endDate: datePlus(3), urls:[{label:'Moen cartridge',href:'https://www.amazon.com'}], notes:'Turn off water at valve under sink first.', subtasks:[{id:1,text:'Buy replacement cartridge',done:false},{id:2,text:'Turn off water supply',done:false},{id:3,text:'Replace cartridge',done:false}] },
+    { id:2, name:'Paint living room walls', note:'SW Agreeable Gray', description:'Full repaint of the living room including baseboards and trim. Two coats on walls. Patch nail holes before painting.', category:'Living Room', priority:'medium', cost:'$120', status:'todo', created:now-864e5*2, modified:now-864e5*1, startDate:'', endDate: datePlus(21), urls:[], notes:'Walls: SW Agreeable Gray 7029\nTrim: SW Pure White 7005', subtasks:[{id:1,text:'Buy paint & supplies',done:false},{id:2,text:'Patch nail holes',done:false},{id:3,text:'Prime walls',done:false},{id:4,text:'Paint (2 coats)',done:false}] },
+    { id:3, name:'Clean gutters', note:'', description:'', category:'Exterior', priority:'medium', cost:'', status:'done', created:now-864e5*10, modified:now-864e5*3, startDate:'', endDate:'', urls:[], notes:'', subtasks:[] },
+    { id:4, name:'Install ceiling fan in bedroom', note:'', description:'Replace old light fixture with a Hunter ceiling fan. Need to check if existing wiring supports fan.', category:'Bedroom', priority:'low', cost:'$180', status:'todo', created:now-864e5*8, modified:now-864e5*4, startDate:'', endDate: datePlus(-5), urls:[{label:'Hunter fan — Home Depot',href:'https://www.homedepot.com'}], notes:'', subtasks:[] },
+    { id:5, name:'Reinsulate attic', note:'Long-term project', description:'Add blown-in insulation to attic to improve energy efficiency.', category:'Other', priority:'low', cost:'$800', status:'someday', created:now-864e5*15, modified:now-864e5*10, startDate:'', endDate:'', urls:[], notes:'Get 3 quotes from insulation contractors.', subtasks:[] }
+  ];
+  save();
+}
+
+function datePlus(days) {
+  const d = new Date(); d.setDate(d.getDate()+days);
+  return d.toISOString().split('T')[0];
+}
+
+function save() {
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({projects, customCats, contractors, properties}));
+  render();
+}
+
+function allCats() { return [...DEFAULT_CATS.filter(c=>c!=='Other'), ...customCats, 'Other']; }
+
+function buildCatSelects() {
+  const cats = allCats();
+  const opts = cats.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('') + '<option value="__new__">+ New Category…</option>';
+  document.getElementById('inp-cat').innerHTML = cats.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+  document.getElementById('pd-cat').innerHTML = opts;
+}
+
+function handleCatChange(sel) {
+  if (sel.value === '__new__') {
+    sel.style.display = 'none';
+    const wrap = document.getElementById('cat-custom-wrap');
+    wrap.classList.add('show');
+    document.getElementById('pd-cat-custom').focus();
+  }
+}
+
+function cancelCustomCat() {
+  document.getElementById('pd-cat').style.display = '';
+  document.getElementById('cat-custom-wrap').classList.remove('show');
+  document.getElementById('pd-cat-custom').value = '';
+  buildCatSelects();
+  const p = projects.find(x=>x.id===openId);
+  if (p) document.getElementById('pd-cat').value = p.category;
+}
+
+function applyCustomCat(name) {
+  if (!name) return;
+  if (!customCats.includes(name) && !DEFAULT_CATS.includes(name)) customCats.push(name);
+  buildCatSelects();
+  document.getElementById('pd-cat').value = name;
+  document.getElementById('pd-cat').style.display = '';
+  document.getElementById('cat-custom-wrap').classList.remove('show');
+}
+
+// ── Project CRUD ──
+function addProject() {
+  const name = document.getElementById('inp-name').value.trim();
+  if (!name) { document.getElementById('inp-name').focus(); return; }
+  const p = {
+    id: Date.now(), name,
+    note: document.getElementById('inp-note').value.trim(),
+    description: '', category: document.getElementById('inp-cat').value,
+    priority: document.getElementById('inp-priority').value,
+    cost: document.getElementById('inp-cost').value.trim(),
+    status: document.getElementById('inp-status').value,
+    created: Date.now(), modified: Date.now(),
+    startDate:'', endDate:'', urls:[], notes:'', subtasks:[], contractorId: null, propertyId: null, attachments: []
+  };
+  projects.unshift(p);
+  ['inp-name','inp-note','inp-cost'].forEach(id=>document.getElementById(id).value='');
+  closeAddForm();
+  save();
+  openPanel(p.id);
+}
+
+function toggleDone(id, e) {
+  e.stopPropagation();
+  const p = projects.find(x=>x.id===id);
+  if (!p) return;
+  p.status = p.status === 'done' ? 'todo' : 'done';
+  p.modified = Date.now();
+  save();
+}
+
+function deleteProject(id, e) {
+  e.stopPropagation();
+  if (!confirm('Delete this project?')) return;
+  if (openId===id) closePanel();
+  projects = projects.filter(x=>x.id!==id);
+  save();
+}
+
+function duplicateProject(id, e) {
+  if (e) e.stopPropagation();
+  const src = projects.find(x=>x.id===id);
+  if (!src) return;
+  const copy = JSON.parse(JSON.stringify(src));
+  copy.id = Date.now();
+  copy.name = src.name + ' (copy)';
+  copy.status = 'todo';
+  copy.created = Date.now();
+  copy.modified = Date.now();
+  copy.subtasks = copy.subtasks.map(s=>({...s, done:false}));
+  const idx = projects.findIndex(x=>x.id===id);
+  projects.splice(idx+1, 0, copy);
+  save();
+  openPanel(copy.id);
+}
+
+function duplicateFromPanel() { if (openId) duplicateProject(openId, null); }
+
+function setFilter(f, btn) {
+  currentFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b=>b.classList.remove('active'));
+  btn.classList.add('active');
+  render();
+}
+
+// ── Panel ──
+function openPanel(id) {
+  const p = projects.find(x=>x.id===id);
+  if (!p) return;
+  openId = id;
+  buildCatSelects();
+
+  document.getElementById('pd-name').value = p.name;
+  document.getElementById('pd-cat').value = p.category;
+  document.getElementById('pd-priority').value = p.priority;
+  document.getElementById('pd-cost').value = p.cost||'';
+  document.getElementById('pd-status').value = p.status||'todo';
+  document.getElementById('pd-start').value = p.startDate||'';
+  document.getElementById('pd-end').value = p.endDate||'';
+  document.getElementById('pd-description').value = p.description||'';
+  document.getElementById('pd-notes').value = p.notes||'';
+  document.getElementById('pd-modified').textContent = p.modified ? 'Modified ' + timeAgo(p.modified) : '';
+
+  urlRows = (p.urls||[]).map(u=>({...u}));
+  subtaskRows = (p.subtasks||[]).map(s=>({...s}));
+  attachmentRows = (p.attachments||[]).map(a=>({...a}));
+  rebuildUrlDOM();
+  rebuildSubtaskDOM();
+  rebuildAttachmentDOM();
+  buildPropertySelects(p.propertyId||null);
+  buildContractorSelect(p.contractorId||null);
+  renderContractorCard(p.contractorId||null);
+
+  document.body.classList.add('panel-open');
+  render();
+  setTimeout(()=>document.getElementById('pd-name').focus(), 50);
+}
+
+function closePanel() {
+  document.body.classList.remove('panel-open');
+  openId = null;
+  render();
+}
+
+function savePanel() {
+  if (!openId) return;
+  const p = projects.find(x=>x.id===openId);
+  if (!p) return;
+
+  // Handle custom cat
+  const catWrap = document.getElementById('cat-custom-wrap');
+  if (catWrap.classList.contains('show')) {
+    const customVal = document.getElementById('pd-cat-custom').value.trim();
+    if (customVal) applyCustomCat(customVal);
+    else cancelCustomCat();
+  }
+
+  p.name        = document.getElementById('pd-name').value.trim()||p.name;
+  p.category    = document.getElementById('pd-cat').value;
+  p.priority    = document.getElementById('pd-priority').value;
+  p.cost        = document.getElementById('pd-cost').value.trim();
+  p.status      = document.getElementById('pd-status').value;
+  p.startDate   = document.getElementById('pd-start').value;
+  p.endDate     = document.getElementById('pd-end').value;
+  p.description = document.getElementById('pd-description').value.trim();
+  p.notes       = document.getElementById('pd-notes').value.trim();
+  p.urls        = collectUrls();
+  p.subtasks    = collectSubtasks();
+  p.attachments = collectAttachments();
+  p.contractorId = currentContractorId;
+  p.propertyId = document.getElementById('pd-property').value ? Number(document.getElementById('pd-property').value) : null;
+  p.modified    = Date.now();
+  p.done        = p.status === 'done';
+  if (p.description) p.note = p.description.substring(0,90)+(p.description.length>90?'…':'');
+
+  document.getElementById('pd-modified').textContent = 'Modified just now';
+  save();
+  const msg = document.getElementById('save-msg');
+  msg.classList.add('show');
+  setTimeout(()=>msg.classList.remove('show'), 2000);
+}
+
+// ── Subtasks ──
+function rebuildSubtaskDOM() {
+  const list = document.getElementById('pd-subtask-list');
+  list.innerHTML = subtaskRows.map((s,i)=>`
+    <div class="subtask-item">
+      <input type="checkbox" ${s.done?'checked':''} onchange="subtaskRows[${i}].done=this.checked;updateSubProgress()" />
+      <input type="text" placeholder="Step description…" value="${escHtml(s.text||'')}" oninput="subtaskRows[${i}].text=this.value" class="${s.done?'done-task':''}" onchange="this.className=subtaskRows[${i}].done?'done-task':''" />
+      <button class="btn-sub-del" onclick="removeSubtask(${i})" title="Remove">✕</button>
+    </div>`).join('');
+  updateSubProgress();
+}
+
+function updateSubProgress() {
+  const total = subtaskRows.length;
+  const done  = subtaskRows.filter(s=>s.done).length;
+  const el = document.getElementById('sub-progress');
+  el.textContent = total ? `${done} of ${total} complete` : '';
+}
+
+function addSubtaskRow() {
+  subtaskRows.push({id: Date.now(), text:'', done:false});
+  rebuildSubtaskDOM();
+  const inputs = document.querySelectorAll('#pd-subtask-list .subtask-item:last-child input[type="text"]');
+  if (inputs[0]) inputs[0].focus();
+}
+
+function removeSubtask(i) { subtaskRows.splice(i,1); rebuildSubtaskDOM(); }
+function collectSubtasks() { return subtaskRows.filter(s=>s.text.trim()).map(s=>({id:s.id||Date.now(),text:s.text.trim(),done:s.done})); }
+
+// ── Contractors ──
+let currentContractorId = null;
+
+function buildContractorSelect(selectedId) {
+  currentContractorId = selectedId || null;
+  const sel = document.getElementById('pd-contractor-select');
+  sel.innerHTML = '<option value="">— None assigned —</option>' +
+    contractors.map(c => `<option value="${c.id}" ${c.id === selectedId ? 'selected' : ''}>${escHtml(c.company)}${c.type ? ' · ' + escHtml(c.type) : ''}</option>`).join('');
+}
+
+function handleContractorSelect(sel) {
+  const id = sel.value ? Number(sel.value) : null;
+  currentContractorId = id;
+  renderContractorCard(id);
+  hideContractorForm();
+}
+
+function clearContractor() {
+  currentContractorId = null;
+  document.getElementById('pd-contractor-select').value = '';
+  renderContractorCard(null);
+}
+
+function renderContractorCard(id) {
+  const card = document.getElementById('pd-contractor-card');
+  const clearBtn = document.getElementById('btn-contractor-clear');
+  if (!id) {
+    card.style.display = 'none';
+    clearBtn.style.display = 'none';
+    return;
+  }
+  const c = contractors.find(x => x.id === id);
+  if (!c) { card.style.display = 'none'; clearBtn.style.display = 'none'; return; }
+  clearBtn.style.display = '';
+  card.style.display = 'block';
+  card.innerHTML = `
+    <div class="contractor-card">
+      ${c.type ? `<div class="contractor-card-tag">${escHtml(c.type)}</div>` : ''}
+      <div class="contractor-card-name">${escHtml(c.company)}</div>
+      <div class="contractor-card-meta">
+        ${c.poc ? `<span>👤 ${escHtml(c.poc)}</span>` : ''}
+        ${c.phone ? `<span>📞 <a href="tel:${escHtml(c.phone)}">${escHtml(c.phone)}</a></span>` : ''}
+        ${c.email ? `<span>✉ <a href="mailto:${escHtml(c.email)}">${escHtml(c.email)}</a></span>` : ''}
+      </div>
+    </div>`;
+}
+
+function showContractorForm() {
+  document.getElementById('pd-contractor-form').style.display = 'flex';
+  document.getElementById('pd-contractor-form').style.flexDirection = 'column';
+  document.getElementById('cf-company').focus();
+}
+
+function hideContractorForm() {
+  document.getElementById('pd-contractor-form').style.display = 'none';
+  ['cf-company','cf-poc','cf-phone','cf-email'].forEach(id => document.getElementById(id).value = '');
+  document.getElementById('cf-type').value = '';
+}
+
+function saveNewContractor() {
+  const company = document.getElementById('cf-company').value.trim();
+  if (!company) { document.getElementById('cf-company').focus(); return; }
+  const c = {
+    id: Date.now(),
+    company,
+    type: document.getElementById('cf-type').value,
+    poc:  document.getElementById('cf-poc').value.trim(),
+    phone: document.getElementById('cf-phone').value.trim(),
+    email: document.getElementById('cf-email').value.trim()
+  };
+  contractors.push(c);
+  currentContractorId = c.id;
+  buildContractorSelect(c.id);
+  renderContractorCard(c.id);
+  hideContractorForm();
+  // persist immediately so it's available across projects
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({projects, customCats, contractors, properties}));
+}
+
+// ── URLs ──
+function rebuildUrlDOM() {
+  const list = document.getElementById('pd-url-list');
+  list.innerHTML = urlRows.map((u,i)=>`
+    <div class="url-item">
+      <input type="text" placeholder="Label (e.g. Faucet cartridge)" value="${escHtml(u.label||'')}" oninput="urlRows[${i}].label=this.value" />
+      <input type="url" placeholder="https://…" value="${escHtml(u.href||'')}" oninput="urlRows[${i}].href=this.value" />
+      <button class="btn-url-del" onclick="removeUrl(${i})" title="Remove">✕</button>
+    </div>`).join('');
+}
+function addUrlRow() {
+  urlRows.push({label:'',href:''});
+  rebuildUrlDOM();
+  const inputs = document.querySelectorAll('#pd-url-list .url-item:last-child input');
+  if (inputs[0]) inputs[0].focus();
+}
+function removeUrl(i) { urlRows.splice(i,1); rebuildUrlDOM(); }
+function collectUrls() { return urlRows.filter(u=>u.href.trim()).map(u=>({label:u.label.trim()||u.href, href:u.href.trim()})); }
+
+// ── Render ──
+function render() {
+  buildCatSelects();
+
+  const active = projects.filter(p=>p.status!=='done');
+  const done   = projects.filter(p=>p.status==='done');
+  const total  = projects.length;
+  const doneCt = done.length;
+  const pct    = total ? Math.round(doneCt/total*100) : 0;
+
+  document.getElementById('done-count').textContent = doneCt;
+  document.getElementById('todo-count').textContent = active.filter(p=>p.status==='todo').length;
+  document.getElementById('progress-bar').style.width = pct+'%';
+  document.getElementById('bs-active').textContent = active.length;
+  document.getElementById('bs-done').textContent = doneCt;
+  document.getElementById('bs-pct').textContent = pct+'%';
+
+  // Cost total
+  let totalCost = 0, hasAny = false;
+  projects.forEach(p => {
+    const n = parseCost(p.cost);
+    if (n !== null) { totalCost += n; hasAny = true; }
+  });
+  const costStr = hasAny ? '$'+totalCost.toLocaleString() : '—';
+  document.getElementById('bs-total').textContent = costStr;
+  document.getElementById('total-cost').textContent = costStr;
+
+  // Sort
+  const sortKey = document.getElementById('sort-select').value;
+  const priorityOrder = {high:0, medium:1, low:2};
+  let sorted = [...projects].sort((a,b)=>{
+    if (sortKey==='priority') return (priorityOrder[a.priority]??1)-(priorityOrder[b.priority]??1);
+    if (sortKey==='endDate') {
+      if (!a.endDate && !b.endDate) return 0;
+      if (!a.endDate) return 1; if (!b.endDate) return -1;
+      return a.endDate.localeCompare(b.endDate);
+    }
+    if (sortKey==='cost') return (parseCost(b.cost)||0)-(parseCost(a.cost)||0);
+    if (sortKey==='modified') return (b.modified||0)-(a.modified||0);
+    if (sortKey==='name') return a.name.localeCompare(b.name);
+    return (b.created||0)-(a.created||0);
+  });
+
+  // Filter
+  const today = new Date().toISOString().split('T')[0];
+  const soon  = datePlus(7);
+  let filtered = sorted;
+  if (currentFilter==='todo') filtered=sorted.filter(p=>p.status==='todo');
+  else if (currentFilter==='someday') filtered=sorted.filter(p=>p.status==='someday');
+  else if (currentFilter==='done') filtered=sorted.filter(p=>p.status==='done');
+  else if (['high','medium','low'].includes(currentFilter)) filtered=sorted.filter(p=>p.priority===currentFilter&&p.status!=='done');
+  else if (currentFilter==='overdue') filtered=sorted.filter(p=>p.status!=='done'&&p.endDate&&p.endDate<today);
+  if (currentPropertyFilter) filtered=filtered.filter(p=>p.propertyId===Number(currentPropertyFilter));
+
+  buildPropertySelects(null, true);
+  const todoItems     = filtered.filter(p=>p.status==='todo');
+  const somedayItems  = filtered.filter(p=>p.status==='someday');
+  const doneItems     = filtered.filter(p=>p.status==='done');
+
+  let html = '';
+  if (!todoItems.length && !somedayItems.length && !doneItems.length) {
+    html = `<div class="empty"><div class="empty-icon">🔨</div>No projects match this filter.</div>`;
+  } else {
+    if (todoItems.length) {
+      html += section('To Do', todoItems.length, 'todo');
+      html += todoItems.map(p=>cardHTML(p, today, soon)).join('');
+      html += '</div>';
+    }
+    if (somedayItems.length) {
+      html += section('Someday', somedayItems.length, 'someday');
+      html += somedayItems.map(p=>cardHTML(p, today, soon)).join('');
+      html += '</div>';
+    }
+    if (doneItems.length) {
+      html += section('Completed', doneItems.length, 'done');
+      html += doneItems.map(p=>cardHTML(p, today, soon)).join('');
+      html += '</div>';
+    }
+  }
+  document.getElementById('project-list').innerHTML = html;
+}
+
+const collapsedSections = new Set();
+
+function toggleSection(key) {
+  if (collapsedSections.has(key)) collapsedSections.delete(key);
+  else collapsedSections.add(key);
+  // toggle classes without full re-render
+  const head = document.querySelector(`.section-head[data-key="${key}"]`);
+  const body = document.querySelector(`.section-body[data-key="${key}"]`);
+  if (head) head.classList.toggle('collapsed', collapsedSections.has(key));
+  if (body) body.classList.toggle('collapsed', collapsedSections.has(key));
+}
+
+function section(label, count, key) {
+  const isCollapsed = collapsedSections.has(key);
+  return `<div class="section-head${isCollapsed?' collapsed':''}" data-key="${key}" onclick="toggleSection('${key}')">
+    <h2>${label} (${count})</h2>
+    <div class="section-line"></div>
+    <span class="section-chevron">▾</span>
+  </div>
+  <div class="section-body${isCollapsed?' collapsed':''}" data-key="${key}">`;
+}
+
+function cardHTML(p, today, soon) {
+  const urlCount = (p.urls||[]).filter(u=>u.href).length;
+  const subtasks = (p.subtasks||[]);
+  const subDone  = subtasks.filter(s=>s.done).length;
+  const contractor = p.contractorId ? contractors.find(c=>c.id===p.contractorId) : null;
+  const property   = p.propertyId   ? properties.find(pr=>pr.id===p.propertyId)  : null;
+
+  const isOverdue  = p.endDate && p.endDate < today && p.status !== 'done';
+  const isDueSoon  = p.endDate && p.endDate >= today && p.endDate <= soon && p.status !== 'done';
+
+  const dateLabel = isOverdue ? `⚠ Overdue (${fmtDate(p.endDate)})` : isDueSoon ? `⏰ Due ${fmtDate(p.endDate)}` : p.endDate ? `📅 ${fmtDate(p.endDate)}` : '';
+  const dateClass = isOverdue ? 'tag-overdue' : isDueSoon ? 'tag-due-soon' : 'tag-date';
+
+  const classes = [
+    'project-card',
+    p.status==='done' ? 'done' : '',
+    p.status==='someday' ? 'someday' : '',
+    openId===p.id ? 'selected' : '',
+    isOverdue ? 'overdue' : '',
+    isDueSoon ? 'due-soon' : ''
+  ].filter(Boolean).join(' ');
+
+  const summary = p.description||p.note||'';
+
+  return `
+  <div class="${classes}" data-priority="${p.priority}" onclick="openPanel(${p.id})">
+    <div class="project-main">
+      <div class="checkbox-wrap">
+        <input type="checkbox" ${p.status==='done'?'checked':''} onchange="toggleDone(${p.id},event)" onclick="event.stopPropagation()" />
+      </div>
+      <div class="project-inner">
+        <div class="project-name">${escHtml(p.name)}</div>
+        ${summary?`<div class="project-summary">${escHtml(summary.substring(0,95)+(summary.length>95?'…':''))}</div>`:''}
+        <div class="project-tags">
+          <span class="tag tag-cat">${escHtml(p.category)}</span>
+          <span class="tag tag-priority-${p.priority}">${p.priority}</span>
+          ${p.status==='someday'?`<span class="tag tag-someday">someday</span>`:''}
+          ${p.cost?`<span class="tag tag-cost">${escHtml(p.cost)}</span>`:''}
+          ${dateLabel?`<span class="tag ${dateClass}">${dateLabel}</span>`:''}
+          ${urlCount?`<span class="tag tag-urls">🔗 ${urlCount}</span>`:''}
+          ${subtasks.length?`<span class="tag tag-tasks">☑ ${subDone}/${subtasks.length}</span>`:''}
+          ${property?`<span class="tag tag-property">🏠 ${escHtml(property.name)}</span>`:''}
+          ${contractor?`<span class="tag tag-cat" style="background:#e8f4ee;color:#1a5a38">🔨 ${escHtml(contractor.company)}</span>`:''}
+          ${p.modified?`<span class="tag tag-modified">${timeAgo(p.modified)}</span>`:''}
+        </div>
+      </div>
+    </div>
+  </div>`;
+}
+
+function parseCost(s) {
+  if (!s) return null;
+  const n = parseFloat(String(s).replace(/[^0-9.]/g,''));
+  return isNaN(n) ? null : n;
+}
+
+function fmtDate(d) {
+  if (!d) return '';
+  const [y,m,day] = d.split('-');
+  return ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][+m-1]+' '+parseInt(day);
+}
+
+function timeAgo(ts) {
+  const diff = Date.now() - ts;
+  const m = Math.floor(diff/60000);
+  if (m < 1) return 'just now';
+  if (m < 60) return m+'m ago';
+  const h = Math.floor(m/60);
+  if (h < 24) return h+'h ago';
+  const days = Math.floor(h/24);
+  if (days < 30) return days+'d ago';
+  return Math.floor(days/30)+'mo ago';
+}
+
+function escHtml(s) {
+  return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Properties ──
+function buildPropertySelects(selectedId, toolbarOnly) {
+  // Toolbar filter
+  const filterSel = document.getElementById('property-filter');
+  if (filterSel) {
+    const prev = filterSel.value;
+    filterSel.innerHTML = '<option value="">All</option>' +
+      properties.map(pr => `<option value="${pr.id}">${escHtml(pr.name)}${pr.address?' — '+escHtml(pr.address):''}</option>`).join('');
+    filterSel.value = currentPropertyFilter || prev;
+  }
+  if (toolbarOnly) return;
+
+  // Panel select
+  const sel = document.getElementById('pd-property');
+  if (!sel) return;
+  sel.innerHTML = '<option value="">— None assigned —</option>' +
+    properties.map(pr => `<option value="${pr.id}">${escHtml(pr.name)}${pr.address?' — '+escHtml(pr.address):''}</option>`).join('') +
+    '<option value="__new__">+ New Property…</option>';
+  if (selectedId) sel.value = selectedId;
+}
+
+function handlePropertyChange(sel) {
+  if (sel.value === '__new__') {
+    sel.style.display = 'none';
+    document.getElementById('property-new-wrap').classList.add('show');
+    document.getElementById('pd-property-name').focus();
+  }
+}
+
+function applyNewProperty() {
+  const name = document.getElementById('pd-property-name').value.trim();
+  if (!name) { document.getElementById('pd-property-name').focus(); return; }
+  const addr = document.getElementById('pd-property-addr').value.trim();
+  const pr = { id: Date.now(), name, address: addr };
+  properties.push(pr);
+  localStorage.setItem(STORAGE_KEY, JSON.stringify({projects, customCats, contractors, properties}));
+  buildPropertySelects(pr.id);
+  document.getElementById('pd-property').style.display = '';
+  document.getElementById('property-new-wrap').classList.remove('show');
+  document.getElementById('pd-property-name').value = '';
+  document.getElementById('pd-property-addr').value = '';
+}
+
+function cancelNewProperty() {
+  document.getElementById('pd-property').style.display = '';
+  document.getElementById('property-new-wrap').classList.remove('show');
+  document.getElementById('pd-property-name').value = '';
+  document.getElementById('pd-property-addr').value = '';
+  const p = openId ? projects.find(x => x.id === openId) : null;
+  buildPropertySelects(p ? p.propertyId : null);
+}
+
+function setPropertyFilter(val) {
+  currentPropertyFilter = val;
+  render();
+}
+
+// ── Dark Mode ──
+function toggleDark() {
+  const isDark = document.body.classList.toggle('dark');
+  localStorage.setItem('homeworks_dark', isDark ? '1' : '0');
+  document.getElementById('btn-dark-toggle').textContent = isDark ? '☀' : '🌙';
+}
+
+// ── Attachments ──
+let attachmentRows = [];
+
+function rebuildAttachmentDOM() {
+  const list = document.getElementById('pd-attach-list');
+  if (!list) return;
+  if (!attachmentRows.length) { list.innerHTML = ''; return; }
+  list.innerHTML = attachmentRows.map((a, i) => {
+    const isImage = a.type && a.type.startsWith('image/');
+    const sizeStr = a.size > 1048576 ? (a.size/1048576).toFixed(1)+'MB' : Math.round(a.size/1024)+'KB';
+    const preview = isImage
+      ? `<img src="${a.data}" class="attach-thumb" onclick="openAttachment(${i})" title="${escHtml(a.name)}" />`
+      : `<div class="attach-icon" onclick="openAttachment(${i})" title="${escHtml(a.name)}">${attachIcon(a.type)}</div>`;
+    return `<div class="attach-item">
+      ${preview}
+      <div class="attach-name">${escHtml(a.name)}</div>
+      <div class="attach-size">${sizeStr}</div>
+      <button class="btn-attach-del" onclick="removeAttachment(${i})" title="Remove">✕</button>
+    </div>`;
+  }).join('');
+}
+
+function attachIcon(type) {
+  if (!type) return '📄';
+  if (type.includes('pdf')) return '📕';
+  if (type.includes('word') || type.includes('document')) return '📝';
+  if (type.includes('sheet') || type.includes('excel') || type.includes('csv')) return '📊';
+  if (type.includes('text')) return '📄';
+  return '📎';
+}
+
+function handleAttachFiles(input) {
+  const files = Array.from(input.files);
+  input.value = '';
+  files.forEach(file => {
+    if (file.size > 5242880) { alert(`"${file.name}" is over 5MB and was skipped.`); return; }
+    const reader = new FileReader();
+    reader.onload = e => {
+      attachmentRows.push({ id: Date.now() + Math.random(), name: file.name, type: file.type, data: e.target.result, size: file.size });
+      rebuildAttachmentDOM();
+    };
+    reader.readAsDataURL(file);
+  });
+}
+
+function openAttachment(i) {
+  const a = attachmentRows[i];
+  if (!a) return;
+  if (a.type && a.type.startsWith('image/')) {
+    const w = window.open('', '_blank');
+    w.document.write(`<!DOCTYPE html><html><head><title>${escHtml(a.name)}</title></head><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${a.data}" style="max-width:100%;max-height:100vh;object-fit:contain" /></body></html>`);
+  } else {
+    const link = document.createElement('a');
+    link.href = a.data;
+    link.download = a.name;
+    link.click();
+  }
+}
+
+function removeAttachment(i) { attachmentRows.splice(i, 1); rebuildAttachmentDOM(); }
+function collectAttachments() { return attachmentRows.map(a => ({...a})); }
+
+// ── Export PDF ──
+function exportProjectPDF() {
+  if (!openId) return;
+  savePanel();
+  const p = projects.find(x => x.id === openId);
+  if (!p) return;
+  const contractor = p.contractorId ? contractors.find(c => c.id === p.contractorId) : null;
+  const property   = p.propertyId   ? properties.find(pr => pr.id === p.propertyId)  : null;
+  const today = new Date().toISOString().split('T')[0];
+  const isOverdue = p.endDate && p.endDate < today && p.status !== 'done';
+
+  const images = (p.attachments||[]).filter(a => a.type && a.type.startsWith('image/'));
+  const docs   = (p.attachments||[]).filter(a => !a.type || !a.type.startsWith('image/'));
+
+  const subtasksHtml = (p.subtasks||[]).map(s =>
+    `<div style="display:flex;align-items:flex-start;gap:10px;padding:5px 0;border-bottom:1px solid #ede8e0">
+      <span style="font-size:14px;flex-shrink:0">${s.done ? '☑' : '☐'}</span>
+      <span style="font-size:13px;${s.done ? 'text-decoration:line-through;color:#b0a090' : ''}">${escHtml(s.text)}</span>
+    </div>`).join('');
+
+  const urlsHtml = (p.urls||[]).map(u =>
+    `<div style="padding:3px 0;font-size:12px;font-family:'DM Mono',monospace">
+      <span style="color:#7a6e5f">${escHtml(u.label||u.href)}</span>
+      <span style="color:#1a4a7a;margin-left:10px">${escHtml(u.href)}</span>
+    </div>`).join('');
+
+  const imagesHtml = images.map(a =>
+    `<img src="${a.data}" style="max-width:100%;max-height:280px;object-fit:contain;border:1px solid #d6cebf;border-radius:2px;display:block;margin-bottom:6px" />`).join('');
+
+  const docsHtml = docs.map(a =>
+    `<div style="font-size:12px;padding:4px 0;font-family:'DM Mono',monospace;color:#7a6e5f">📎 ${escHtml(a.name)}</div>`).join('');
+
+  const priorityTag = { high: ['#f0d5c8','#c8440a','High Priority'], medium: ['#faeac8','#7a5000','Medium Priority'], low: ['#c8e6d8','#2d6a4f','Low Priority'] }[p.priority] || [];
+
+  const html = `<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>${escHtml(p.name)} — HomeWorks</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: 'DM Sans', sans-serif; color: #1a1209; background: #fff; padding: 40px 48px; max-width: 760px; margin: 0 auto; }
+h1 { font-family: 'Playfair Display', serif; font-size: 28px; line-height: 1.3; margin-bottom: 6px; }
+.eyebrow { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #7a6e5f; margin-bottom: 10px; }
+.meta-row { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0 16px; }
+.tag { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.5px; padding: 3px 9px; border-radius: 2px; }
+.divider { height: 1px; background: #d6cebf; margin: 18px 0; }
+.sec-title { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: #7a6e5f; margin-bottom: 9px; }
+.section { margin-bottom: 22px; }
+p, .body-text { font-size: 13px; line-height: 1.75; color: #1a1209; white-space: pre-wrap; }
+.footer { margin-top: 36px; padding-top: 10px; border-top: 2px solid #c8440a; display: flex; justify-content: space-between; font-family: 'DM Mono', monospace; font-size: 9px; color: #b0a090; }
+@media print { body { padding: 0; } @page { margin: 0.7in; } }
+</style>
+</head>
+<body>
+<div class="eyebrow">HomeWorks — Project Detail</div>
+<h1>${escHtml(p.name)}</h1>
+<div class="meta-row">
+  <span class="tag" style="background:#c8daf0;color:#1a4a7a">${escHtml(p.category)}</span>
+  ${property ? `<span class="tag" style="background:#ede8fc;color:#4a2a8a">🏠 ${escHtml(property.name)}</span>` : ''}
+  ${priorityTag.length ? `<span class="tag" style="background:${priorityTag[0]};color:${priorityTag[1]}">${priorityTag[2]}</span>` : ''}
+  ${p.status === 'done' ? `<span class="tag" style="background:#c8e6d8;color:#2d6a4f">✅ Completed</span>` : ''}
+  ${p.status === 'someday' ? `<span class="tag" style="background:#ede9fe;color:#5b21b6">Someday</span>` : ''}
+  ${p.cost ? `<span class="tag" style="background:#ede8e0;color:#7a6e5f">${escHtml(p.cost)}</span>` : ''}
+  ${isOverdue ? `<span class="tag" style="background:#fee2e2;color:#b91c1c">⚠ Overdue</span>` : ''}
+</div>
+${(p.startDate||p.endDate) ? `<div style="font-family:'DM Mono',monospace;font-size:11px;color:#7a6e5f;margin-bottom:4px">${p.startDate?'Start: '+fmtDate(p.startDate):''}${p.startDate&&p.endDate?' &nbsp;→&nbsp; ':''}${p.endDate?'Target: '+fmtDate(p.endDate):''}</div>` : ''}
+<div class="divider"></div>
+${p.description ? `<div class="section"><div class="sec-title">Description</div><p>${escHtml(p.description)}</p></div>` : ''}
+${p.subtasks&&p.subtasks.length ? `<div class="section"><div class="sec-title">Checklist — ${p.subtasks.filter(s=>s.done).length} of ${p.subtasks.length} complete</div>${subtasksHtml}</div>` : ''}
+${p.urls&&p.urls.length ? `<div class="section"><div class="sec-title">Parts &amp; Material Links</div>${urlsHtml}</div>` : ''}
+${contractor ? `<div class="section"><div class="sec-title">Contractor</div>
+<div style="background:#f5f0e8;padding:10px 14px;border-radius:2px">
+  ${contractor.type ? `<div style="font-family:'DM Mono',monospace;font-size:9px;letter-spacing:1px;text-transform:uppercase;color:#1a4a7a;margin-bottom:4px">${escHtml(contractor.type)}</div>` : ''}
+  <div style="font-weight:500;font-size:13px">${escHtml(contractor.company)}</div>
+  <div style="font-size:12px;color:#7a6e5f;margin-top:5px">${contractor.poc?'👤 '+escHtml(contractor.poc)+'&nbsp;&nbsp;&nbsp;':''}${contractor.phone?'📞 '+escHtml(contractor.phone)+'&nbsp;&nbsp;&nbsp;':''}${contractor.email?'✉ '+escHtml(contractor.email):''}</div>
+</div></div>` : ''}
+${p.notes ? `<div class="section"><div class="sec-title">Notes</div><p>${escHtml(p.notes)}</p></div>` : ''}
+${images.length ? `<div class="section"><div class="sec-title">Photos</div>${imagesHtml}</div>` : ''}
+${docs.length ? `<div class="section"><div class="sec-title">Documents</div>${docsHtml}</div>` : ''}
+<div class="footer">
+  <span>HomeWorks Project Tracker</span>
+  <span>Exported ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</span>
+</div>
+<script>window.onload = function(){ window.print(); }<\/script>
+</body>
+</html>`;
+
+  const w = window.open('', '_blank');
+  w.document.write(html);
+  w.document.close();
+}
+
+// ── Delete from panel ──
+function deletePanelProject() {
+  if (!openId) return;
+  deleteProject(openId, { stopPropagation: () => {} });
+}
+
+// ── Key shortcuts ──
+document.getElementById('inp-name').addEventListener('keydown', e=>{ if(e.key==='Enter') addProject(); });
+document.getElementById('inp-cost').addEventListener('keydown', e=>{ if(e.key==='Enter') addProject(); });
+document.getElementById('pd-cat-custom').addEventListener('keydown', e=>{
+  if (e.key==='Enter') { applyCustomCat(e.target.value.trim()); }
+  if (e.key==='Escape') cancelCustomCat();
+});
+document.addEventListener('keydown', e=>{
+  if ((e.metaKey||e.ctrlKey) && e.key==='s' && openId) { e.preventDefault(); savePanel(); }
+  if (e.key==='Escape' && openId) closePanel();
+  if (e.key==='Escape' && addFormOpen) closeAddForm();
+});
+
+buildCatSelects();
+buildPropertySelects(null, true);
+render();
+if (document.body.classList.contains('dark')) document.getElementById('btn-dark-toggle').textContent = '☀';
+</script>
+</body>
+</html>
