@@ -355,10 +355,40 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
 /* ── DELETE BUTTON ── */
 .btn-delete-panel { background: none; border: 1.5px solid var(--red); border-radius: 2px; padding: 8px 14px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--red); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
 .btn-delete-panel:hover { background: var(--red); color: white; }
+
+/* ── CONTRACTOR MANAGER MODAL ── */
+.modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,18,9,0.5); z-index: 400; align-items: center; justify-content: center; }
+.modal-overlay.open { display: flex; }
+.modal { background: var(--paper); border-top: 3px solid var(--accent); width: 580px; max-width: 95vw; max-height: 82vh; overflow-y: auto; display: flex; flex-direction: column; box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
+.modal-header { background: var(--ink); padding: 14px 18px; display: flex; align-items: center; justify-content: space-between; position: sticky; top: 0; z-index: 1; }
+.modal-header-title { font-family: 'Playfair Display', serif; font-size: 18px; color: var(--bg); }
+.modal-body { padding: 18px; flex: 1; }
+.modal-empty { text-align: center; padding: 32px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; }
+.contractor-mgr-item { background: var(--bg); border: 1.5px solid var(--rule); border-radius: 2px; padding: 11px 13px; margin-bottom: 8px; }
+.contractor-mgr-actions { display: flex; gap: 6px; margin-top: 8px; }
+.btn-mgr-edit { background: none; border: 1.5px solid var(--rule); border-radius: 2px; padding: 4px 12px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.5px; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+.btn-mgr-edit:hover { border-color: var(--blue); color: var(--blue); }
+.btn-mgr-delete { background: none; border: 1.5px solid var(--rule); border-radius: 2px; padding: 4px 12px; font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 0.5px; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+.btn-mgr-delete:hover { border-color: var(--red); color: var(--red); }
+.contractor-edit-form { border: 1.5px solid var(--accent); border-radius: 2px; padding: 12px; margin-top: 10px; display: none; flex-direction: column; gap: 8px; }
+.contractor-edit-form.show { display: flex; }
+.btn-contractors-toolbar { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.5px; border: 1.5px solid var(--rule); background: transparent; color: var(--muted); border-radius: 2px; padding: 4px 10px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
+.btn-contractors-toolbar:hover { border-color: var(--accent); color: var(--accent); }
 </style>
 </head>
 <body>
 <script>if(localStorage.getItem('homeworks_dark')==='1')document.body.classList.add('dark');</script>
+
+<!-- ══ CONTRACTOR MANAGER MODAL ══ -->
+<div class="modal-overlay" id="contractor-modal" onclick="closeContractorManager()">
+  <div class="modal" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-header-title">Contractors</span>
+      <button class="btn-close" onclick="closeContractorManager()">✕</button>
+    </div>
+    <div class="modal-body" id="contractor-modal-body"></div>
+  </div>
+</div>
 
 <header>
   <h1>HomeWorks</h1>
@@ -602,6 +632,8 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
       <option value="modified">Last Modified</option>
       <option value="name">Name A→Z</option>
     </select>
+    <div class="toolbar-sep"></div>
+    <button class="btn-contractors-toolbar" onclick="openContractorManager()">🔨 Contractors</button>
   </div>
 
   <!-- Collapsible add form dropdown -->
@@ -1333,6 +1365,120 @@ function openAttachment(i) {
 
 function removeAttachment(i) { attachmentRows.splice(i, 1); rebuildAttachmentDOM(); }
 function collectAttachments() { return attachmentRows.map(a => ({...a})); }
+
+// ── Contractor Manager ──
+function openContractorManager() {
+  renderContractorManager();
+  document.getElementById('contractor-modal').classList.add('open');
+}
+
+function closeContractorManager() {
+  document.getElementById('contractor-modal').classList.remove('open');
+}
+
+function renderContractorManager() {
+  const body = document.getElementById('contractor-modal-body');
+  if (!contractors.length) {
+    body.innerHTML = '<div class="modal-empty">No contractors saved yet.<br>Add one from a project\'s detail panel.</div>';
+    return;
+  }
+  const TYPES = ['Plumber','Electrician','Painter','Carpenter','HVAC','Roofer','Landscaper','General Contractor','Handyman','Other'];
+  body.innerHTML = contractors.map(c => {
+    const inUse = projects.filter(p => p.contractorId === c.id).length;
+    return `
+    <div class="contractor-mgr-item" id="cmgr-${c.id}">
+      ${c.type ? `<div class="contractor-card-tag">${escHtml(c.type)}</div>` : ''}
+      <div class="contractor-card-name">${escHtml(c.company)}</div>
+      <div class="contractor-card-meta">
+        ${c.poc   ? `<span>👤 ${escHtml(c.poc)}</span>` : ''}
+        ${c.phone ? `<span>📞 ${escHtml(c.phone)}</span>` : ''}
+        ${c.email ? `<span>✉ ${escHtml(c.email)}</span>` : ''}
+        ${inUse   ? `<span style="color:var(--green)">📋 ${inUse} project${inUse>1?'s':''}</span>` : ''}
+      </div>
+      <div class="contractor-mgr-actions">
+        <button class="btn-mgr-edit" onclick="toggleContractorEdit(${c.id})">Edit</button>
+        <button class="btn-mgr-delete" onclick="deleteContractor(${c.id})">Delete</button>
+      </div>
+      <div class="contractor-edit-form" id="cedit-${c.id}">
+        <div class="contractor-form-row">
+          <div class="contractor-form-field full">
+            <label>Company Name *</label>
+            <input type="text" id="ce-company-${c.id}" value="${escHtml(c.company)}" />
+          </div>
+        </div>
+        <div class="contractor-form-row">
+          <div class="contractor-form-field">
+            <label>Type</label>
+            <select id="ce-type-${c.id}">
+              <option value="">— Select type —</option>
+              ${TYPES.map(t=>`<option ${c.type===t?'selected':''}>${escHtml(t)}</option>`).join('')}
+            </select>
+          </div>
+          <div class="contractor-form-field">
+            <label>Point of Contact</label>
+            <input type="text" id="ce-poc-${c.id}" value="${escHtml(c.poc||'')}" />
+          </div>
+        </div>
+        <div class="contractor-form-row">
+          <div class="contractor-form-field">
+            <label>Phone</label>
+            <input type="tel" id="ce-phone-${c.id}" value="${escHtml(c.phone||'')}" />
+          </div>
+          <div class="contractor-form-field">
+            <label>Email</label>
+            <input type="email" id="ce-email-${c.id}" value="${escHtml(c.email||'')}" />
+          </div>
+        </div>
+        <div class="contractor-form-actions">
+          <button class="btn-contractor-save" onclick="saveContractorEdit(${c.id})">Save</button>
+          <button class="btn-contractor-cancel" onclick="toggleContractorEdit(${c.id})">Cancel</button>
+        </div>
+      </div>
+    </div>`;
+  }).join('');
+}
+
+function toggleContractorEdit(id) {
+  document.getElementById(`cedit-${id}`).classList.toggle('show');
+}
+
+function saveContractorEdit(id) {
+  const c = contractors.find(x => x.id === id);
+  if (!c) return;
+  const company = document.getElementById(`ce-company-${id}`).value.trim();
+  if (!company) { document.getElementById(`ce-company-${id}`).focus(); return; }
+  c.company = company;
+  c.type    = document.getElementById(`ce-type-${id}`).value;
+  c.poc     = document.getElementById(`ce-poc-${id}`).value.trim();
+  c.phone   = document.getElementById(`ce-phone-${id}`).value.trim();
+  c.email   = document.getElementById(`ce-email-${id}`).value.trim();
+  save();
+  renderContractorManager();
+  if (openId) {
+    const p = projects.find(x => x.id === openId);
+    buildContractorSelect(p ? p.contractorId : null);
+    if (p && p.contractorId === id) renderContractorCard(id);
+  }
+}
+
+function deleteContractor(id) {
+  const c = contractors.find(x => x.id === id);
+  if (!c) return;
+  const inUse = projects.filter(p => p.contractorId === id).length;
+  const msg = inUse
+    ? `Delete "${c.company}"? It's assigned to ${inUse} project${inUse>1?'s':''}. Those projects will be unassigned.`
+    : `Delete "${c.company}"?`;
+  if (!confirm(msg)) return;
+  contractors = contractors.filter(x => x.id !== id);
+  projects.forEach(p => { if (p.contractorId === id) p.contractorId = null; });
+  save();
+  renderContractorManager();
+  if (openId) {
+    const p = projects.find(x => x.id === openId);
+    buildContractorSelect(p ? p.contractorId : null);
+    renderContractorCard(p ? p.contractorId : null);
+  }
+}
 
 // ── Export PDF ──
 function exportProjectPDF() {
