@@ -915,6 +915,7 @@ function clearFieldError(id) {
 
 function isValidEmail(s) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s); }
 function isValidUrl(s) { return /^https?:\/\/.+/.test(s); }
+function isValidPhone(s) { return s.replace(/\D/g, '').length >= 7; }
 
 // ── Project CRUD ──
 function addProject() {
@@ -1285,9 +1286,11 @@ function hideContractorForm() {
 }
 
 function saveNewContractor() {
-  clearFieldError('cf-company'); clearFieldError('cf-email');
+  clearFieldError('cf-company'); clearFieldError('cf-phone'); clearFieldError('cf-email');
   const company = document.getElementById('cf-company').value.trim();
   if (!company) { fieldError('cf-company', 'Company name is required'); return; }
+  const phone = document.getElementById('cf-phone').value.trim();
+  if (phone && !isValidPhone(phone)) { fieldError('cf-phone', 'Enter a valid phone number'); return; }
   const email = document.getElementById('cf-email').value.trim();
   if (email && !isValidEmail(email)) { fieldError('cf-email', 'Enter a valid email address'); return; }
   const c = {
@@ -1651,9 +1654,11 @@ function toggleManagerAddForm() {
 }
 
 function saveManagerNewContractor() {
-  clearFieldError('mgr-cf-company'); clearFieldError('mgr-cf-email');
+  clearFieldError('mgr-cf-company'); clearFieldError('mgr-cf-phone'); clearFieldError('mgr-cf-email');
   const company = document.getElementById('mgr-cf-company').value.trim();
   if (!company) { fieldError('mgr-cf-company', 'Company name is required'); return; }
+  const phone = document.getElementById('mgr-cf-phone').value.trim();
+  if (phone && !isValidPhone(phone)) { fieldError('mgr-cf-phone', 'Enter a valid phone number'); return; }
   const email = document.getElementById('mgr-cf-email').value.trim();
   if (email && !isValidEmail(email)) { fieldError('mgr-cf-email', 'Enter a valid email address'); return; }
   const c = {
@@ -1754,9 +1759,11 @@ function toggleContractorEdit(id) {
 function saveContractorEdit(id) {
   const c = contractors.find(x => x.id === id);
   if (!c) return;
-  clearFieldError(`ce-company-${id}`); clearFieldError(`ce-email-${id}`);
+  clearFieldError(`ce-company-${id}`); clearFieldError(`ce-phone-${id}`); clearFieldError(`ce-email-${id}`);
   const company = document.getElementById(`ce-company-${id}`).value.trim();
   if (!company) { fieldError(`ce-company-${id}`, 'Company name is required'); return; }
+  const phone = document.getElementById(`ce-phone-${id}`).value.trim();
+  if (phone && !isValidPhone(phone)) { fieldError(`ce-phone-${id}`, 'Enter a valid phone number'); return; }
   const email = document.getElementById(`ce-email-${id}`).value.trim();
   if (email && !isValidEmail(email)) { fieldError(`ce-email-${id}`, 'Enter a valid email address'); return; }
   c.company = company;
