@@ -1,0 +1,14 @@
+{
+  "name": "homeworks",
+  "version": "1.0.0",
+  "description": "Home improvement project tracker",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "dev": "node server.js"
+  },
+  "dependencies": {
+    "better-sqlite3": "^9.4.3",
+    "express": "^4.18.2"
+  }
+}
