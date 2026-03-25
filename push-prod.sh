@@ -4,7 +4,7 @@
 
 set -e
 
-PROD_HOST="174.138.90.222"
+PROD_HOST="159.203.111.124"
 PROD_USER="root"
 PROD_DIR="/var/www/HomeProject"
 
