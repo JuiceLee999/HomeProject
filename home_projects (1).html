@@ -356,6 +356,11 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
 .btn-add-attach { display: flex; align-items: center; gap: 8px; background: none; border: 1.5px dashed var(--rule); border-radius: 2px; padding: 6px 12px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; cursor: pointer; transition: all 0.15s; width: 100%; }
 .btn-add-attach:hover { border-color: var(--accent); color: var(--accent); }
 
+/* ── VALIDATION ── */
+.input-error { border-color: var(--red) !important; background: var(--red-light) !important; }
+.field-error-msg { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--red); margin-top: 3px; letter-spacing: 0.3px; display: none; }
+.field-error-msg.show { display: block; }
+
 /* ── DELETE BUTTON ── */
 .btn-delete-panel { background: none; border: 1.5px solid var(--red); border-radius: 2px; padding: 8px 14px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--red); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
 .btn-delete-panel:hover { background: var(--red); color: white; }
@@ -884,16 +889,46 @@ function applyCustomCat(name) {
   document.getElementById('cat-custom-wrap').classList.remove('show');
 }
 
+// ── Validation helpers ──
+function fieldError(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('input-error');
+  let errEl = document.getElementById(id + '-err');
+  if (!errEl) {
+    errEl = document.createElement('div');
+    errEl.id = id + '-err';
+    errEl.className = 'field-error-msg';
+    el.parentNode.insertBefore(errEl, el.nextSibling);
+  }
+  errEl.textContent = msg;
+  errEl.classList.add('show');
+  el.focus();
+}
+
+function clearFieldError(id) {
+  const el = document.getElementById(id);
+  if (el) el.classList.remove('input-error');
+  const errEl = document.getElementById(id + '-err');
+  if (errEl) errEl.classList.remove('show');
+}
+
+function isValidEmail(s) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s); }
+function isValidUrl(s) { return /^https?:\/\/.+/.test(s); }
+
 // ── Project CRUD ──
 function addProject() {
+  clearFieldError('inp-name'); clearFieldError('inp-cost');
   const name = document.getElementById('inp-name').value.trim();
-  if (!name) { document.getElementById('inp-name').focus(); return; }
+  if (!name) { fieldError('inp-name', 'Project name is required'); return; }
+  const costRaw = document.getElementById('inp-cost').value.trim();
+  if (costRaw && parseCost(costRaw) === null) { fieldError('inp-cost', 'Enter a valid amount, e.g. $350'); return; }
   const p = {
     id: Date.now(), name,
     note: document.getElementById('inp-note').value.trim(),
     description: '', category: document.getElementById('inp-cat').value,
     priority: document.getElementById('inp-priority').value,
-    cost: document.getElementById('inp-cost').value.trim(),
+    cost: costRaw,
     status: document.getElementById('inp-status').value,
     created: Date.now(), modified: Date.now(),
     startDate:'', endDate:'', urls:[], notes:'', subtasks:[], contractorId: null, propertyId: null, attachments: [], blockedBy: []
@@ -1005,13 +1040,25 @@ function savePanel() {
     else cancelCustomCat();
   }
 
-  p.name        = document.getElementById('pd-name').value.trim()||p.name;
+  // Validate
+  clearFieldError('pd-name'); clearFieldError('pd-cost'); clearFieldError('pd-end');
+  const nameVal = document.getElementById('pd-name').value.trim();
+  if (!nameVal) { fieldError('pd-name', 'Project name is required'); return; }
+  const costRaw = document.getElementById('pd-cost').value.trim();
+  if (costRaw && parseCost(costRaw) === null) { fieldError('pd-cost', 'Enter a valid amount, e.g. $350'); return; }
+  const startVal = document.getElementById('pd-start').value;
+  const endVal   = document.getElementById('pd-end').value;
+  if (startVal && endVal && endVal < startVal) { fieldError('pd-end', 'Target date must be after start date'); return; }
+  const badUrl = urlRows.find(u => u.href.trim() && !isValidUrl(u.href.trim()));
+  if (badUrl) { alert(`Invalid URL: "${badUrl.href}"\nURLs must start with http:// or https://`); return; }
+
+  p.name        = nameVal;
   p.category    = document.getElementById('pd-cat').value;
   p.priority    = document.getElementById('pd-priority').value;
-  p.cost        = document.getElementById('pd-cost').value.trim();
+  p.cost        = costRaw;
   p.status      = document.getElementById('pd-status').value;
-  p.startDate   = document.getElementById('pd-start').value;
-  p.endDate     = document.getElementById('pd-end').value;
+  p.startDate   = startVal;
+  p.endDate     = endVal;
   p.description = document.getElementById('pd-description').value.trim();
   p.notes       = document.getElementById('pd-notes').value.trim();
   p.urls        = collectUrls();
@@ -1238,8 +1285,11 @@ function hideContractorForm() {
 }
 
 function saveNewContractor() {
+  clearFieldError('cf-company'); clearFieldError('cf-email');
   const company = document.getElementById('cf-company').value.trim();
-  if (!company) { document.getElementById('cf-company').focus(); return; }
+  if (!company) { fieldError('cf-company', 'Company name is required'); return; }
+  const email = document.getElementById('cf-email').value.trim();
+  if (email && !isValidEmail(email)) { fieldError('cf-email', 'Enter a valid email address'); return; }
   const c = {
     id: Date.now(),
     company,
@@ -1601,15 +1651,18 @@ function toggleManagerAddForm() {
 }
 
 function saveManagerNewContractor() {
+  clearFieldError('mgr-cf-company'); clearFieldError('mgr-cf-email');
   const company = document.getElementById('mgr-cf-company').value.trim();
-  if (!company) { document.getElementById('mgr-cf-company').focus(); return; }
+  if (!company) { fieldError('mgr-cf-company', 'Company name is required'); return; }
+  const email = document.getElementById('mgr-cf-email').value.trim();
+  if (email && !isValidEmail(email)) { fieldError('mgr-cf-email', 'Enter a valid email address'); return; }
   const c = {
     id: Date.now(),
     company,
     type:  document.getElementById('mgr-cf-type').value,
     poc:   document.getElementById('mgr-cf-poc').value.trim(),
     phone: document.getElementById('mgr-cf-phone').value.trim(),
-    email: document.getElementById('mgr-cf-email').value.trim()
+    email
   };
   contractors.push(c);
   save();
@@ -1701,13 +1754,16 @@ function toggleContractorEdit(id) {
 function saveContractorEdit(id) {
   const c = contractors.find(x => x.id === id);
   if (!c) return;
+  clearFieldError(`ce-company-${id}`); clearFieldError(`ce-email-${id}`);
   const company = document.getElementById(`ce-company-${id}`).value.trim();
-  if (!company) { document.getElementById(`ce-company-${id}`).focus(); return; }
+  if (!company) { fieldError(`ce-company-${id}`, 'Company name is required'); return; }
+  const email = document.getElementById(`ce-email-${id}`).value.trim();
+  if (email && !isValidEmail(email)) { fieldError(`ce-email-${id}`, 'Enter a valid email address'); return; }
   c.company = company;
   c.type    = document.getElementById(`ce-type-${id}`).value;
   c.poc     = document.getElementById(`ce-poc-${id}`).value.trim();
   c.phone   = document.getElementById(`ce-phone-${id}`).value.trim();
-  c.email   = document.getElementById(`ce-email-${id}`).value.trim();
+  c.email   = email;
   save();
   renderContractorManager();
   if (openId) {
@@ -1838,6 +1894,11 @@ function deletePanelProject() {
 
 // ── Key shortcuts ──
 document.getElementById('inp-name').addEventListener('keydown', e=>{ if(e.key==='Enter') addProject(); });
+// Clear errors as user types
+['inp-name','inp-cost','pd-name','pd-cost','pd-end'].forEach(id => {
+  const el = document.getElementById(id);
+  if (el) el.addEventListener('input', () => clearFieldError(id));
+});
 document.getElementById('inp-cost').addEventListener('keydown', e=>{ if(e.key==='Enter') addProject(); });
 document.getElementById('pd-cat-custom').addEventListener('keydown', e=>{
   if (e.key==='Enter') { applyCustomCat(e.target.value.trim()); }
