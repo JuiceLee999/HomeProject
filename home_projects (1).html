@@ -761,6 +761,11 @@ function buildCatSelects() {
   const opts = cats.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('') + '<option value="__new__">+ New Category…</option>';
   document.getElementById('inp-cat').innerHTML = cats.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
   document.getElementById('pd-cat').innerHTML = opts;
+  // Rebuilding innerHTML resets the select to the first option — restore it
+  if (openId) {
+    const p = projects.find(x => x.id === openId);
+    if (p) document.getElementById('pd-cat').value = p.category;
+  }
 }
 
 function handleCatChange(sel) {
