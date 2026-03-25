@@ -13,6 +13,9 @@ git pull origin main
 echo "==> Installing dependencies..."
 npm install --omit=dev
 
+echo "==> Clearing stale DB lock (if any)..."
+rm -rf "$DEPLOY_DIR/db/homeworks.db.lock"
+
 echo "==> Restarting app..."
 if command -v pm2 &> /dev/null; then
   pm2 restart homeworks 2>/dev/null || pm2 start server.js --name homeworks
