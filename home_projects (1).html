@@ -360,6 +360,28 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
 .btn-delete-panel { background: none; border: 1.5px solid var(--red); border-radius: 2px; padding: 8px 14px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--red); cursor: pointer; transition: all 0.15s; white-space: nowrap; }
 .btn-delete-panel:hover { background: var(--red); color: white; }
 
+/* ── DEPENDENCIES ── */
+.dep-list { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 8px; min-height: 4px; }
+.dep-chip { display: flex; align-items: center; gap: 6px; border-radius: 2px; padding: 4px 9px; font-family: 'DM Mono', monospace; font-size: 11px; border: 1.5px solid; }
+.dep-chip.pending { background: var(--yellow-light); color: #7a5000; border-color: var(--yellow); }
+.dep-chip.done { background: var(--green-light); color: var(--green); border-color: var(--green); opacity: 0.75; }
+.dep-chip-del { background: none; border: none; color: inherit; opacity: 0.6; cursor: pointer; font-size: 11px; padding: 0; line-height: 1; }
+.dep-chip-del:hover { opacity: 1; color: var(--red); }
+.dep-add-select { width: 100%; background: var(--bg); border: 1.5px dashed var(--rule); border-radius: 2px; padding: 6px 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--muted); outline: none; cursor: pointer; transition: border-color 0.15s; }
+.dep-add-select:focus { border-color: var(--accent); }
+.tag-blocked { background: var(--yellow-light); color: #7a5000; }
+
+/* ── IMPORT STEPS ── */
+.import-steps-panel { background: var(--bg); border: 1.5px solid var(--accent); border-radius: 2px; padding: 12px; margin-top: 8px; display: flex; flex-direction: column; gap: 8px; }
+.import-steps-list { display: flex; flex-direction: column; gap: 5px; max-height: 180px; overflow-y: auto; }
+.import-step-item { display: flex; align-items: center; gap: 8px; font-size: 13px; padding: 5px 8px; background: var(--paper); border-radius: 2px; cursor: pointer; user-select: none; }
+.import-step-item input[type="checkbox"] { width: 14px; height: 14px; accent-color: var(--green); flex-shrink: 0; cursor: pointer; }
+.import-steps-actions { display: flex; gap: 8px; }
+.btn-import-copy { background: var(--accent); color: white; border: none; border-radius: 2px; padding: 6px 14px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; cursor: pointer; transition: background 0.15s; }
+.btn-import-copy:hover { background: #a33408; }
+.btn-import-cancel { background: none; border: 1.5px solid var(--rule); border-radius: 2px; padding: 5px 12px; font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); cursor: pointer; transition: all 0.15s; }
+.btn-import-cancel:hover { border-color: var(--red); color: var(--red); }
+
 /* ── CONTRACTOR MANAGER MODAL ── */
 .modal-overlay { display: none; position: fixed; inset: 0; background: rgba(26,18,9,0.5); z-index: 400; align-items: center; justify-content: center; }
 .modal-overlay.open { display: flex; }
@@ -492,6 +514,17 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
 
     <div class="panel-divider"></div>
 
+    <!-- Prerequisites / Dependencies -->
+    <div>
+      <div class="panel-section-title">⛓ Prerequisites</div>
+      <div class="dep-list" id="pd-dep-list"></div>
+      <select class="dep-add-select" id="pd-dep-picker" onchange="addDependency(this)">
+        <option value="">+ Add prerequisite project…</option>
+      </select>
+    </div>
+
+    <div class="panel-divider"></div>
+
     <!-- Description -->
     <div class="panel-field full">
       <label>Description</label>
@@ -506,6 +539,18 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
       <div class="subtask-progress" id="sub-progress"></div>
       <div class="subtask-list" id="pd-subtask-list"></div>
       <button class="btn-add-sub" onclick="addSubtaskRow()">+ Add Step</button>
+      <button class="btn-add-sub" onclick="showImportSteps()" style="margin-top:5px">↓ Import Steps from Another Project…</button>
+      <div class="import-steps-panel" id="import-steps-picker" style="display:none">
+        <div class="panel-section-title" style="margin-bottom:0">Import from:</div>
+        <select class="dep-add-select" id="import-src-select" onchange="renderImportStepsList(this)">
+          <option value="">— Pick a project —</option>
+        </select>
+        <div class="import-steps-list" id="import-steps-list"></div>
+        <div class="import-steps-actions">
+          <button class="btn-import-copy" onclick="copyImportedSteps()">Copy Selected</button>
+          <button class="btn-import-cancel" onclick="hideImportSteps()">Cancel</button>
+        </div>
+      </div>
     </div>
 
     <div class="panel-divider"></div>
@@ -811,7 +856,7 @@ function addProject() {
     cost: document.getElementById('inp-cost').value.trim(),
     status: document.getElementById('inp-status').value,
     created: Date.now(), modified: Date.now(),
-    startDate:'', endDate:'', urls:[], notes:'', subtasks:[], contractorId: null, propertyId: null, attachments: []
+    startDate:'', endDate:'', urls:[], notes:'', subtasks:[], contractorId: null, propertyId: null, attachments: [], blockedBy: []
   };
   projects.unshift(p);
   ['inp-name','inp-note','inp-cost'].forEach(id=>document.getElementById(id).value='');
@@ -834,6 +879,7 @@ function deleteProject(id, e) {
   if (!confirm('Delete this project?')) return;
   if (openId===id) closePanel();
   projects = projects.filter(x=>x.id!==id);
+  projects.forEach(p => { if (p.blockedBy) p.blockedBy = p.blockedBy.filter(x=>x!==id); });
   save();
 }
 
@@ -887,6 +933,10 @@ function openPanel(id) {
   rebuildUrlDOM();
   rebuildSubtaskDOM();
   rebuildAttachmentDOM();
+  depIds = (p.blockedBy || []).slice();
+  buildDepList();
+  buildDepPicker();
+  hideImportSteps();
   buildPropertySelects(p.propertyId||null);
   buildContractorSelect(p.contractorId||null);
   renderContractorCard(p.contractorId||null);
@@ -929,6 +979,7 @@ function savePanel() {
   p.attachments = collectAttachments();
   p.contractorId = currentContractorId;
   p.propertyId = document.getElementById('pd-property').value ? Number(document.getElementById('pd-property').value) : null;
+  p.blockedBy = depIds.slice();
   p.modified    = Date.now();
   p.done        = p.status === 'done';
   if (p.description) p.note = p.description.substring(0,90)+(p.description.length>90?'…':'');
@@ -999,6 +1050,92 @@ function subDrop(e, i) {
 function subDragEnd() {
   document.querySelectorAll('.subtask-item').forEach(el => el.classList.remove('drag-over', 'dragging'));
   subDragSrc = null;
+}
+
+// ── Dependencies ──
+let depIds = [];
+
+function buildDepPicker() {
+  const sel = document.getElementById('pd-dep-picker');
+  if (!sel) return;
+  const others = projects.filter(p => p.id !== openId && !depIds.includes(p.id));
+  sel.innerHTML = '<option value="">+ Add prerequisite project…</option>' +
+    others.map(p => `<option value="${p.id}">${escHtml(p.name)}</option>`).join('');
+}
+
+function buildDepList() {
+  const list = document.getElementById('pd-dep-list');
+  if (!list) return;
+  if (!depIds.length) { list.innerHTML = ''; return; }
+  list.innerHTML = depIds.map(id => {
+    const p = projects.find(x => x.id === id);
+    if (!p) return '';
+    const isDone = p.status === 'done';
+    return `<div class="dep-chip ${isDone ? 'done' : 'pending'}">
+      ${isDone ? '✅' : '⏳'} ${escHtml(p.name)}
+      <button class="dep-chip-del" onclick="removeDependency(${id})" title="Remove">✕</button>
+    </div>`;
+  }).filter(Boolean).join('');
+}
+
+function addDependency(sel) {
+  const id = Number(sel.value);
+  if (!id) return;
+  if (!depIds.includes(id)) depIds.push(id);
+  sel.value = '';
+  buildDepList();
+  buildDepPicker();
+}
+
+function removeDependency(id) {
+  depIds = depIds.filter(x => x !== id);
+  buildDepList();
+  buildDepPicker();
+}
+
+// ── Import Steps ──
+function showImportSteps() {
+  const picker = document.getElementById('import-steps-picker');
+  picker.style.display = 'flex';
+  const sel = document.getElementById('import-src-select');
+  const others = projects.filter(p => p.id !== openId && (p.subtasks || []).length > 0);
+  sel.innerHTML = '<option value="">— Pick a project —</option>' +
+    others.map(p => `<option value="${p.id}">${escHtml(p.name)} (${(p.subtasks||[]).length} steps)</option>`).join('');
+  document.getElementById('import-steps-list').innerHTML = '';
+}
+
+function hideImportSteps() {
+  document.getElementById('import-steps-picker').style.display = 'none';
+}
+
+function renderImportStepsList(sel) {
+  const id = Number(sel.value);
+  const list = document.getElementById('import-steps-list');
+  if (!id) { list.innerHTML = ''; return; }
+  const src = projects.find(p => p.id === id);
+  if (!src || !(src.subtasks || []).length) {
+    list.innerHTML = '<div style="color:var(--muted);font-size:12px;padding:4px">No steps in this project.</div>';
+    return;
+  }
+  list.innerHTML = src.subtasks.map((s, i) => `
+    <label class="import-step-item">
+      <input type="checkbox" checked data-idx="${i}" />
+      ${escHtml(s.text)}
+    </label>`).join('');
+}
+
+function copyImportedSteps() {
+  const id = Number(document.getElementById('import-src-select').value);
+  if (!id) return;
+  const src = projects.find(p => p.id === id);
+  if (!src) return;
+  const checks = document.querySelectorAll('#import-steps-list input[type="checkbox"]:checked');
+  checks.forEach(cb => {
+    const step = src.subtasks[Number(cb.dataset.idx)];
+    if (step) subtaskRows.push({ id: Date.now() + Math.random(), text: step.text, done: false });
+  });
+  rebuildSubtaskDOM();
+  hideImportSteps();
 }
 
 // ── Contractors ──
@@ -1212,6 +1349,7 @@ function cardHTML(p, today, soon) {
 
   const isOverdue  = p.endDate && p.endDate < today && p.status !== 'done';
   const isDueSoon  = p.endDate && p.endDate >= today && p.endDate <= soon && p.status !== 'done';
+  const blockers   = p.status !== 'done' ? (p.blockedBy||[]).map(id=>projects.find(x=>x.id===id)).filter(b=>b&&b.status!=='done') : [];
 
   const dateLabel = isOverdue ? `⚠ Overdue (${fmtDate(p.endDate)})` : isDueSoon ? `⏰ Due ${fmtDate(p.endDate)}` : p.endDate ? `📅 ${fmtDate(p.endDate)}` : '';
   const dateClass = isOverdue ? 'tag-overdue' : isDueSoon ? 'tag-due-soon' : 'tag-date';
@@ -1246,6 +1384,7 @@ function cardHTML(p, today, soon) {
           ${subtasks.length?`<span class="tag tag-tasks">☑ ${subDone}/${subtasks.length}</span>`:''}
           ${property?`<span class="tag tag-property">🏠 ${escHtml(property.name)}</span>`:''}
           ${contractor?`<span class="tag tag-cat" style="background:#e8f4ee;color:#1a5a38">🔨 ${escHtml(contractor.company)}</span>`:''}
+          ${blockers.length?`<span class="tag tag-blocked">⏳ Blocked: ${escHtml(blockers[0].name)}${blockers.length>1?' +'+(blockers.length-1):''}</span>`:''}
           ${p.modified?`<span class="tag tag-modified">${timeAgo(p.modified)}</span>`:''}
         </div>
       </div>
