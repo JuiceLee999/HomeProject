@@ -230,6 +230,10 @@ body.panel-open .detail-panel { transform: translateX(0); }
 .subtask-item input[type="text"]::placeholder { color: #b0a090; }
 .btn-sub-del { background: none; border: none; color: #c0b0a0; font-size: 13px; cursor: pointer; padding: 0 2px; transition: color 0.15s; flex-shrink: 0; }
 .btn-sub-del:hover { color: var(--red); }
+.drag-handle { color: var(--rule); font-size: 15px; cursor: grab; padding: 0 3px; flex-shrink: 0; user-select: none; line-height: 1; }
+.drag-handle:active { cursor: grabbing; }
+.subtask-item.drag-over { border-color: var(--accent); background: var(--accent-light); }
+.subtask-item.dragging { opacity: 0.35; }
 .btn-add-sub { display: flex; align-items: center; gap: 8px; background: none; border: 1.5px dashed var(--rule); border-radius: 2px; padding: 6px 12px; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; cursor: pointer; transition: all 0.15s; width: 100%; }
 .btn-add-sub:hover { border-color: var(--accent); color: var(--accent); }
 .subtask-progress { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-bottom: 6px; }
@@ -940,7 +944,13 @@ function savePanel() {
 function rebuildSubtaskDOM() {
   const list = document.getElementById('pd-subtask-list');
   list.innerHTML = subtaskRows.map((s,i)=>`
-    <div class="subtask-item">
+    <div class="subtask-item" draggable="true"
+      ondragstart="subDragStart(event,${i})"
+      ondragover="subDragOver(event,${i})"
+      ondragleave="subDragLeave(event)"
+      ondrop="subDrop(event,${i})"
+      ondragend="subDragEnd()">
+      <span class="drag-handle" title="Drag to reorder">⠿</span>
       <input type="checkbox" ${s.done?'checked':''} onchange="subtaskRows[${i}].done=this.checked;updateSubProgress()" />
       <input type="text" placeholder="Step description…" value="${escHtml(s.text||'')}" oninput="subtaskRows[${i}].text=this.value" class="${s.done?'done-task':''}" onchange="this.className=subtaskRows[${i}].done?'done-task':''" />
       <button class="btn-sub-del" onclick="removeSubtask(${i})" title="Remove">✕</button>
@@ -964,6 +974,32 @@ function addSubtaskRow() {
 
 function removeSubtask(i) { subtaskRows.splice(i,1); rebuildSubtaskDOM(); }
 function collectSubtasks() { return subtaskRows.filter(s=>s.text.trim()).map(s=>({id:s.id||Date.now(),text:s.text.trim(),done:s.done})); }
+
+let subDragSrc = null;
+function subDragStart(e, i) {
+  subDragSrc = i;
+  e.dataTransfer.effectAllowed = 'move';
+  e.currentTarget.classList.add('dragging');
+}
+function subDragOver(e, i) {
+  e.preventDefault();
+  e.dataTransfer.dropEffect = 'move';
+  document.querySelectorAll('.subtask-item').forEach(el => el.classList.remove('drag-over'));
+  if (i !== subDragSrc) e.currentTarget.classList.add('drag-over');
+}
+function subDragLeave(e) { e.currentTarget.classList.remove('drag-over'); }
+function subDrop(e, i) {
+  e.preventDefault();
+  if (subDragSrc === null || subDragSrc === i) return;
+  const moved = subtaskRows.splice(subDragSrc, 1)[0];
+  subtaskRows.splice(i, 0, moved);
+  subDragSrc = null;
+  rebuildSubtaskDOM();
+}
+function subDragEnd() {
+  document.querySelectorAll('.subtask-item').forEach(el => el.classList.remove('drag-over', 'dragging'));
+  subDragSrc = null;
+}
 
 // ── Contractors ──
 let currentContractorId = null;
