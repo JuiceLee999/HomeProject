@@ -410,7 +410,47 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-header">
       <span class="modal-header-title">Contractors</span>
+      <button class="btn-contractor-save" style="font-size:11px;padding:5px 14px" onclick="toggleManagerAddForm()">+ Add Contractor</button>
       <button class="btn-close" onclick="closeContractorManager()">✕</button>
+    </div>
+    <!-- Add contractor form (hidden by default) -->
+    <div id="mgr-add-form" style="display:none;padding:14px 18px;border-bottom:1.5px solid var(--rule);background:var(--bg)">
+      <div class="contractor-form-title" style="margin-bottom:10px">New Contractor</div>
+      <div class="contractor-form-row">
+        <div class="contractor-form-field full">
+          <label>Company Name *</label>
+          <input type="text" id="mgr-cf-company" placeholder="e.g. Apex Plumbing Co." />
+        </div>
+      </div>
+      <div class="contractor-form-row">
+        <div class="contractor-form-field">
+          <label>Type</label>
+          <select id="mgr-cf-type">
+            <option value="">— Select type —</option>
+            <option>Plumber</option><option>Electrician</option><option>Painter</option>
+            <option>Carpenter</option><option>HVAC</option><option>Roofer</option>
+            <option>Landscaper</option><option>General Contractor</option><option>Handyman</option><option>Other</option>
+          </select>
+        </div>
+        <div class="contractor-form-field">
+          <label>Point of Contact</label>
+          <input type="text" id="mgr-cf-poc" placeholder="e.g. Mike Johnson" />
+        </div>
+      </div>
+      <div class="contractor-form-row">
+        <div class="contractor-form-field">
+          <label>Phone</label>
+          <input type="tel" id="mgr-cf-phone" placeholder="e.g. (315) 555-0100" />
+        </div>
+        <div class="contractor-form-field">
+          <label>Email</label>
+          <input type="email" id="mgr-cf-email" placeholder="e.g. mike@apex.com" />
+        </div>
+      </div>
+      <div class="contractor-form-actions" style="margin-top:4px">
+        <button class="btn-contractor-save" onclick="saveManagerNewContractor()">Save Contractor</button>
+        <button class="btn-contractor-cancel" onclick="toggleManagerAddForm()">Cancel</button>
+      </div>
     </div>
     <div class="modal-body" id="contractor-modal-body"></div>
   </div>
@@ -1547,7 +1587,43 @@ function removeAttachment(i) { attachmentRows.splice(i, 1); rebuildAttachmentDOM
 function collectAttachments() { return attachmentRows.map(a => ({...a})); }
 
 // ── Contractor Manager ──
+function toggleManagerAddForm() {
+  const form = document.getElementById('mgr-add-form');
+  const isOpen = form.style.display !== 'none';
+  if (isOpen) {
+    form.style.display = 'none';
+    ['mgr-cf-company','mgr-cf-poc','mgr-cf-phone','mgr-cf-email'].forEach(id => document.getElementById(id).value = '');
+    document.getElementById('mgr-cf-type').value = '';
+  } else {
+    form.style.display = 'block';
+    setTimeout(() => document.getElementById('mgr-cf-company').focus(), 50);
+  }
+}
+
+function saveManagerNewContractor() {
+  const company = document.getElementById('mgr-cf-company').value.trim();
+  if (!company) { document.getElementById('mgr-cf-company').focus(); return; }
+  const c = {
+    id: Date.now(),
+    company,
+    type:  document.getElementById('mgr-cf-type').value,
+    poc:   document.getElementById('mgr-cf-poc').value.trim(),
+    phone: document.getElementById('mgr-cf-phone').value.trim(),
+    email: document.getElementById('mgr-cf-email').value.trim()
+  };
+  contractors.push(c);
+  save();
+  toggleManagerAddForm();
+  renderContractorManager();
+  // refresh panel contractor dropdown if a project is open
+  if (openId) {
+    const p = projects.find(x => x.id === openId);
+    buildContractorSelect(p ? p.contractorId : null);
+  }
+}
+
 function openContractorManager() {
+  document.getElementById('mgr-add-form').style.display = 'none';
   renderContractorManager();
   document.getElementById('contractor-modal').classList.add('open');
 }
@@ -1559,7 +1635,7 @@ function closeContractorManager() {
 function renderContractorManager() {
   const body = document.getElementById('contractor-modal-body');
   if (!contractors.length) {
-    body.innerHTML = '<div class="modal-empty">No contractors saved yet.<br>Add one from a project\'s detail panel.</div>';
+    body.innerHTML = '<div class="modal-empty">No contractors yet.<br>Click &ldquo;+ Add Contractor&rdquo; above to add one.</div>';
     return;
   }
   const TYPES = ['Plumber','Electrician','Painter','Carpenter','HVAC','Roofer','Landscaper','General Contractor','Handyman','Other'];
