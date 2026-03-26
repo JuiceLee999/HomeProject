@@ -18,7 +18,12 @@ rm -rf "$DEPLOY_DIR/db/homeworks.db.lock"
 
 echo "==> Restarting app..."
 if command -v pm2 &> /dev/null; then
-  pm2 restart homeworks 2>/dev/null || pm2 start server.js --name homeworks
+  # Use ecosystem.config.js if present (holds env vars like APP_URL, SMTP_*)
+  if [ -f "$DEPLOY_DIR/ecosystem.config.js" ]; then
+    pm2 restart ecosystem.config.js --update-env 2>/dev/null || pm2 start ecosystem.config.js
+  else
+    pm2 restart homeworks 2>/dev/null || pm2 start server.js --name homeworks
+  fi
 else
   echo "WARNING: pm2 not found. Install it: npm install -g pm2"
 fi
