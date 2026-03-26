@@ -53,7 +53,7 @@ if (secretRow) {
   JWT_SECRET = secretRow.value;
 } else {
   JWT_SECRET = crypto.randomBytes(48).toString('hex');
-  db.prepare('INSERT INTO store (key, value) VALUES (?, ?)').run('jwt_secret', JWT_SECRET);
+  db.exec(`INSERT INTO store (key, value) VALUES ('jwt_secret', ${sqlStr(JWT_SECRET)})`);
 }
 
 // ── Legacy data migration ────────────────────────────────────────────────────
@@ -77,6 +77,9 @@ function verifyToken(req, res, next) {
 }
 
 function isValidEmail(s) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s); }
+// node-sqlite3-wasm 0.8.x has a bug where prepare().run() with string params
+// silently binds NULL. Use exec() + sqlStr() for all write operations instead.
+function sqlStr(s) { return "'" + String(s).replace(/'/g, "''") + "'"; }
 
 // ── Auth routes ──────────────────────────────────────────────────────────────
 app.post('/api/register', async (req, res) => {
@@ -88,14 +91,15 @@ app.post('/api/register', async (req, res) => {
   if (exists) return res.status(409).json({ error: 'An account with that email already exists' });
 
   const hash = await bcrypt.hash(password, 10);
-  const result = db.prepare('INSERT INTO users (email, password_hash) VALUES (?, ?)').run(email, hash);
-  const userId = result.lastInsertRowid;
+  db.exec(`INSERT INTO users (email, password_hash) VALUES (${sqlStr(email)}, ${sqlStr(hash)})`);
+  const userRow = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  const userId = userRow.id;
 
   // First user claims legacy data
   const initialData = legacyData || '{"projects":[],"customCats":[],"contractors":[],"properties":[]}';
-  db.prepare('INSERT INTO user_data (user_id, value) VALUES (?, ?)').run(userId, initialData);
+  db.exec(`INSERT INTO user_data (user_id, value) VALUES (${userId}, ${sqlStr(initialData)})`);
   if (legacyData) {
-    db.prepare("DELETE FROM store WHERE key = 'homeworks'").run();
+    db.exec("DELETE FROM store WHERE key = 'homeworks'");
     legacyData = null;
   }
 
@@ -150,7 +154,7 @@ app.put('/api/data', verifyToken, (req, res) => {
   const { userId } = req.user;
   const { projects = [], customCats = [], contractors = [], properties = [] } = req.body || {};
   const value = JSON.stringify({ projects, customCats, contractors, properties });
-  db.prepare('INSERT OR REPLACE INTO user_data (user_id, value) VALUES (?, ?)').run(userId, value);
+  db.exec(`INSERT OR REPLACE INTO user_data (user_id, value) VALUES (${userId}, ${sqlStr(value)})`);
   res.json({ ok: true });
 });
 
@@ -176,7 +180,7 @@ app.put('/api/projects/:projectId', verifyToken, (req, res) => {
   // Strip client-side share flags before saving
   const { _sharedBy, _permission, _ownerId, ...cleanProject } = updatedProject;
   ownerData.projects[idx] = cleanProject;
-  db.prepare('INSERT OR REPLACE INTO user_data (user_id, value) VALUES (?, ?)').run(share.owner_id, JSON.stringify(ownerData));
+  db.exec(`INSERT OR REPLACE INTO user_data (user_id, value) VALUES (${share.owner_id}, ${sqlStr(JSON.stringify(ownerData))})`);
   res.json({ ok: true });
 });
 
@@ -220,11 +224,7 @@ app.post('/api/share', verifyToken, (req, res) => {
   const target = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
   if (!target) return res.status(404).json({ error: `No account found for ${email}` });
 
-  db.prepare(`
-    INSERT INTO project_shares (project_id, owner_id, shared_with_id, permission)
-    VALUES (?, ?, ?, ?)
-    ON CONFLICT(project_id, shared_with_id) DO UPDATE SET permission = excluded.permission
-  `).run(Number(projectId), userId, target.id, permission);
+  db.exec(`INSERT INTO project_shares (project_id, owner_id, shared_with_id, permission) VALUES (${Number(projectId)}, ${userId}, ${target.id}, ${sqlStr(permission)}) ON CONFLICT(project_id, shared_with_id) DO UPDATE SET permission = excluded.permission`);
 
   res.json({ ok: true });
 });
@@ -237,10 +237,7 @@ app.delete('/api/share', verifyToken, (req, res) => {
   const target = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
   if (!target) return res.status(404).json({ error: 'User not found' });
 
-  db.prepare(`
-    DELETE FROM project_shares
-    WHERE project_id = ? AND owner_id = ? AND shared_with_id = ?
-  `).run(Number(projectId), userId, target.id);
+  db.exec(`DELETE FROM project_shares WHERE project_id = ${Number(projectId)} AND owner_id = ${userId} AND shared_with_id = ${target.id}`);
 
   res.json({ ok: true });
 });
