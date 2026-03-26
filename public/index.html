@@ -392,11 +392,6 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
 .share-msg { font-family: 'DM Mono', monospace; font-size: 10px; margin-top: 5px; min-height: 14px; }
 .share-msg.ok { color: var(--green); }
 .share-msg.err { color: var(--red); }
-.share-item-perm.pending { background: var(--yellow-light); color: #7a5000; }
-.share-invite-link { display:flex; align-items:center; gap:6px; margin-top:6px; padding:7px 10px; background:var(--yellow-light); border-radius:2px; border:1px solid #e8cc80; }
-.share-invite-link span { font-family:'DM Mono',monospace; font-size:10px; color:#7a5000; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
-.btn-copy-link { font-family:'DM Mono',monospace; font-size:10px; background:var(--accent); color:#fff; border:none; border-radius:2px; padding:3px 8px; cursor:pointer; white-space:nowrap; flex-shrink:0; }
-.btn-copy-link:hover { background:#a33408; }
 .tag-shared-by { background: #fff3cd; color: #7a5000; }
 .tag-shared-out { background: var(--green-light); color: var(--green); }
 .badge-viewonly { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1.5px; text-transform: uppercase; background: var(--blue-light); color: var(--blue); padding: 2px 8px; border-radius: 1px; margin-left: 8px; }
@@ -917,9 +912,7 @@ function authFetch(url, opts = {}) {
   });
 }
 
-function showAuthScreen(prefillEmail = '', defaultTab = 'login') {
-  if (defaultTab === 'register') switchAuthTab('register');
-  if (prefillEmail) document.getElementById('auth-email').value = prefillEmail;
+function showAuthScreen() {
   document.getElementById('auth-screen').style.display = 'flex';
 }
 
@@ -1879,16 +1872,12 @@ function renderShareList(shares) {
   if (!list) return;
   if (!shares.length) { list.innerHTML = ''; return; }
   const projectId = openId;
-  list.innerHTML = shares.map(s => {
-    const permBadge = s.status === 'pending'
-      ? `<span class="share-item-perm pending">✉ Invite sent</span>`
-      : `<span class="share-item-perm ${s.permission}">${s.permission === 'edit' ? '✏ Can edit' : '👁 View only'}</span>`;
-    return `<div class="share-item">
+  list.innerHTML = shares.map(s => `
+    <div class="share-item">
       <span class="share-item-email">${escHtml(s.email)}</span>
-      ${permBadge}
+      <span class="share-item-perm ${s.permission}">${s.permission === 'edit' ? '✏ Can edit' : '👁 View only'}</span>
       <button class="btn-share-remove" onclick="removeShare(${projectId},'${escHtml(s.email)}')" title="Remove">✕</button>
-    </div>`;
-  }).join('');
+    </div>`).join('');
 }
 
 async function shareProject() {
@@ -1908,23 +1897,11 @@ async function shareProject() {
     msgEl.textContent = data.error || 'Share failed';
     msgEl.className = 'share-msg err';
   } else {
+    msgEl.textContent = `Shared with ${email}`;
+    msgEl.className = 'share-msg ok';
     document.getElementById('pd-share-email').value = '';
     loadShares(openId);
-    if (data.pending) {
-      // No account yet — show invite link to copy
-      msgEl.className = 'share-msg ok';
-      msgEl.innerHTML = `No account found — invite sent!`;
-      const linkBox = document.createElement('div');
-      linkBox.className = 'share-invite-link';
-      linkBox.innerHTML = `<span title="${escHtml(data.inviteLink)}">${escHtml(data.inviteLink)}</span>
-        <button class="btn-copy-link" onclick="navigator.clipboard.writeText('${escHtml(data.inviteLink)}').then(()=>{this.textContent='Copied!';setTimeout(()=>{this.textContent='Copy link'},1500)})">Copy link</button>`;
-      msgEl.after(linkBox);
-      setTimeout(() => { linkBox.remove(); msgEl.textContent = ''; }, 30000);
-    } else {
-      msgEl.textContent = `Shared with ${email}`;
-      msgEl.className = 'share-msg ok';
-      setTimeout(() => { msgEl.textContent = ''; }, 3000);
-    }
+    setTimeout(() => { msgEl.textContent = ''; }, 3000);
   }
 }
 
@@ -2243,25 +2220,8 @@ async function init() {
     if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') authSubmit(); });
   });
 
-  // Handle invite links: /invite/:token redirects to /?invited_email=xxx
-  const params = new URLSearchParams(location.search);
-  const invitedEmail = params.get('invited_email');
-  const inviteInvalid = params.get('invite_invalid');
-  if (invitedEmail || inviteInvalid) {
-    history.replaceState(null, '', '/');
-  }
-
   const token = localStorage.getItem('homeworks_token');
-  if (!token) {
-    if (inviteInvalid) showAuthScreen('', 'login');
-    else if (invitedEmail) showAuthScreen(invitedEmail, 'register');
-    else showAuthScreen();
-    if (inviteInvalid) {
-      const e = document.getElementById('auth-error');
-      if (e) { e.textContent = 'This invite link has already been used or is invalid.'; e.style.display = ''; }
-    }
-    return;
-  }
+  if (!token) { showAuthScreen(); return; }
 
   // Decode email from token payload (no verification — just display)
   try {
