@@ -809,6 +809,7 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
     <div class="toolbar-sep"></div>
     <span class="filter-label">Sort:</span>
     <select class="sort-select" id="sort-select" onchange="render()">
+      <option value="priority-endDate">Priority + Due Date</option>
       <option value="created">Date Added</option>
       <option value="priority">Priority</option>
       <option value="endDate">Due Date</option>
@@ -1593,6 +1594,13 @@ function render() {
   const sortKey = document.getElementById('sort-select').value;
   const priorityOrder = {high:0, medium:1, low:2};
   let sorted = [...projects].sort((a,b)=>{
+    if (sortKey==='priority-endDate') {
+      const pd = (priorityOrder[a.priority]??1)-(priorityOrder[b.priority]??1);
+      if (pd !== 0) return pd;
+      if (!a.endDate && !b.endDate) return 0;
+      if (!a.endDate) return 1; if (!b.endDate) return -1;
+      return a.endDate.localeCompare(b.endDate);
+    }
     if (sortKey==='priority') return (priorityOrder[a.priority]??1)-(priorityOrder[b.priority]??1);
     if (sortKey==='endDate') {
       if (!a.endDate && !b.endDate) return 0;
