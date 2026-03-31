@@ -795,7 +795,13 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
     <button class="filter-btn" onclick="setFilter('medium',this)">🟡 Med</button>
     <button class="filter-btn" onclick="setFilter('low',this)">🟢 Low</button>
     <button class="filter-btn" onclick="setFilter('overdue',this)">⚠ Overdue</button>
+    <button class="filter-btn" onclick="setFilter('soon',this)">⏰ Due Soon</button>
     <div class="toolbar-sep ml-auto"></div>
+    <span class="filter-label">Category:</span>
+    <select class="sort-select" id="cat-filter" onchange="setCatFilter(this.value)">
+      <option value="">All</option>
+    </select>
+    <div class="toolbar-sep"></div>
     <span class="filter-label">Property:</span>
     <select class="sort-select" id="property-filter" onchange="setPropertyFilter(this.value)">
       <option value="">All</option>
@@ -894,6 +900,7 @@ let customCats = [];
 let contractors = [];
 let properties = [];
 let currentFilter = 'all';
+let currentCatFilter = '';
 let currentPropertyFilter = '';
 let openId = null;
 let urlRows = [];
@@ -1019,6 +1026,13 @@ function buildCatSelects() {
   if (openId) {
     const p = projects.find(x => x.id === openId);
     if (p) document.getElementById('pd-cat').value = p.category;
+  }
+  // Refresh toolbar category filter
+  const catFilterSel = document.getElementById('cat-filter');
+  if (catFilterSel) {
+    catFilterSel.innerHTML = '<option value="">All</option>' +
+      cats.map(c=>`<option value="${escHtml(c)}">${escHtml(c)}</option>`).join('');
+    catFilterSel.value = currentCatFilter;
   }
 }
 
@@ -1600,6 +1614,8 @@ function render() {
   else if (currentFilter==='done') filtered=sorted.filter(p=>p.status==='done');
   else if (['high','medium','low'].includes(currentFilter)) filtered=sorted.filter(p=>p.priority===currentFilter&&p.status!=='done');
   else if (currentFilter==='overdue') filtered=sorted.filter(p=>p.status!=='done'&&p.endDate&&p.endDate<today);
+  else if (currentFilter==='soon') filtered=sorted.filter(p=>p.status!=='done'&&p.endDate&&p.endDate>=today&&p.endDate<=soon);
+  if (currentCatFilter) filtered=filtered.filter(p=>p.category===currentCatFilter);
   if (currentPropertyFilter) filtered=filtered.filter(p=>p.propertyId===Number(currentPropertyFilter));
 
   buildPropertySelects(null, true);
@@ -1787,6 +1803,11 @@ function cancelNewProperty() {
 
 function setPropertyFilter(val) {
   currentPropertyFilter = val;
+  render();
+}
+
+function setCatFilter(val) {
+  currentCatFilter = val;
   render();
 }
 
