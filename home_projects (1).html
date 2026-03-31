@@ -1605,8 +1605,8 @@ function render() {
     if (sortKey==='priority-endDate') {
       const pd = (priorityOrder[a.priority]??1)-(priorityOrder[b.priority]??1);
       if (pd !== 0) return pd;
-      if (!a.endDate && !b.endDate) return 0;
-      if (!a.endDate) return 1; if (!b.endDate) return -1;
+      // only compare dates when both have one; missing date = no opinion
+      if (!a.endDate || !b.endDate) return 0;
       return a.endDate.localeCompare(b.endDate);
     }
     if (sortKey==='priority') return (priorityOrder[a.priority]??1)-(priorityOrder[b.priority]??1);
