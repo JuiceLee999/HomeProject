@@ -4,7 +4,7 @@ set -e
 
 DEPLOY_DIR="/var/www/HomeProject"
 
-echo "==> Deploying HomeWorks..."
+echo "==> Deploying Honey-Do..."
 cd "$DEPLOY_DIR"
 
 echo "==> Pulling latest from main..."
@@ -23,4 +23,4 @@ else
   echo "WARNING: pm2 not found. Install it: npm install -g pm2"
 fi
 
-echo "==> Done. HomeWorks is live."
+echo "==> Done. Honey-Do is live."

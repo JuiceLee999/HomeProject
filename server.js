@@ -243,5 +243,5 @@ app.delete('/api/share', verifyToken, (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`HomeWorks running → http://localhost:${PORT}`);
+  console.log(`Honey-Do running → http://localhost:${PORT}`);
 });

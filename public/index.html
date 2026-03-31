@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>HomeWorks — Project Tracker</title>
+<title>Honey-Do — Project Tracker</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -453,7 +453,7 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
 <!-- ══ AUTH SCREEN ══ -->
 <div class="auth-screen" id="auth-screen" style="display:none">
   <div class="auth-card">
-    <div class="auth-title">HomeWorks</div>
+    <div class="auth-title">Honey-Do</div>
     <div class="auth-subtitle">Project Tracker</div>
     <div class="auth-tabs">
       <button class="auth-tab active" id="tab-login" onclick="switchAuthTab('login')">Sign In</button>
@@ -528,7 +528,7 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
 </div>
 
 <header>
-  <h1>HomeWorks</h1>
+  <h1>Honey-Do</h1>
   <span>Project Tracker</span>
   <div class="header-right">
     <div class="stat-pill"><strong id="done-count">0</strong> done</div>
@@ -2149,7 +2149,7 @@ function exportProjectPDF() {
 <html lang="en">
 <head>
 <meta charset="UTF-8">
-<title>${escHtml(p.name)} — HomeWorks</title>
+<title>${escHtml(p.name)} — Honey-Do</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700&family=DM+Sans:wght@400;500&display=swap" rel="stylesheet">
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; }
@@ -2167,7 +2167,7 @@ p, .body-text { font-size: 13px; line-height: 1.75; color: #1a1209; white-space:
 </style>
 </head>
 <body>
-<div class="eyebrow">HomeWorks — Project Detail</div>
+<div class="eyebrow">Honey-Do — Project Detail</div>
 <h1>${escHtml(p.name)}</h1>
 <div class="meta-row">
   <span class="tag" style="background:#c8daf0;color:#1a4a7a">${escHtml(p.category)}</span>
@@ -2193,7 +2193,7 @@ ${p.notes ? `<div class="section"><div class="sec-title">Notes</div><p>${escHtml
 ${images.length ? `<div class="section"><div class="sec-title">Photos</div>${imagesHtml}</div>` : ''}
 ${docs.length ? `<div class="section"><div class="sec-title">Documents</div>${docsHtml}</div>` : ''}
 <div class="footer">
-  <span>HomeWorks Project Tracker</span>
+  <span>Honey-Do Project Tracker</span>
   <span>Exported ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})}</span>
 </div>
 <script>window.onload = function(){ window.print(); }<\/script>
