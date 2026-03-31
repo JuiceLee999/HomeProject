@@ -808,7 +808,7 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
     </select>
     <div class="toolbar-sep"></div>
     <span class="filter-label">Sort:</span>
-    <select class="sort-select" id="sort-select" onchange="render()">
+    <select class="sort-select" id="sort-select" onchange="setSort(this.value)">
       <option value="priority-endDate">Priority + Due Date</option>
       <option value="created">Date Added</option>
       <option value="priority">Priority</option>
@@ -901,6 +901,7 @@ let customCats = [];
 let contractors = [];
 let properties = [];
 let currentFilter = 'all';
+let currentSort = 'priority-endDate';
 let currentCatFilter = '';
 let currentPropertyFilter = '';
 let openId = null;
@@ -1152,6 +1153,11 @@ function duplicateProject(id, e) {
 }
 
 function duplicateFromPanel() { if (openId) duplicateProject(openId, null); }
+
+function setSort(val) {
+  currentSort = val;
+  render();
+}
 
 function setFilter(f, btn) {
   currentFilter = f;
@@ -1590,8 +1596,10 @@ function render() {
   document.getElementById('bs-total').textContent = costStr;
   document.getElementById('total-cost').textContent = costStr;
 
-  // Sort
-  const sortKey = document.getElementById('sort-select').value;
+  // Sort — sync dropdown to JS state, not the other way around
+  const sortSel = document.getElementById('sort-select');
+  if (sortSel) sortSel.value = currentSort;
+  const sortKey = currentSort;
   const priorityOrder = {high:0, medium:1, low:2};
   let sorted = [...projects].sort((a,b)=>{
     if (sortKey==='priority-endDate') {
