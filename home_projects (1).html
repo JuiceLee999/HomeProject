@@ -1627,22 +1627,28 @@ function render() {
   if (currentPropertyFilter) filtered=filtered.filter(p=>p.propertyId===Number(currentPropertyFilter));
 
   buildPropertySelects(null, true);
-  const todoItems     = filtered.filter(p=>p.status==='todo');
-  const somedayItems  = filtered.filter(p=>p.status==='someday');
-  const doneItems     = filtered.filter(p=>p.status==='done');
+  const highItems   = filtered.filter(p=>p.status!=='done'&&p.priority==='high');
+  const medItems    = filtered.filter(p=>p.status!=='done'&&p.priority==='medium');
+  const lowItems    = filtered.filter(p=>p.status!=='done'&&(!p.priority||p.priority==='low'));
+  const doneItems   = filtered.filter(p=>p.status==='done');
 
   let html = '';
-  if (!todoItems.length && !somedayItems.length && !doneItems.length) {
+  if (!highItems.length && !medItems.length && !lowItems.length && !doneItems.length) {
     html = `<div class="empty"><div class="empty-icon">🔨</div>No projects match this filter.</div>`;
   } else {
-    if (todoItems.length) {
-      html += section('To Do', todoItems.length, 'todo');
-      html += todoItems.map(p=>cardHTML(p, today, soon)).join('');
+    if (highItems.length) {
+      html += section('High Priority', highItems.length, 'pri-high');
+      html += highItems.map(p=>cardHTML(p, today, soon)).join('');
       html += '</div>';
     }
-    if (somedayItems.length) {
-      html += section('Someday', somedayItems.length, 'someday');
-      html += somedayItems.map(p=>cardHTML(p, today, soon)).join('');
+    if (medItems.length) {
+      html += section('Medium Priority', medItems.length, 'pri-medium');
+      html += medItems.map(p=>cardHTML(p, today, soon)).join('');
+      html += '</div>';
+    }
+    if (lowItems.length) {
+      html += section('Low Priority', lowItems.length, 'pri-low');
+      html += lowItems.map(p=>cardHTML(p, today, soon)).join('');
       html += '</div>';
     }
     if (doneItems.length) {
