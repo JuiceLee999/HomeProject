@@ -1231,6 +1231,13 @@ function openPanel(id) {
 }
 
 function closePanel() {
+  if (openId) {
+    const p = projects.find(x=>x.id===openId);
+    // Only auto-save if it's an editable project
+    if (p && !(p._sharedBy && p._permission === 'view')) {
+      if (savePanel(true) === false) return; // validation failed — stay open
+    }
+  }
   document.body.classList.remove('panel-open');
   openId = null;
   render();
@@ -1256,13 +1263,13 @@ function collectAndApplyPanel(p) {
   if (p.description) p.note = p.description.substring(0,90)+(p.description.length>90?'…':'');
 }
 
-function savePanel() {
-  if (!openId) return;
+function savePanel(silent = false) {
+  if (!openId) return true;
   const p = projects.find(x=>x.id===openId);
-  if (!p) return;
+  if (!p) return true;
 
   // Shared view-only — no save allowed
-  if (p._sharedBy && p._permission === 'view') return;
+  if (p._sharedBy && p._permission === 'view') return true;
 
   // Shared edit — route to owner's blob via separate endpoint
   if (p._sharedBy && p._permission === 'edit') {
@@ -1275,10 +1282,12 @@ function savePanel() {
     p.modified = Date.now();
     document.getElementById('pd-modified').textContent = 'Modified just now';
     render();
-    const msg = document.getElementById('save-msg');
-    msg.classList.add('show');
-    setTimeout(() => msg.classList.remove('show'), 2000);
-    return;
+    if (!silent) {
+      const msg = document.getElementById('save-msg');
+      msg.classList.add('show');
+      setTimeout(() => msg.classList.remove('show'), 2000);
+    }
+    return true;
   }
 
   // Handle custom cat
@@ -1292,14 +1301,14 @@ function savePanel() {
   // Validate
   clearFieldError('pd-name'); clearFieldError('pd-cost'); clearFieldError('pd-end');
   const nameVal = document.getElementById('pd-name').value.trim();
-  if (!nameVal) { fieldError('pd-name', 'Project name is required'); return; }
+  if (!nameVal) { fieldError('pd-name', 'Project name is required'); return false; }
   const costRaw = document.getElementById('pd-cost').value.trim();
-  if (costRaw && parseCost(costRaw) === null) { fieldError('pd-cost', 'Enter a valid amount, e.g. $350'); return; }
+  if (costRaw && parseCost(costRaw) === null) { fieldError('pd-cost', 'Enter a valid amount, e.g. $350'); return false; }
   const startVal = document.getElementById('pd-start').value;
   const endVal   = document.getElementById('pd-end').value;
-  if (startVal && endVal && endVal < startVal) { fieldError('pd-end', 'Target date must be after start date'); return; }
+  if (startVal && endVal && endVal < startVal) { fieldError('pd-end', 'Target date must be after start date'); return false; }
   const badUrl = urlRows.find(u => u.href.trim() && !isValidUrl(u.href.trim()));
-  if (badUrl) { alert(`Invalid URL: "${badUrl.href}"\nURLs must start with http:// or https://`); return; }
+  if (badUrl) { alert(`Invalid URL: "${badUrl.href}"\nURLs must start with http:// or https://`); return false; }
 
   p.name        = nameVal;
   p.category    = document.getElementById('pd-cat').value;
@@ -1322,9 +1331,12 @@ function savePanel() {
 
   document.getElementById('pd-modified').textContent = 'Modified just now';
   save();
-  const msg = document.getElementById('save-msg');
-  msg.classList.add('show');
-  setTimeout(()=>msg.classList.remove('show'), 2000);
+  if (!silent) {
+    const msg = document.getElementById('save-msg');
+    msg.classList.add('show');
+    setTimeout(()=>msg.classList.remove('show'), 2000);
+  }
+  return true;
 }
 
 // ── Subtasks ──
