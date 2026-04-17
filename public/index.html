@@ -1527,8 +1527,8 @@ function renderContractorCard(id) {
       <div class="contractor-card-name">${escHtml(c.company)}</div>
       <div class="contractor-card-meta">
         ${c.poc ? `<span>👤 ${escHtml(c.poc)}</span>` : ''}
-        ${c.phone ? `<span>📞 <a href="tel:${escHtml(c.phone)}">${escHtml(c.phone)}</a></span>` : ''}
-        ${c.email ? `<span>✉ <a href="mailto:${escHtml(c.email)}">${escHtml(c.email)}</a></span>` : ''}
+        ${c.phone ? `<span>📞 <a href="tel:${encodeURIComponent(c.phone)}">${escHtml(c.phone)}</a></span>` : ''}
+        ${c.email ? `<span>✉ <a href="mailto:${encodeURIComponent(c.email)}">${escHtml(c.email)}</a></span>` : ''}
       </div>
     </div>`;
 }

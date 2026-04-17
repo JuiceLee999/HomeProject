@@ -5,6 +5,8 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const path = require('path');
 const fs = require('fs');
+const rateLimit = require('express-rate-limit');
+const helmet = require('helmet');
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -46,6 +48,10 @@ db.exec(`
   );
 `);
 
+// ── node-sqlite3-wasm quirk ───────────────────────────────────────────────────
+// prepare().run/get/all() silently binds NULL when multiple params are passed
+// as individual arguments. Always pass params as an array: .run([a, b]).
+
 // ── JWT secret (auto-generated, persisted in DB) ─────────────────────────────
 let JWT_SECRET;
 const secretRow = db.prepare('SELECT value FROM store WHERE key = ?').get('jwt_secret');
@@ -53,7 +59,7 @@ if (secretRow) {
   JWT_SECRET = secretRow.value;
 } else {
   JWT_SECRET = crypto.randomBytes(48).toString('hex');
-  db.exec(`INSERT INTO store (key, value) VALUES ('jwt_secret', ${sqlStr(JWT_SECRET)})`);
+  db.prepare('INSERT INTO store (key, value) VALUES (?, ?)').run([`jwt_secret`, JWT_SECRET]);
 }
 
 // ── Legacy data migration ────────────────────────────────────────────────────
@@ -62,8 +68,20 @@ const legacyRow = db.prepare("SELECT value FROM store WHERE key = 'homeworks'").
 let legacyData = legacyRow ? legacyRow.value : null;
 
 // ── Middleware ───────────────────────────────────────────────────────────────
-app.use(express.json({ limit: '100mb' }));
+app.use(helmet({
+  contentSecurityPolicy: false  // app uses inline scripts; enable with nonces as a future step
+}));
+app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
+
+// Rate limiters — 20 attempts per 15 min on auth endpoints
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many attempts, please try again later.' }
+});
 
 function verifyToken(req, res, next) {
   const auth = req.headers.authorization;
@@ -77,12 +95,9 @@ function verifyToken(req, res, next) {
 }
 
 function isValidEmail(s) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s); }
-// node-sqlite3-wasm 0.8.x has a bug where prepare().run() with string params
-// silently binds NULL. Use exec() + sqlStr() for all write operations instead.
-function sqlStr(s) { return "'" + String(s).replace(/'/g, "''") + "'"; }
 
 // ── Auth routes ──────────────────────────────────────────────────────────────
-app.post('/api/register', async (req, res) => {
+app.post('/api/register', authLimiter, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !isValidEmail(email)) return res.status(400).json({ error: 'Valid email required' });
   if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
@@ -91,23 +106,23 @@ app.post('/api/register', async (req, res) => {
   if (exists) return res.status(409).json({ error: 'An account with that email already exists' });
 
   const hash = await bcrypt.hash(password, 10);
-  db.exec(`INSERT INTO users (email, password_hash) VALUES (${sqlStr(email)}, ${sqlStr(hash)})`);
+  db.prepare('INSERT INTO users (email, password_hash) VALUES (?, ?)').run([email, hash]);
   const userRow = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
   const userId = userRow.id;
 
   // First user claims legacy data
   const initialData = legacyData || '{"projects":[],"customCats":[],"contractors":[],"properties":[]}';
-  db.exec(`INSERT INTO user_data (user_id, value) VALUES (${userId}, ${sqlStr(initialData)})`);
+  db.prepare('INSERT INTO user_data (user_id, value) VALUES (?, ?)').run([userId, initialData]);
   if (legacyData) {
-    db.exec("DELETE FROM store WHERE key = 'homeworks'");
+    db.prepare("DELETE FROM store WHERE key = 'homeworks'").run();
     legacyData = null;
   }
 
-  const token = jwt.sign({ userId, email }, JWT_SECRET, { expiresIn: '30d' });
+  const token = jwt.sign({ userId, email }, JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, email });
 });
 
-app.post('/api/login', async (req, res) => {
+app.post('/api/login', authLimiter, async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
@@ -117,7 +132,7 @@ app.post('/api/login', async (req, res) => {
   const match = await bcrypt.compare(password, user.password_hash);
   if (!match) return res.status(401).json({ error: 'Invalid email or password' });
 
-  const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+  const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, email: user.email });
 });
 
@@ -154,7 +169,7 @@ app.put('/api/data', verifyToken, (req, res) => {
   const { userId } = req.user;
   const { projects = [], customCats = [], contractors = [], properties = [] } = req.body || {};
   const value = JSON.stringify({ projects, customCats, contractors, properties });
-  db.exec(`INSERT OR REPLACE INTO user_data (user_id, value) VALUES (${userId}, ${sqlStr(value)})`);
+  db.prepare('INSERT OR REPLACE INTO user_data (user_id, value) VALUES (?, ?)').run([userId, value]);
   res.json({ ok: true });
 });
 
@@ -167,7 +182,7 @@ app.put('/api/projects/:projectId', verifyToken, (req, res) => {
   const share = db.prepare(`
     SELECT owner_id FROM project_shares
     WHERE project_id = ? AND shared_with_id = ? AND permission = 'edit'
-  `).get(projectId, userId);
+  `).get([projectId, userId]);
   if (!share) return res.status(403).json({ error: 'No edit permission on this project' });
 
   const ownerRow = db.prepare('SELECT value FROM user_data WHERE user_id = ?').get(share.owner_id);
@@ -180,7 +195,7 @@ app.put('/api/projects/:projectId', verifyToken, (req, res) => {
   // Strip client-side share flags before saving
   const { _sharedBy, _permission, _ownerId, ...cleanProject } = updatedProject;
   ownerData.projects[idx] = cleanProject;
-  db.exec(`INSERT OR REPLACE INTO user_data (user_id, value) VALUES (${share.owner_id}, ${sqlStr(JSON.stringify(ownerData))})`);
+  db.prepare('INSERT OR REPLACE INTO user_data (user_id, value) VALUES (?, ?)').run([share.owner_id, JSON.stringify(ownerData)]);
   res.json({ ok: true });
 });
 
@@ -201,7 +216,7 @@ app.get('/api/shares/:projectId', verifyToken, (req, res) => {
     FROM project_shares ps
     JOIN users u ON u.id = ps.shared_with_id
     WHERE ps.project_id = ? AND ps.owner_id = ?
-  `).all(projectId, userId);
+  `).all([projectId, userId]);
 
   res.json(shares);
 });
@@ -211,6 +226,8 @@ app.post('/api/share', verifyToken, (req, res) => {
   const { projectId, email, permission } = req.body || {};
   if (!projectId || !email || !['view', 'edit'].includes(permission))
     return res.status(400).json({ error: 'projectId, email, and permission (view|edit) required' });
+  if (!isValidEmail(email))
+    return res.status(400).json({ error: 'Valid email required' });
   if (email.toLowerCase() === ownerEmail.toLowerCase())
     return res.status(400).json({ error: "You can't share a project with yourself" });
 
@@ -222,9 +239,14 @@ app.post('/api/share', verifyToken, (req, res) => {
   if (!owned) return res.status(403).json({ error: 'Not your project' });
 
   const target = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-  if (!target) return res.status(404).json({ error: `No account found for ${email}` });
+  // Generic message — avoids leaking whether an email is registered
+  if (!target) return res.status(404).json({ error: 'No account found with that email' });
 
-  db.exec(`INSERT INTO project_shares (project_id, owner_id, shared_with_id, permission) VALUES (${Number(projectId)}, ${userId}, ${target.id}, ${sqlStr(permission)}) ON CONFLICT(project_id, shared_with_id) DO UPDATE SET permission = excluded.permission`);
+  db.prepare(`
+    INSERT INTO project_shares (project_id, owner_id, shared_with_id, permission)
+    VALUES (?, ?, ?, ?)
+    ON CONFLICT(project_id, shared_with_id) DO UPDATE SET permission = excluded.permission
+  `).run([Number(projectId), userId, target.id, permission]);
 
   res.json({ ok: true });
 });
@@ -237,7 +259,8 @@ app.delete('/api/share', verifyToken, (req, res) => {
   const target = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
   if (!target) return res.status(404).json({ error: 'User not found' });
 
-  db.exec(`DELETE FROM project_shares WHERE project_id = ${Number(projectId)} AND owner_id = ${userId} AND shared_with_id = ${target.id}`);
+  db.prepare('DELETE FROM project_shares WHERE project_id = ? AND owner_id = ? AND shared_with_id = ?')
+    .run([Number(projectId), userId, target.id]);
 
   res.json({ ok: true });
 });
