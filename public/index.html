@@ -4,6 +4,8 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Honey-Do — Project Tracker</title>
+<link rel="manifest" href="/manifest.json">
+<meta name="theme-color" content="#c8440a">
 <link href="https://fonts.googleapis.com/css2?family=DM+Mono:wght@400;500&family=Playfair+Display:wght@700;900&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
 <style>
 :root {
@@ -445,6 +447,127 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
 .contractor-edit-form.show { display: flex; }
 .btn-contractors-toolbar { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.5px; border: 1.5px solid var(--rule); background: transparent; color: var(--muted); border-radius: 2px; padding: 4px 10px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
 .btn-contractors-toolbar:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── SEARCH BAR ── */
+.search-wrap { display: flex; align-items: center; gap: 8px; background: var(--paper); border: 1.5px solid var(--rule); border-top: none; border-radius: 0 0 2px 2px; padding: 6px 10px; margin-bottom: 10px; }
+.search-input { flex: 1; background: var(--bg); border: 1.5px solid var(--rule); border-radius: 2px; padding: 6px 11px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); outline: none; transition: border-color 0.15s; }
+.search-input:focus { border-color: var(--accent); }
+.search-count { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); white-space: nowrap; }
+.search-clear { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 2px; line-height: 1; transition: color 0.15s; }
+.search-clear:hover { color: var(--red); }
+mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; padding: 0 1px; }
+
+/* ── HEADER ICON BUTTONS ── */
+.btn-header-icon { background: none; border: 1.5px solid #3a3028; border-radius: 2px; color: #6a5a4a; min-width: 30px; height: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; font-size: 13px; flex-shrink: 0; transition: all 0.15s; font-family: 'DM Mono', monospace; padding: 0 6px; white-space: nowrap; letter-spacing: 0.3px; }
+.btn-header-icon:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── ONBOARDING ── */
+.onboard-overlay { position: fixed; inset: 0; background: rgba(26,18,9,0.65); z-index: 600; display: flex; align-items: center; justify-content: center; }
+.onboard-card { background: var(--paper); border-top: 4px solid var(--accent); width: 480px; max-width: 95vw; padding: 36px 36px 28px; box-shadow: 0 8px 40px rgba(0,0,0,0.25); }
+.onboard-step { display: none; }
+.onboard-step.active { display: block; }
+.onboard-title { font-family: 'Playfair Display', serif; font-size: 22px; margin-bottom: 8px; }
+.onboard-text { font-size: 14px; line-height: 1.7; color: var(--muted); margin-bottom: 20px; }
+.onboard-feature { background: var(--bg); border-left: 3px solid var(--accent); padding: 9px 13px; margin: 8px 0; border-radius: 0 2px 2px 0; }
+.onboard-feature b { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.5px; color: var(--ink); }
+.onboard-feature p { font-size: 12px; color: var(--muted); margin-top: 2px; }
+.onboard-nav { display: flex; align-items: center; justify-content: space-between; margin-top: 24px; }
+.onboard-dots { display: flex; gap: 6px; }
+.onboard-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--rule); transition: background 0.2s; }
+.onboard-dot.active { background: var(--accent); }
+.btn-onboard { background: var(--accent); color: white; border: none; border-radius: 2px; padding: 9px 22px; font-family: 'DM Mono', monospace; font-size: 12px; letter-spacing: 1px; cursor: pointer; transition: background 0.15s; }
+.btn-onboard:hover { background: #a33408; }
+.btn-onboard-skip { background: none; border: none; color: var(--muted); font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer; transition: color 0.15s; padding: 0; }
+.btn-onboard-skip:hover { color: var(--ink); }
+
+/* ── MODALS: HELP / ABOUT / WHATS NEW / ACCOUNT / STATS ── */
+.modal-section-title { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--muted); margin: 18px 0 10px; }
+.modal-section-title:first-child { margin-top: 0; }
+.shortcut-table { width: 100%; border-collapse: collapse; }
+.shortcut-table td { padding: 6px 8px; font-size: 13px; border-bottom: 1px solid var(--rule); }
+.shortcut-table td:first-child { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--ink); background: var(--bg); border-radius: 2px; white-space: nowrap; width: 1%; }
+.shortcut-table tr:last-child td { border-bottom: none; }
+.help-feature { display: flex; gap: 12px; padding: 8px 0; border-bottom: 1px solid var(--rule); align-items: flex-start; }
+.help-feature:last-child { border-bottom: none; }
+.help-feature-icon { font-size: 18px; flex-shrink: 0; width: 24px; text-align: center; }
+.help-feature-body b { display: block; font-size: 13px; font-family: 'DM Mono', monospace; letter-spacing: 0.3px; margin-bottom: 2px; }
+.help-feature-body p { font-size: 12px; color: var(--muted); line-height: 1.5; }
+.about-logo-wrap { display: flex; align-items: center; gap: 14px; margin-bottom: 16px; }
+.about-appname { font-family: 'Playfair Display', serif; font-size: 26px; }
+.about-version { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); letter-spacing: 2px; margin-top: 2px; }
+.about-desc { font-size: 14px; color: var(--muted); line-height: 1.6; margin-bottom: 16px; }
+.btn-whats-new-link { background: none; border: none; color: var(--accent); font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer; padding: 0; text-decoration: underline; }
+.changelog-entry { margin-bottom: 18px; }
+.changelog-version { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 1px; color: var(--accent); margin-bottom: 6px; }
+.changelog-item { font-size: 13px; color: var(--ink); padding: 4px 0 4px 14px; border-bottom: 1px solid var(--rule); line-height: 1.5; }
+.changelog-item:last-child { border-bottom: none; }
+.changelog-item::before { content: '✦'; color: var(--accent); font-size: 9px; margin-left: -14px; margin-right: 6px; }
+
+/* ── ACCOUNT SETTINGS ── */
+.acct-section { background: var(--bg); border: 1.5px solid var(--rule); border-radius: 2px; padding: 16px; margin-bottom: 14px; }
+.acct-section.danger { border-color: var(--red); background: var(--red-light); }
+.acct-section-title { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 12px; }
+.acct-section.danger .acct-section-title { color: var(--red); }
+.acct-field { margin-bottom: 10px; }
+.acct-field label { display: block; font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 1px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.acct-field input { width: 100%; background: var(--paper); border: 1.5px solid var(--rule); border-radius: 2px; padding: 8px 10px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); outline: none; transition: border-color 0.15s; }
+.acct-field input:focus { border-color: var(--accent); }
+.acct-msg { font-family: 'DM Mono', monospace; font-size: 11px; min-height: 16px; margin-top: 8px; }
+.acct-msg.ok { color: var(--green); }
+.acct-msg.err { color: var(--red); }
+.btn-acct { background: var(--accent); color: white; border: none; border-radius: 2px; padding: 8px 18px; font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.5px; cursor: pointer; transition: background 0.15s; }
+.btn-acct:hover { background: #a33408; }
+.btn-acct.danger { background: var(--red); }
+.btn-acct.danger:hover { background: #9b1c1c; }
+.btn-acct:disabled { opacity: 0.5; cursor: default; }
+.danger-check { display: flex; align-items: center; gap: 8px; margin-bottom: 12px; font-size: 13px; color: var(--red); cursor: pointer; }
+.danger-check input { accent-color: var(--red); width: 15px; height: 15px; cursor: pointer; }
+
+/* ── STATS DASHBOARD ── */
+.stats-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; margin-bottom: 20px; }
+.stat-card { background: var(--bg); border: 1.5px solid var(--rule); border-radius: 2px; padding: 14px 16px; }
+.stat-card-label { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.stat-card-value { font-family: 'Playfair Display', serif; font-size: 26px; color: var(--ink); }
+.stat-card-sub { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); margin-top: 2px; }
+.stat-bar-row { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+.stat-bar-label { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--ink); min-width: 100px; }
+.stat-bar-track { flex: 1; background: var(--rule); height: 7px; border-radius: 3px; overflow: hidden; }
+.stat-bar-fill { height: 100%; background: var(--accent); border-radius: 3px; transition: width 0.4s ease; }
+.stat-bar-count { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); min-width: 20px; text-align: right; }
+
+/* ── TEMPLATES ── */
+.template-toggle { background: none; border: none; color: var(--accent); font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer; padding: 0; text-decoration: underline; letter-spacing: 0.3px; margin-top: 6px; display: inline-block; }
+.template-picker { background: var(--bg); border: 1.5px solid var(--accent); border-radius: 2px; padding: 12px; margin-top: 8px; display: none; }
+.template-picker.show { display: block; }
+.template-picker-title { font-family: 'DM Mono', monospace; font-size: 9px; letter-spacing: 3px; text-transform: uppercase; color: var(--accent); margin-bottom: 10px; }
+.template-grid { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 6px; }
+.template-item { background: var(--paper); border: 1.5px solid var(--rule); border-radius: 2px; padding: 8px 10px; cursor: pointer; transition: all 0.15s; }
+.template-item:hover { border-color: var(--accent); background: var(--accent-light); }
+.template-item-name { font-size: 12px; font-weight: 500; }
+.template-item-cat { font-family: 'DM Mono', monospace; font-size: 9px; color: var(--muted); margin-top: 2px; }
+
+/* ── ACTIVITY LOG ── */
+.activity-list { display: flex; flex-direction: column; }
+.activity-item { display: flex; gap: 10px; align-items: baseline; padding: 5px 0; border-bottom: 1px solid var(--rule); font-size: 12px; }
+.activity-item:last-child { border-bottom: none; }
+.activity-time { font-family: 'DM Mono', monospace; font-size: 10px; color: var(--muted); flex-shrink: 0; white-space: nowrap; }
+.activity-text { color: var(--ink); flex: 1; }
+.activity-empty { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.5px; }
+
+/* ── NOTIFICATION BANNER ── */
+.notif-banner { background: var(--yellow-light); border: 1.5px solid var(--yellow); border-radius: 2px; padding: 9px 14px; margin-bottom: 10px; display: none; align-items: center; gap: 12px; }
+.notif-banner.show { display: flex; }
+.notif-banner-text { flex: 1; font-size: 13px; color: var(--ink); }
+.btn-notif { background: var(--accent); color: white; border: none; border-radius: 2px; padding: 5px 12px; font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer; white-space: nowrap; }
+.btn-notif-x { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 2px; line-height: 1; }
+
+/* ── INSTALL BANNER ── */
+.install-banner { background: var(--blue-light); border: 1.5px solid var(--blue); border-radius: 2px; padding: 9px 14px; margin-bottom: 10px; display: none; align-items: center; gap: 12px; }
+.install-banner.show { display: flex; }
+.install-banner-text { flex: 1; font-size: 13px; color: var(--blue); }
+.btn-install { background: var(--blue); color: white; border: none; border-radius: 2px; padding: 5px 12px; font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
+.btn-install:hover { background: #0a3a6a; }
+.btn-install-x { background: none; border: none; color: var(--blue); font-size: 16px; cursor: pointer; padding: 0 2px; line-height: 1; }
 </style>
 </head>
 <body>
@@ -527,6 +650,168 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
   </div>
 </div>
 
+<!-- ══ ONBOARDING ══ -->
+<div class="onboard-overlay" id="onboard-overlay" style="display:none">
+  <div class="onboard-card">
+    <div class="onboard-step active" id="onboard-0">
+      <div class="onboard-title">Welcome to Honey-Do 🍯</div>
+      <div class="onboard-text">Your home improvement command center. Track every project, budget, contractor, and deadline — all in one place.</div>
+      <div class="onboard-feature"><b>Projects</b><p>Add tasks big or small — from replacing a faucet to a full kitchen remodel.</p></div>
+      <div class="onboard-feature"><b>Always in sync</b><p>Your data is saved securely on the server, not just this browser.</p></div>
+    </div>
+    <div class="onboard-step" id="onboard-1">
+      <div class="onboard-title">Track Every Detail</div>
+      <div class="onboard-text">Each project has everything you need to stay on top of it.</div>
+      <div class="onboard-feature"><b>Priorities & Deadlines</b><p>High / Medium / Low priority with overdue and due-soon alerts.</p></div>
+      <div class="onboard-feature"><b>Subtasks & Checklists</b><p>Break big jobs into steps and track your progress.</p></div>
+      <div class="onboard-feature"><b>Contractors & Attachments</b><p>Save contractor contacts and attach photos or documents to any project.</p></div>
+    </div>
+    <div class="onboard-step" id="onboard-2">
+      <div class="onboard-title">Stay Organized</div>
+      <div class="onboard-text">Powerful tools to find and manage everything quickly.</div>
+      <div class="onboard-feature"><b>Search & Filter</b><p>Instantly find projects by name, category, priority, or due date.</p></div>
+      <div class="onboard-feature"><b>PDF Export</b><p>Export any project as a print-ready PDF to share with contractors.</p></div>
+      <div class="onboard-feature"><b>Sharing</b><p>Share individual projects with family members or contractors.</p></div>
+    </div>
+    <div class="onboard-nav">
+      <button class="btn-onboard-skip" onclick="closeOnboarding()">Skip</button>
+      <div class="onboard-dots">
+        <div class="onboard-dot active" id="odot-0"></div>
+        <div class="onboard-dot" id="odot-1"></div>
+        <div class="onboard-dot" id="odot-2"></div>
+      </div>
+      <button class="btn-onboard" id="btn-onboard-next" onclick="onboardNext()">Next →</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ HELP MODAL ══ -->
+<div class="modal-overlay" id="help-modal" onclick="closeHelp()">
+  <div class="modal" style="width:600px" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-header-title">Help & Shortcuts</span>
+      <button class="btn-close" onclick="closeHelp()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="modal-section-title">Keyboard Shortcuts</div>
+      <table class="shortcut-table">
+        <tr><td>Ctrl / Cmd + S</td><td>Save the open project panel</td></tr>
+        <tr><td>Escape</td><td>Close the project panel or add form</td></tr>
+        <tr><td>Enter (in name/cost field)</td><td>Submit the quick-add form</td></tr>
+        <tr><td>Enter (in custom category)</td><td>Confirm new category name</td></tr>
+      </table>
+      <div class="modal-section-title" style="margin-top:18px">Features Guide</div>
+      <div class="help-feature"><div class="help-feature-icon">🔍</div><div class="help-feature-body"><b>Search</b><p>Type in the search bar to find projects by name, description, notes, category, contractor, or property.</p></div></div>
+      <div class="help-feature"><div class="help-feature-icon">🎯</div><div class="help-feature-body"><b>Filters & Sort</b><p>Use the toolbar buttons to filter by status or priority. Sort by due date, cost, priority, or last modified.</p></div></div>
+      <div class="help-feature"><div class="help-feature-icon">📋</div><div class="help-feature-body"><b>Subtasks</b><p>Add a checklist of steps to any project in the detail panel. Drag to reorder them.</p></div></div>
+      <div class="help-feature"><div class="help-feature-icon">🔨</div><div class="help-feature-body"><b>Contractors</b><p>Save contractor contacts and assign them to projects. Manage all contractors via the Contractors button.</p></div></div>
+      <div class="help-feature"><div class="help-feature-icon">👥</div><div class="help-feature-body"><b>Sharing</b><p>Share individual projects with other Honey-Do users (view or edit access) from the project's detail panel.</p></div></div>
+      <div class="help-feature"><div class="help-feature-icon">⬇</div><div class="help-feature-body"><b>PDF Export</b><p>Export any project as a printable PDF using the PDF button in the panel footer.</p></div></div>
+      <div class="help-feature"><div class="help-feature-icon">🌙</div><div class="help-feature-body"><b>Dark Mode</b><p>Toggle dark mode with the moon/sun button in the header. Your preference is saved automatically.</p></div></div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ABOUT MODAL ══ -->
+<div class="modal-overlay" id="about-modal" onclick="closeAbout()">
+  <div class="modal" style="width:420px" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-header-title">About</span>
+      <button class="btn-close" onclick="closeAbout()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="about-logo-wrap">
+        <svg width="44" height="44" viewBox="0 0 34 34" fill="none"><path d="M5 16 L17 5 L29 16 L25 16 L25 30 L9 30 L9 16 Z" fill="#c8440a"/><rect x="13" y="21" width="8" height="9" rx="1" fill="#1a1209"/><path d="M17 1 Q21.5 6 17 11 Q12.5 6 17 1 Z" fill="#e9a319"/></svg>
+        <div><div class="about-appname">Honey-Do</div><div class="about-version">v1.5.0 · Home Improvement Tracker</div></div>
+      </div>
+      <div class="about-desc">Track every home improvement project, budget, deadline, contractor, and document — all in one place. Built for homeowners who want to stay organized without the chaos.</div>
+      <div style="margin-bottom:14px"><button class="btn-whats-new-link" onclick="closeAbout();openWhatsNew()">See what's new in v1.5.0 →</button></div>
+      <div style="font-family:'DM Mono',monospace;font-size:10px;color:var(--muted);letter-spacing:1px">Built with care · Data stored securely on your account</div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ WHAT'S NEW MODAL ══ -->
+<div class="modal-overlay" id="whats-new-modal" onclick="closeWhatsNew()">
+  <div class="modal" style="width:520px" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-header-title">What's New</span>
+      <button class="btn-close" onclick="closeWhatsNew()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="changelog-entry">
+        <div class="changelog-version">v1.5.0 — Latest</div>
+        <div class="changelog-item">Search bar — find projects instantly across name, notes, category, contractor</div>
+        <div class="changelog-item">Project templates — start new projects from presets (Bathroom Remodel, Kitchen Update, etc.)</div>
+        <div class="changelog-item">Stats dashboard — total spend, overdue count, category and priority breakdowns</div>
+        <div class="changelog-item">Activity log — per-project history of status, priority, and cost changes</div>
+        <div class="changelog-item">Export & Import — back up and restore all your data as JSON</div>
+        <div class="changelog-item">Print all projects — one-click print of all visible projects</div>
+        <div class="changelog-item">Account settings — change email, change password, or delete account</div>
+        <div class="changelog-item">Browser notifications for overdue and due-soon projects</div>
+        <div class="changelog-item">Help & Shortcuts guide, About page, and onboarding walkthrough</div>
+        <div class="changelog-item">Install as app (PWA) on desktop and mobile</div>
+        <div class="changelog-item">Security hardening: rate limiting, security headers, token blacklist on logout</div>
+        <div class="changelog-item">Auto-save when closing the project panel</div>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v1.4.0</div>
+        <div class="changelog-item">Fixed: category no longer resets to "Kitchen" when reopening the panel</div>
+      </div>
+      <div class="changelog-entry">
+        <div class="changelog-version">v1.3.0</div>
+        <div class="changelog-item">Contractor Manager — edit and delete saved contractors from a central modal</div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ ACCOUNT SETTINGS MODAL ══ -->
+<div class="modal-overlay" id="account-modal" onclick="closeAccountSettings()">
+  <div class="modal" style="width:480px" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-header-title">Account Settings</span>
+      <button class="btn-close" onclick="closeAccountSettings()">✕</button>
+    </div>
+    <div class="modal-body">
+      <div class="acct-section">
+        <div class="acct-section-title">Change Password</div>
+        <div class="acct-field"><label>Current Password</label><input type="password" id="acct-cur-pw" placeholder="Current password" /></div>
+        <div class="acct-field"><label>New Password</label><input type="password" id="acct-new-pw" placeholder="New password (min 8 chars)" /></div>
+        <div class="acct-field"><label>Confirm New Password</label><input type="password" id="acct-conf-pw" placeholder="Repeat new password" /></div>
+        <button class="btn-acct" onclick="changePassword()">Update Password</button>
+        <div class="acct-msg" id="acct-pw-msg"></div>
+      </div>
+      <div class="acct-section">
+        <div class="acct-section-title">Change Email</div>
+        <div class="acct-field"><label>New Email</label><input type="email" id="acct-new-email" placeholder="new@example.com" /></div>
+        <div class="acct-field"><label>Current Password</label><input type="password" id="acct-email-pw" placeholder="Confirm with password" /></div>
+        <button class="btn-acct" onclick="changeEmail()">Update Email</button>
+        <div class="acct-msg" id="acct-email-msg"></div>
+      </div>
+      <div class="acct-section danger">
+        <div class="acct-section-title">Delete Account</div>
+        <p style="font-size:13px;margin-bottom:12px">This permanently deletes your account and all project data. This cannot be undone.</p>
+        <label class="danger-check"><input type="checkbox" id="acct-del-confirm" /> I understand this cannot be undone</label>
+        <div class="acct-field"><label>Password</label><input type="password" id="acct-del-pw" placeholder="Confirm with password" /></div>
+        <button class="btn-acct danger" id="btn-delete-acct" onclick="deleteAccount()" disabled>Delete My Account</button>
+        <div class="acct-msg" id="acct-del-msg"></div>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- ══ STATS DASHBOARD MODAL ══ -->
+<div class="modal-overlay" id="stats-modal" onclick="closeStats()">
+  <div class="modal" style="width:560px" onclick="event.stopPropagation()">
+    <div class="modal-header">
+      <span class="modal-header-title">Stats Dashboard</span>
+      <button class="btn-close" onclick="closeStats()">✕</button>
+    </div>
+    <div class="modal-body" id="stats-modal-body"></div>
+  </div>
+</div>
+
 <header>
   <svg width="34" height="34" viewBox="0 0 34 34" fill="none" xmlns="http://www.w3.org/2000/svg" style="flex-shrink:0">
     <!-- House -->
@@ -542,6 +827,13 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
     <div class="stat-pill"><strong id="done-count">0</strong> done</div>
     <div class="stat-pill"><strong id="todo-count">0</strong> remaining</div>
     <div class="stat-pill cost-stat">Est. <strong id="total-cost">$0</strong></div>
+    <button class="btn-header-icon" id="btn-install" onclick="installPWA()" title="Install app" style="display:none">⬇ Install</button>
+    <button class="btn-header-icon" onclick="exportData()" title="Export all data as JSON">⬇ Export</button>
+    <button class="btn-header-icon" onclick="document.getElementById('import-file').click()" title="Import data from JSON">⬆ Import</button>
+    <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)" />
+    <button class="btn-dark-toggle" onclick="openAccountSettings()" title="Account settings">⚙</button>
+    <button class="btn-dark-toggle" onclick="openAbout()" title="About">ℹ</button>
+    <button class="btn-dark-toggle" onclick="openHelp()" title="Help & shortcuts">?</button>
     <button class="btn-dark-toggle" id="btn-dark-toggle" onclick="toggleDark()" title="Toggle dark mode">🌙</button>
     <div class="stat-pill" id="header-email" style="font-size:10px;max-width:160px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap"></div>
     <button class="btn-dark-toggle" onclick="logout()" title="Sign out" style="font-size:12px">⏻</button>
@@ -758,6 +1050,14 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
     </div>
 
     <div class="panel-divider"></div>
+    <div class="panel-divider"></div>
+    <!-- Activity log -->
+    <div>
+      <div class="panel-section-title">📋 Activity</div>
+      <div id="pd-activity-list" class="activity-list"></div>
+    </div>
+
+    <div class="panel-divider"></div>
     <!-- Share section — only shown for own projects -->
     <div id="pd-share-section" style="display:none">
       <div class="panel-section-title">👥 Sharing</div>
@@ -827,6 +1127,14 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
     </select>
     <div class="toolbar-sep"></div>
     <button class="btn-contractors-toolbar" onclick="openContractorManager()">🔨 Contractors</button>
+    <button class="btn-contractors-toolbar" onclick="openStats()">📊 Stats</button>
+    <button class="btn-contractors-toolbar" onclick="printAllProjects()">🖨 Print</button>
+  </div>
+  <!-- Search bar -->
+  <div class="search-wrap">
+    <input class="search-input" id="search-input" type="search" placeholder="Search projects by name, description, category, contractor…" oninput="setSearch(this.value)" />
+    <span class="search-count" id="search-count" style="display:none"></span>
+    <button class="search-clear" id="search-clear" onclick="clearSearch()" title="Clear search" style="display:none">✕</button>
   </div>
 
   <!-- Collapsible add form dropdown -->
@@ -868,9 +1176,26 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
         </div>
         <button class="btn-add" onclick="addProject()">Add Project →</button>
       </div>
+      <button class="template-toggle" onclick="toggleTemplatePicker()">✦ Use a template →</button>
+      <div class="template-picker" id="template-picker">
+        <div class="template-picker-title">Choose a Template</div>
+        <div class="template-grid" id="template-grid"></div>
+      </div>
     </div>
   </div>
 
+  <!-- Notification banner -->
+  <div class="notif-banner" id="notif-banner">
+    <span class="notif-banner-text" id="notif-banner-text">🔔 You have overdue or due-soon projects.</span>
+    <button class="btn-notif" onclick="enableNotifications()">Enable Notifications</button>
+    <button class="btn-notif-x" onclick="dismissNotifBanner()" title="Dismiss">✕</button>
+  </div>
+  <!-- Install banner -->
+  <div class="install-banner" id="install-banner" style="display:none">
+    <span class="install-banner-text">📱 Install Honey-Do as an app for quick access from your home screen.</span>
+    <button class="btn-install" onclick="installPWA()">Install App</button>
+    <button class="btn-install-x" onclick="document.getElementById('install-banner').style.display='none'" title="Dismiss">✕</button>
+  </div>
   <!-- Budget strip -->
   <div class="budget-strip">
     <div class="budget-item">
@@ -1231,6 +1556,14 @@ function openPanel(id) {
   shareSection.style.display = isOwn ? '' : 'none';
   if (isOwn) loadShares(p.id);
 
+  // Apply pending template subtasks (from template picker)
+  if (pendingTemplateSubtasks.length && !p.subtasks?.length) {
+    subtaskRows = pendingTemplateSubtasks.map(s=>({...s}));
+    rebuildSubtaskDOM();
+  }
+  pendingTemplateSubtasks = [];
+
+  renderActivityLog(p);
   document.body.classList.add('panel-open');
   render();
   if (!isViewOnly) setTimeout(()=>document.getElementById('pd-name').focus(), 50);
@@ -1315,6 +1648,10 @@ function savePanel(silent = false) {
   if (startVal && endVal && endVal < startVal) { fieldError('pd-end', 'Target date must be after start date'); return false; }
   const badUrl = urlRows.find(u => u.href.trim() && !isValidUrl(u.href.trim()));
   if (badUrl) { alert(`Invalid URL: "${badUrl.href}"\nURLs must start with http:// or https://`); return false; }
+
+  // Log activity changes before applying them
+  const changes = detectChanges(p);
+  if (changes.length) logActivity(p, changes);
 
   p.name        = nameVal;
   p.category    = document.getElementById('pd-cat').value;
@@ -1659,6 +1996,14 @@ function render() {
   else if (currentFilter==='soon') filtered=sorted.filter(p=>p.status!=='done'&&p.endDate&&p.endDate>=today&&p.endDate<=soon);
   if (currentCatFilter) filtered=filtered.filter(p=>p.category===currentCatFilter);
   if (currentPropertyFilter) filtered=filtered.filter(p=>p.propertyId===Number(currentPropertyFilter));
+  if (currentSearch) filtered=filtered.filter(p=>projectMatchesSearch(p, currentSearch));
+
+  // Update search count
+  const scEl = document.getElementById('search-count');
+  if (currentSearch) {
+    scEl.textContent = `${filtered.length} result${filtered.length!==1?'s':''}`;
+    scEl.style.display = 'inline';
+  } else { scEl.style.display = 'none'; }
 
   buildPropertySelects(null, true);
   const todoItems    = filtered.filter(p=>p.status==='todo');
@@ -1667,7 +2012,16 @@ function render() {
 
   let html = '';
   if (!todoItems.length && !somedayItems.length && !doneItems.length) {
-    html = `<div class="empty"><div class="empty-icon">🔨</div>No projects match this filter.</div>`;
+    if (projects.filter(p=>!p._sharedBy).length === 0) {
+      html = `<div class="empty" style="padding:64px 0">
+        <div class="empty-icon" style="font-size:48px;opacity:0.5">🍯</div>
+        <div style="font-family:'Playfair Display',serif;font-size:20px;margin:12px 0 6px">No projects yet</div>
+        <div style="font-size:13px;margin-bottom:20px">Add your first home improvement project to get started</div>
+        <button class="btn-new-project" onclick="toggleAddForm()" style="margin:0 auto">✦ Add Your First Project</button>
+      </div>`;
+    } else {
+      html = `<div class="empty"><div class="empty-icon">🔍</div>No projects match this filter${currentSearch?' or search':''}.${currentSearch?' <button class="btn-whats-new-link" onclick="clearSearch()">Clear search</button>':''}</div>`;
+    }
   } else {
     if (todoItems.length) {
       html += section('To Do', todoItems.length, 'todo');
@@ -1789,6 +2143,18 @@ function timeAgo(ts) {
 
 function escHtml(s) {
   return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+function projectMatchesSearch(p, q) {
+  const lq = q.toLowerCase();
+  const contractor = p.contractorId ? contractors.find(c=>c.id===p.contractorId) : null;
+  const property   = p.propertyId   ? properties.find(pr=>pr.id===p.propertyId)  : null;
+  return (p.name||'').toLowerCase().includes(lq)
+    || (p.description||'').toLowerCase().includes(lq)
+    || (p.notes||'').toLowerCase().includes(lq)
+    || (p.category||'').toLowerCase().includes(lq)
+    || (contractor?.company||'').toLowerCase().includes(lq)
+    || (property?.name||'').toLowerCase().includes(lq);
 }
 
 // ── Properties ──
@@ -2274,21 +2640,33 @@ async function loadAppData() {
   buildCatSelects();
   buildPropertySelects(null, true);
   render();
+  checkNotifBanner();
 }
 
 async function init() {
   if (document.body.classList.contains('dark')) document.getElementById('btn-dark-toggle').textContent = '☀';
 
-  // Add Enter key handler for auth form
   ['auth-email','auth-password','auth-confirm'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.addEventListener('keydown', e => { if (e.key === 'Enter') authSubmit(); });
   });
 
+  // Register service worker
+  if ('serviceWorker' in navigator) {
+    navigator.serviceWorker.register('/sw.js').catch(() => {});
+  }
+
+  // Capture PWA install prompt
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    document.getElementById('btn-install').style.display = 'flex';
+    document.getElementById('install-banner').style.display = 'flex';
+  });
+
   const token = localStorage.getItem('homeworks_token');
   if (!token) { showAuthScreen(); return; }
 
-  // Decode email from token payload (no verification — just display)
   try {
     const payload = JSON.parse(atob(token.split('.')[1]));
     currentUserEmail = payload.email || '';
@@ -2296,8 +2674,390 @@ async function init() {
   } catch {}
 
   await loadAppData();
+
+  // Show onboarding on first login
+  if (!localStorage.getItem('homeworks_onboarded')) {
+    setTimeout(() => showOnboarding(), 600);
+  }
+
+  // Show What's New if version hasn't been seen
+  const CURRENT_VERSION = 'v1.5.0';
+  if (localStorage.getItem('homeworks_version_seen') !== CURRENT_VERSION && localStorage.getItem('homeworks_onboarded')) {
+    setTimeout(() => openWhatsNew(), 800);
+  }
 }
 init();
+
+// ── State ─────────────────────────────────────────────────────────────────────
+let currentSearch = '';
+let deferredInstallPrompt = null;
+let onboardStep = 0;
+
+// ── Search ────────────────────────────────────────────────────────────────────
+function setSearch(val) {
+  currentSearch = val.trim();
+  document.getElementById('search-clear').style.display = currentSearch ? 'inline' : 'none';
+  render();
+}
+function clearSearch() {
+  currentSearch = '';
+  document.getElementById('search-input').value = '';
+  document.getElementById('search-clear').style.display = 'none';
+  document.getElementById('search-count').style.display = 'none';
+  render();
+}
+function highlightMatch(text, query) {
+  if (!query) return escHtml(text);
+  const escaped = query.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+  return escHtml(text).replace(new RegExp('(' + escaped.replace(/&amp;/g,'&amp;').replace(/</g,'&lt;') + ')', 'gi'), '<mark>$1</mark>');
+}
+
+// ── Modals: Help / About / What's New / Stats ─────────────────────────────────
+function openHelp()      { document.getElementById('help-modal').classList.add('open'); }
+function closeHelp()     { document.getElementById('help-modal').classList.remove('open'); }
+function openAbout()     { document.getElementById('about-modal').classList.add('open'); }
+function closeAbout()    { document.getElementById('about-modal').classList.remove('open'); }
+function openWhatsNew()  {
+  document.getElementById('whats-new-modal').classList.add('open');
+  localStorage.setItem('homeworks_version_seen', 'v1.5.0');
+}
+function closeWhatsNew() { document.getElementById('whats-new-modal').classList.remove('open'); }
+
+function openStats() {
+  const own = projects.filter(p => !p._sharedBy);
+  const total = own.length;
+  const done  = own.filter(p => p.status === 'done').length;
+  const today = new Date().toISOString().slice(0,10);
+  const overdue = own.filter(p => p.endDate && p.endDate < today && p.status !== 'done').length;
+  const totalCost = own.reduce((s,p) => s + (parseCost(p.cost)||0), 0);
+  const pct = total ? Math.round(done/total*100) : 0;
+
+  // Category breakdown
+  const catMap = {};
+  own.forEach(p => { catMap[p.category||'Uncategorized'] = (catMap[p.category||'Uncategorized']||0)+1; });
+  const cats = Object.entries(catMap).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const maxCat = cats[0]?.[1] || 1;
+
+  // Priority breakdown
+  const high = own.filter(p=>p.priority==='high').length;
+  const med  = own.filter(p=>p.priority==='medium').length;
+  const low  = own.filter(p=>p.priority==='low').length;
+
+  document.getElementById('stats-modal-body').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card"><div class="stat-card-label">Total Projects</div><div class="stat-card-value">${total}</div><div class="stat-card-sub">${pct}% complete</div></div>
+      <div class="stat-card"><div class="stat-card-label">Completed</div><div class="stat-card-value" style="color:var(--green)">${done}</div><div class="stat-card-sub">${total-done} remaining</div></div>
+      <div class="stat-card"><div class="stat-card-label">Total Est. Cost</div><div class="stat-card-value" style="color:var(--green);font-size:20px">${totalCost?'$'+totalCost.toLocaleString('en-US',{minimumFractionDigits:0}):'—'}</div><div class="stat-card-sub">across ${own.filter(p=>p.cost).length} priced projects</div></div>
+      <div class="stat-card"><div class="stat-card-label">Overdue</div><div class="stat-card-value" style="color:var(--red)">${overdue}</div><div class="stat-card-sub">past due date</div></div>
+    </div>
+    <div class="modal-section-title">By Category</div>
+    ${cats.length ? cats.map(([cat,cnt])=>`<div class="stat-bar-row"><div class="stat-bar-label">${escHtml(cat)}</div><div class="stat-bar-track"><div class="stat-bar-fill" style="width:${Math.round(cnt/maxCat*100)}%"></div></div><div class="stat-bar-count">${cnt}</div></div>`).join('') : '<div style="color:var(--muted);font-size:13px">No projects yet.</div>'}
+    <div class="modal-section-title" style="margin-top:16px">By Priority</div>
+    <div class="stat-bar-row"><div class="stat-bar-label">🔴 High</div><div class="stat-bar-track"><div class="stat-bar-fill" style="width:${total?Math.round(high/total*100):0}%;background:var(--accent)"></div></div><div class="stat-bar-count">${high}</div></div>
+    <div class="stat-bar-row"><div class="stat-bar-label">🟡 Medium</div><div class="stat-bar-track"><div class="stat-bar-fill" style="width:${total?Math.round(med/total*100):0}%;background:var(--yellow)"></div></div><div class="stat-bar-count">${med}</div></div>
+    <div class="stat-bar-row"><div class="stat-bar-label">🟢 Low</div><div class="stat-bar-track"><div class="stat-bar-fill" style="width:${total?Math.round(low/total*100):0}%;background:var(--green)"></div></div><div class="stat-bar-count">${low}</div></div>
+  `;
+  document.getElementById('stats-modal').classList.add('open');
+}
+function closeStats() { document.getElementById('stats-modal').classList.remove('open'); }
+
+// ── Account Settings ──────────────────────────────────────────────────────────
+function openAccountSettings() {
+  ['acct-cur-pw','acct-new-pw','acct-conf-pw','acct-new-email','acct-email-pw','acct-del-pw'].forEach(id=>{
+    const el=document.getElementById(id); if(el) el.value='';
+  });
+  document.getElementById('acct-del-confirm').checked = false;
+  document.getElementById('btn-delete-acct').disabled = true;
+  ['acct-pw-msg','acct-email-msg','acct-del-msg'].forEach(id=>{ document.getElementById(id).textContent=''; document.getElementById(id).className='acct-msg'; });
+  document.getElementById('account-modal').classList.add('open');
+}
+function closeAccountSettings() { document.getElementById('account-modal').classList.remove('open'); }
+
+document.getElementById('acct-del-confirm').addEventListener('change', function() {
+  document.getElementById('btn-delete-acct').disabled = !this.checked;
+});
+
+async function changePassword() {
+  const cur = document.getElementById('acct-cur-pw').value;
+  const nw  = document.getElementById('acct-new-pw').value;
+  const cf  = document.getElementById('acct-conf-pw').value;
+  const msg = document.getElementById('acct-pw-msg');
+  msg.className = 'acct-msg';
+  if (!cur || !nw || !cf) { msg.className='acct-msg err'; msg.textContent='All fields required.'; return; }
+  if (nw.length < 8) { msg.className='acct-msg err'; msg.textContent='New password must be at least 8 characters.'; return; }
+  if (nw !== cf) { msg.className='acct-msg err'; msg.textContent='New passwords do not match.'; return; }
+  const res = await authFetch('/api/account/password', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ currentPassword:cur, newPassword:nw }) });
+  const d = await res.json();
+  if (res.ok) { msg.className='acct-msg ok'; msg.textContent='✓ Password updated.'; document.getElementById('acct-cur-pw').value=''; document.getElementById('acct-new-pw').value=''; document.getElementById('acct-conf-pw').value=''; }
+  else { msg.className='acct-msg err'; msg.textContent=d.error||'Failed to update password.'; }
+}
+
+async function changeEmail() {
+  const email = document.getElementById('acct-new-email').value.trim();
+  const pw    = document.getElementById('acct-email-pw').value;
+  const msg   = document.getElementById('acct-email-msg');
+  msg.className = 'acct-msg';
+  if (!email || !pw) { msg.className='acct-msg err'; msg.textContent='All fields required.'; return; }
+  const res = await authFetch('/api/account/email', { method:'POST', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ newEmail:email, currentPassword:pw }) });
+  const d = await res.json();
+  if (res.ok) {
+    localStorage.setItem('homeworks_token', d.token);
+    currentUserEmail = d.email;
+    document.getElementById('header-email').textContent = d.email;
+    msg.className='acct-msg ok'; msg.textContent='✓ Email updated.';
+  } else { msg.className='acct-msg err'; msg.textContent=d.error||'Failed to update email.'; }
+}
+
+async function deleteAccount() {
+  const pw  = document.getElementById('acct-del-pw').value;
+  const msg = document.getElementById('acct-del-msg');
+  if (!pw) { msg.className='acct-msg err'; msg.textContent='Password required.'; return; }
+  if (!confirm('FINAL WARNING: This will permanently delete your account and all data. This cannot be undone.')) return;
+  const res = await authFetch('/api/account', { method:'DELETE', headers:{'Content-Type':'application/json'}, body: JSON.stringify({ password:pw }) });
+  if (res.ok) { await logout(); }
+  else { const d=await res.json(); msg.className='acct-msg err'; msg.textContent=d.error||'Failed.'; }
+}
+
+// ── Export / Import ───────────────────────────────────────────────────────────
+async function exportData() {
+  try {
+    const res = await authFetch('/api/data');
+    const d = await res.json();
+    const own = { projects: (d.projects||[]).filter(p=>!p._sharedBy), customCats: d.customCats||[], contractors: d.contractors||[], properties: d.properties||[] };
+    const blob = new Blob([JSON.stringify(own, null, 2)], { type: 'application/json' });
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href = url; a.download = `honey-do-backup-${new Date().toISOString().slice(0,10)}.json`;
+    a.click();
+    setTimeout(() => URL.revokeObjectURL(url), 5000);
+  } catch(e) { alert('Export failed: ' + e.message); }
+}
+
+async function importData(input) {
+  const file = input.files[0];
+  if (!file) return;
+  input.value = '';
+  if (!confirm('This will REPLACE all your current projects with the imported data. Continue?')) return;
+  try {
+    const text = await file.text();
+    const d = JSON.parse(text);
+    if (!Array.isArray(d.projects)) { alert('Invalid backup file.'); return; }
+    const res = await authFetch('/api/data', { method:'PUT', headers:{'Content-Type':'application/json'}, body: JSON.stringify(d) });
+    if (!res.ok) { alert('Import failed.'); return; }
+    await loadAppData();
+  } catch(e) { alert('Import failed: ' + e.message); }
+}
+
+// ── Print All Projects ────────────────────────────────────────────────────────
+function printAllProjects() {
+  const today = new Date().toISOString().slice(0,10);
+  const visible = getVisibleProjects();
+  if (!visible.length) { alert('No projects to print with the current filter/search.'); return; }
+
+  const rows = visible.map(p => {
+    const property = p.propertyId ? properties.find(pr=>pr.id===p.propertyId) : null;
+    return `<tr>
+      <td style="font-weight:500">${escHtml(p.name)}</td>
+      <td>${escHtml(p.category||'')}</td>
+      <td>${p.priority}</td>
+      <td>${p.status==='done'?'Done':p.status==='someday'?'Someday':'To Do'}</td>
+      <td>${p.cost||'—'}</td>
+      <td>${p.endDate?fmtDate(p.endDate):'—'}</td>
+      <td>${property?escHtml(property.name):''}</td>
+    </tr>`;
+  }).join('');
+
+  const html = `<!DOCTYPE html><html><head><meta charset="UTF-8"><title>Honey-Do — All Projects</title>
+<style>body{font-family:sans-serif;padding:32px;color:#1a1209}h1{font-size:22px;margin-bottom:4px}p{font-size:12px;color:#7a6e5f;margin-bottom:20px}table{width:100%;border-collapse:collapse;font-size:12px}th{background:#1a1209;color:#f5f0e8;padding:7px 10px;text-align:left;font-weight:500}td{padding:6px 10px;border-bottom:1px solid #d6cebf}tr:last-child td{border-bottom:none}@media print{@page{margin:0.6in}}</style>
+</head><body>
+<h1>Honey-Do — Project List</h1>
+<p>Exported ${new Date().toLocaleDateString('en-US',{year:'numeric',month:'long',day:'numeric'})} · ${visible.length} projects</p>
+<table><thead><tr><th>Project</th><th>Category</th><th>Priority</th><th>Status</th><th>Cost</th><th>Due Date</th><th>Property</th></tr></thead>
+<tbody>${rows}</tbody></table>
+<script>window.onload=function(){window.print();}<\/script>
+</body></html>`;
+  const url = URL.createObjectURL(new Blob([html], { type:'text/html' }));
+  const w = window.open(url, '_blank');
+  if (w) setTimeout(() => URL.revokeObjectURL(url), 30000);
+}
+
+function getVisibleProjects() {
+  const today = new Date().toISOString().slice(0,10);
+  const soon  = datePlus(7);
+  let list = [...projects];
+  if (currentFilter === 'todo')    list = list.filter(p=>p.status==='todo');
+  else if (currentFilter === 'someday') list = list.filter(p=>p.status==='someday');
+  else if (currentFilter === 'done')    list = list.filter(p=>p.status==='done');
+  else if (currentFilter === 'high')    list = list.filter(p=>p.priority==='high'&&p.status!=='done');
+  else if (currentFilter === 'medium')  list = list.filter(p=>p.priority==='medium'&&p.status!=='done');
+  else if (currentFilter === 'low')     list = list.filter(p=>p.priority==='low'&&p.status!=='done');
+  else if (currentFilter === 'overdue') list = list.filter(p=>p.endDate&&p.endDate<today&&p.status!=='done');
+  else if (currentFilter === 'soon')    list = list.filter(p=>p.endDate&&p.endDate>=today&&p.endDate<=soon&&p.status!=='done');
+  if (currentCatFilter) list = list.filter(p=>p.category===currentCatFilter);
+  if (currentPropertyFilter) list = list.filter(p=>p.propertyId===Number(currentPropertyFilter));
+  if (currentSearch) list = list.filter(p=>projectMatchesSearch(p, currentSearch));
+  return list;
+}
+
+// ── Templates ─────────────────────────────────────────────────────────────────
+const TEMPLATES = [
+  { name:'🛁 Bathroom Remodel', cat:'Bathroom', subtasks:['Demo tiles','Install new fixtures','Retile floor/walls','Paint','Install vanity'] },
+  { name:'🍳 Kitchen Update',   cat:'Kitchen',  subtasks:['Replace faucet','Paint cabinets','Install new hardware','Caulk backsplash'] },
+  { name:'🌿 Yard Work',        cat:'Yard',     subtasks:['Mow lawn','Edge borders','Mulch beds','Trim hedges','Clean gutters'] },
+  { name:'⚡ Electrical Check', cat:'Electrical',subtasks:['Test all outlets','Check breaker panel','Test smoke detectors','Check GFCI outlets'] },
+  { name:'🔧 HVAC Service',     cat:'HVAC',     subtasks:['Replace air filter','Clean vents','Check thermostat','Schedule tune-up'] },
+  { name:'🎨 Interior Paint',   cat:'Bedroom',  subtasks:['Move furniture','Tape trim','Prime walls','Apply paint coats','Touch-ups'] },
+];
+
+function toggleTemplatePicker() {
+  const el = document.getElementById('template-picker');
+  if (!el.classList.contains('show')) {
+    // Build grid on first open
+    document.getElementById('template-grid').innerHTML = TEMPLATES.map((t,i) =>
+      `<div class="template-item" onclick="applyTemplate(${i})"><div class="template-item-name">${t.name}</div><div class="template-item-cat">${t.cat}</div></div>`
+    ).join('');
+  }
+  el.classList.toggle('show');
+}
+
+function applyTemplate(i) {
+  const t = TEMPLATES[i];
+  if (!t) return;
+  document.getElementById('inp-name').value = t.name.replace(/^[\S]+\s/,''); // strip emoji
+  // Set category
+  const catSel = document.getElementById('inp-cat');
+  for (let o of catSel.options) { if (o.value === t.cat) { catSel.value = t.cat; break; } }
+  document.getElementById('inp-priority').value = 'medium';
+  // Store template subtasks for when the panel opens
+  pendingTemplateSubtasks = t.subtasks.map(s => ({ id: Date.now() + Math.random(), text:s, done:false }));
+  document.getElementById('template-picker').classList.remove('show');
+  // Focus name so user can customize it
+  const nameInput = document.getElementById('inp-name');
+  nameInput.focus();
+  nameInput.select();
+}
+
+// ── Activity Log ──────────────────────────────────────────────────────────────
+let pendingTemplateSubtasks = [];
+
+function logActivity(p, entries) {
+  if (!Array.isArray(p.activity)) p.activity = [];
+  entries.forEach(text => p.activity.push({ time: Date.now(), text }));
+  if (p.activity.length > 20) p.activity.splice(0, p.activity.length - 20);
+}
+
+function detectChanges(saved, panel) {
+  const changes = [];
+  const nv = document.getElementById('pd-name').value.trim();
+  if (nv && nv !== saved.name) changes.push(`Renamed to "${nv}"`);
+  const sv = document.getElementById('pd-status').value;
+  const statusLabel = { todo:'To Do', someday:'Someday', done:'Done' };
+  if (sv !== saved.status) changes.push(`Status changed to ${statusLabel[sv]||sv}`);
+  const pv = document.getElementById('pd-priority').value;
+  const priLabel = { high:'High', medium:'Medium', low:'Low' };
+  if (pv !== saved.priority) changes.push(`Priority changed to ${priLabel[pv]||pv}`);
+  const cv = document.getElementById('pd-cost').value.trim();
+  if (cv !== (saved.cost||'')) changes.push(`Cost updated to ${cv||'(cleared)'}`);
+  const ev = document.getElementById('pd-end').value;
+  if (ev !== (saved.endDate||'')) changes.push(`Due date ${ev ? 'set to '+fmtDate(ev) : 'cleared'}`);
+  return changes;
+}
+
+function renderActivityLog(p) {
+  const list = document.getElementById('pd-activity-list');
+  const acts = (p.activity||[]).slice().reverse();
+  if (!acts.length) {
+    list.innerHTML = `<div class="activity-empty">No activity recorded yet.</div>`;
+    return;
+  }
+  list.innerHTML = acts.map(a => `
+    <div class="activity-item">
+      <span class="activity-time">${timeAgo(a.time)}</span>
+      <span class="activity-text">${escHtml(a.text)}</span>
+    </div>`).join('');
+}
+
+// ── Notifications ─────────────────────────────────────────────────────────────
+function checkNotifBanner() {
+  if (localStorage.getItem('homeworks_notif_dismissed')) return;
+  if (Notification.permission === 'granted') return;
+  const today = new Date().toISOString().slice(0,10);
+  const soon  = datePlus(7);
+  const alertProjects = projects.filter(p =>
+    !p._sharedBy && p.status !== 'done' && p.endDate &&
+    (p.endDate < today || (p.endDate >= today && p.endDate <= soon))
+  );
+  if (!alertProjects.length) return;
+  const overdueCount = alertProjects.filter(p=>p.endDate<today).length;
+  const soonCount    = alertProjects.filter(p=>p.endDate>=today).length;
+  const parts = [];
+  if (overdueCount) parts.push(`${overdueCount} overdue`);
+  if (soonCount)    parts.push(`${soonCount} due soon`);
+  document.getElementById('notif-banner-text').textContent = `🔔 You have ${parts.join(' and ')} project${alertProjects.length>1?'s':''}. Enable notifications to get reminders.`;
+  document.getElementById('notif-banner').classList.add('show');
+}
+
+async function enableNotifications() {
+  const perm = await Notification.requestPermission();
+  document.getElementById('notif-banner').classList.remove('show');
+  if (perm !== 'granted') return;
+  const today = new Date().toISOString().slice(0,10);
+  const soon  = datePlus(7);
+  const alertProjects = projects.filter(p =>
+    !p._sharedBy && p.status !== 'done' && p.endDate &&
+    (p.endDate < today || (p.endDate >= today && p.endDate <= soon))
+  );
+  alertProjects.forEach((p, i) => {
+    const isOverdue = p.endDate < today;
+    setTimeout(() => {
+      new Notification(`Honey-Do: ${p.name}`, {
+        body: isOverdue ? `Overdue since ${fmtDate(p.endDate)}` : `Due ${fmtDate(p.endDate)}`,
+        icon: '/manifest.json'
+      });
+    }, i * 600);
+  });
+}
+
+function dismissNotifBanner() {
+  document.getElementById('notif-banner').classList.remove('show');
+  localStorage.setItem('homeworks_notif_dismissed', '1');
+}
+
+// ── Onboarding ────────────────────────────────────────────────────────────────
+function showOnboarding() {
+  onboardStep = 0;
+  updateOnboardUI();
+  document.getElementById('onboard-overlay').style.display = 'flex';
+}
+function closeOnboarding() {
+  document.getElementById('onboard-overlay').style.display = 'none';
+  localStorage.setItem('homeworks_onboarded', '1');
+}
+function onboardNext() {
+  if (onboardStep < 2) {
+    onboardStep++;
+    updateOnboardUI();
+  } else {
+    closeOnboarding();
+  }
+}
+function updateOnboardUI() {
+  [0,1,2].forEach(i => {
+    document.getElementById(`onboard-${i}`).classList.toggle('active', i===onboardStep);
+    document.getElementById(`odot-${i}`).classList.toggle('active', i===onboardStep);
+  });
+  document.getElementById('btn-onboard-next').textContent = onboardStep===2 ? 'Get Started →' : 'Next →';
+}
+
+// ── PWA Install ───────────────────────────────────────────────────────────────
+async function installPWA() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  document.getElementById('btn-install').style.display = 'none';
+  document.getElementById('install-banner').style.display = 'none';
+}
 </script>
 </body>
 </html>

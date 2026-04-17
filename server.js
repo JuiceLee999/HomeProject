@@ -292,6 +292,65 @@ app.delete('/api/share', verifyToken, (req, res) => {
   res.json({ ok: true });
 });
 
+// ── Account routes ────────────────────────────────────────────────────────────
+
+// POST /api/account/password
+app.post('/api/account/password', verifyToken, async (req, res) => {
+  const { userId } = req.user;
+  const { currentPassword, newPassword } = req.body || {};
+  if (!currentPassword || !newPassword) return res.status(400).json({ error: 'currentPassword and newPassword required' });
+  if (newPassword.length < 8) return res.status(400).json({ error: 'New password must be at least 8 characters' });
+
+  const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  const match = await bcrypt.compare(currentPassword, user.password_hash);
+  if (!match) return res.status(401).json({ error: 'Current password is incorrect' });
+
+  const hash = await bcrypt.hash(newPassword, 10);
+  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run([hash, userId]);
+  res.json({ ok: true });
+});
+
+// POST /api/account/email
+app.post('/api/account/email', verifyToken, async (req, res) => {
+  const { userId, email: oldEmail } = req.user;
+  const { newEmail, currentPassword } = req.body || {};
+  if (!newEmail || !isValidEmail(newEmail)) return res.status(400).json({ error: 'Valid new email required' });
+  if (!currentPassword) return res.status(400).json({ error: 'currentPassword required' });
+
+  const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  const match = await bcrypt.compare(currentPassword, user.password_hash);
+  if (!match) return res.status(401).json({ error: 'Current password is incorrect' });
+
+  const taken = db.prepare('SELECT id FROM users WHERE email = ? AND id != ?').get([newEmail, userId]);
+  if (taken) return res.status(409).json({ error: 'That email is already in use' });
+
+  db.prepare('UPDATE users SET email = ? WHERE id = ?').run([newEmail, userId]);
+  const token = jwt.sign({ userId, email: newEmail }, JWT_SECRET, { expiresIn: '7d' });
+  res.json({ ok: true, token, email: newEmail });
+});
+
+// DELETE /api/account
+app.delete('/api/account', verifyToken, async (req, res) => {
+  const { userId } = req.user;
+  const { password } = req.body || {};
+  if (!password) return res.status(400).json({ error: 'password required' });
+
+  const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(userId);
+  if (!user) return res.status(404).json({ error: 'User not found' });
+
+  const match = await bcrypt.compare(password, user.password_hash);
+  if (!match) return res.status(401).json({ error: 'Password is incorrect' });
+
+  db.prepare('DELETE FROM user_data WHERE user_id = ?').run([userId]);
+  db.prepare('DELETE FROM project_shares WHERE owner_id = ? OR shared_with_id = ?').run([userId, userId]);
+  db.prepare('DELETE FROM users WHERE id = ?').run([userId]);
+  res.json({ ok: true });
+});
+
 app.listen(PORT, () => {
   console.log(`Honey-Do running → http://localhost:${PORT}`);
 });
