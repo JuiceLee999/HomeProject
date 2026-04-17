@@ -52,6 +52,10 @@ db.exec(`
 // prepare().run/get/all() silently binds NULL when multiple params are passed
 // as individual arguments. Always pass params as an array: .run([a, b]).
 
+// ── Schema migrations ─────────────────────────────────────────────────────────
+try { db.exec('ALTER TABLE users ADD COLUMN last_logout_at INTEGER DEFAULT 0'); } catch {}
+
+
 // ── JWT secret (auto-generated, persisted in DB) ─────────────────────────────
 let JWT_SECRET;
 const secretRow = db.prepare('SELECT value FROM store WHERE key = ?').get('jwt_secret');
@@ -69,7 +73,19 @@ let legacyData = legacyRow ? legacyRow.value : null;
 
 // ── Middleware ───────────────────────────────────────────────────────────────
 app.use(helmet({
-  contentSecurityPolicy: false  // app uses inline scripts; enable with nonces as a future step
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc:  ["'self'"],
+      scriptSrc:   ["'self'", "'unsafe-inline'"],
+      styleSrc:    ["'self'", "'unsafe-inline'", "https://fonts.googleapis.com"],
+      fontSrc:     ["https://fonts.gstatic.com"],
+      imgSrc:      ["'self'", "data:", "blob:"],
+      connectSrc:  ["'self'"],
+      frameSrc:    ["'none'"],
+      objectSrc:   ["'none'"],
+      baseUri:     ["'self'"],
+    }
+  }
 }));
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
@@ -87,7 +103,13 @@ function verifyToken(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
   try {
-    req.user = jwt.verify(auth.slice(7), JWT_SECRET);
+    const decoded = jwt.verify(auth.slice(7), JWT_SECRET);
+    // Reject tokens issued before the user's last logout
+    const userRow = db.prepare('SELECT last_logout_at FROM users WHERE id = ?').get(decoded.userId);
+    if (userRow && decoded.iat * 1000 < (userRow.last_logout_at || 0)) {
+      return res.status(401).json({ error: 'Token revoked' });
+    }
+    req.user = decoded;
     next();
   } catch {
     res.status(401).json({ error: 'Invalid token' });
@@ -134,6 +156,11 @@ app.post('/api/login', authLimiter, async (req, res) => {
 
   const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, email: user.email });
+});
+
+app.post('/api/logout', verifyToken, (req, res) => {
+  db.prepare('UPDATE users SET last_logout_at = ? WHERE id = ?').run([Date.now(), req.user.userId]);
+  res.json({ ok: true });
 });
 
 // ── Data routes ──────────────────────────────────────────────────────────────

@@ -984,7 +984,13 @@ async function authSubmit() {
   }
 }
 
-function logout() {
+async function logout() {
+  const token = localStorage.getItem('homeworks_token');
+  if (token) {
+    try {
+      await fetch('/api/logout', { method: 'POST', headers: { 'Authorization': 'Bearer ' + token } });
+    } catch {}
+  }
   localStorage.removeItem('homeworks_token');
   currentUserEmail = '';
   projects = []; customCats = []; contractors = []; properties = [];
@@ -1903,8 +1909,10 @@ function openAttachment(i) {
   const a = attachmentRows[i];
   if (!a) return;
   if (a.type && a.type.startsWith('image/')) {
-    const w = window.open('', '_blank');
-    w.document.write(`<!DOCTYPE html><html><head><title>${escHtml(a.name)}</title></head><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${a.data}" style="max-width:100%;max-height:100vh;object-fit:contain" /></body></html>`);
+    const imgHtml = `<!DOCTYPE html><html><head><title>${escHtml(a.name)}</title></head><body style="margin:0;background:#111;display:flex;align-items:center;justify-content:center;min-height:100vh"><img src="${a.data}" style="max-width:100%;max-height:100vh;object-fit:contain" /></body></html>`;
+    const url = URL.createObjectURL(new Blob([imgHtml], { type: 'text/html' }));
+    const w = window.open(url, '_blank');
+    if (w) setTimeout(() => URL.revokeObjectURL(url), 30000);
   } else {
     const link = document.createElement('a');
     link.href = a.data;
@@ -2220,9 +2228,9 @@ ${docs.length ? `<div class="section"><div class="sec-title">Documents</div>${do
 </body>
 </html>`;
 
-  const w = window.open('', '_blank');
-  w.document.write(html);
-  w.document.close();
+  const url = URL.createObjectURL(new Blob([html], { type: 'text/html' }));
+  const w = window.open(url, '_blank');
+  if (w) setTimeout(() => URL.revokeObjectURL(url), 30000);
 }
 
 // ── Delete from panel ──
