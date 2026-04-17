@@ -674,13 +674,13 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
       <div class="onboard-feature"><b>Sharing</b><p>Share individual projects with family members or contractors.</p></div>
     </div>
     <div class="onboard-nav">
-      <button class="btn-onboard-skip" onclick="closeOnboarding()">Skip</button>
+      <button class="btn-onboard-skip" id="btn-onboard-skip">Skip</button>
       <div class="onboard-dots">
         <div class="onboard-dot active" id="odot-0"></div>
         <div class="onboard-dot" id="odot-1"></div>
         <div class="onboard-dot" id="odot-2"></div>
       </div>
-      <button class="btn-onboard" id="btn-onboard-next" onclick="onboardNext()">Next →</button>
+      <button class="btn-onboard" id="btn-onboard-next">Next →</button>
     </div>
   </div>
 </div>
@@ -1302,6 +1302,9 @@ async function authSubmit() {
     document.getElementById('header-email').textContent = data.email;
     hideAuthScreen();
     await loadAppData();
+    if (isRegister && !localStorage.getItem('homeworks_onboarded')) {
+      setTimeout(() => showOnboarding(), 600);
+    }
   } catch (e) {
     errEl.textContent = 'Could not connect to server';
   } finally {
@@ -3043,11 +3046,17 @@ function onboardNext() {
 }
 function updateOnboardUI() {
   [0,1,2].forEach(i => {
-    document.getElementById(`onboard-${i}`).classList.toggle('active', i===onboardStep);
-    document.getElementById(`odot-${i}`).classList.toggle('active', i===onboardStep);
+    const step = document.getElementById(`onboard-${i}`);
+    const dot  = document.getElementById(`odot-${i}`);
+    if (step) step.classList.toggle('active', i === onboardStep);
+    if (dot)  dot.classList.toggle('active', i === onboardStep);
   });
-  document.getElementById('btn-onboard-next').textContent = onboardStep===2 ? 'Get Started →' : 'Next →';
+  const nextBtn = document.getElementById('btn-onboard-next');
+  if (nextBtn) nextBtn.textContent = onboardStep === 2 ? 'Get Started →' : 'Next →';
 }
+
+document.getElementById('btn-onboard-next').addEventListener('click', onboardNext);
+document.getElementById('btn-onboard-skip').addEventListener('click', closeOnboarding);
 
 // ── PWA Install ───────────────────────────────────────────────────────────────
 async function installPWA() {
