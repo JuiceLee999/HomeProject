@@ -586,12 +586,12 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
 </div>
 
 <!-- ══ CONTRACTOR MANAGER MODAL ══ -->
-<div class="modal-overlay" id="contractor-modal" onclick="closeContractorManager()">
+<div class="modal-overlay" id="contractor-modal">
   <div class="modal" onclick="event.stopPropagation()">
     <div class="modal-header">
       <span class="modal-header-title">Contractors</span>
       <button class="btn-contractor-save" style="font-size:11px;padding:5px 14px" onclick="toggleManagerAddForm()">+ Add Contractor</button>
-      <button class="btn-close" onclick="closeContractorManager()">✕</button>
+      <button class="btn-close" id="btn-close-contractor">✕</button>
     </div>
     <!-- Add contractor form (hidden by default) -->
     <div id="mgr-add-form" style="display:none;padding:14px 18px;border-bottom:1.5px solid var(--rule);background:var(--bg)">
@@ -672,11 +672,11 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
 </div>
 
 <!-- ══ HELP MODAL ══ -->
-<div class="modal-overlay" id="help-modal" onclick="closeHelp()">
+<div class="modal-overlay" id="help-modal">
   <div class="modal" style="width:600px" onclick="event.stopPropagation()">
     <div class="modal-header">
       <span class="modal-header-title">Help & Shortcuts</span>
-      <button class="btn-close" onclick="closeHelp()">✕</button>
+      <button class="btn-close" id="btn-close-help">✕</button>
     </div>
     <div class="modal-body">
       <div class="modal-section-title">Keyboard Shortcuts</div>
@@ -699,11 +699,11 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
 </div>
 
 <!-- ══ ABOUT MODAL ══ -->
-<div class="modal-overlay" id="about-modal" onclick="closeAbout()">
+<div class="modal-overlay" id="about-modal">
   <div class="modal" style="width:420px" onclick="event.stopPropagation()">
     <div class="modal-header">
       <span class="modal-header-title">About</span>
-      <button class="btn-close" onclick="closeAbout()">✕</button>
+      <button class="btn-close" id="btn-close-about">✕</button>
     </div>
     <div class="modal-body">
       <div class="about-logo-wrap">
@@ -718,11 +718,11 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
 </div>
 
 <!-- ══ WHAT'S NEW MODAL ══ -->
-<div class="modal-overlay" id="whats-new-modal" onclick="closeWhatsNew()">
+<div class="modal-overlay" id="whats-new-modal">
   <div class="modal" style="width:520px" onclick="event.stopPropagation()">
     <div class="modal-header">
       <span class="modal-header-title">What's New</span>
-      <button class="btn-close" onclick="closeWhatsNew()">✕</button>
+      <button class="btn-close" id="btn-close-whats-new">✕</button>
     </div>
     <div class="modal-body">
       <div class="changelog-entry">
@@ -734,9 +734,7 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
         <div class="changelog-item">Export & Import — back up and restore all your data as JSON</div>
         <div class="changelog-item">Print all projects — one-click print of all visible projects</div>
         <div class="changelog-item">Account settings — change email, change password, or delete account</div>
-        <div class="changelog-item">Browser notifications for overdue and due-soon projects</div>
         <div class="changelog-item">Help & Shortcuts guide, About page, and onboarding walkthrough</div>
-        <div class="changelog-item">Install as app (PWA) on desktop and mobile</div>
         <div class="changelog-item">Security hardening: rate limiting, security headers, token blacklist on logout</div>
         <div class="changelog-item">Auto-save when closing the project panel</div>
       </div>
@@ -753,11 +751,11 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
 </div>
 
 <!-- ══ ACCOUNT SETTINGS MODAL ══ -->
-<div class="modal-overlay" id="account-modal" onclick="closeAccountSettings()">
+<div class="modal-overlay" id="account-modal">
   <div class="modal" style="width:480px" onclick="event.stopPropagation()">
     <div class="modal-header">
       <span class="modal-header-title">Account Settings</span>
-      <button class="btn-close" onclick="closeAccountSettings()">✕</button>
+      <button class="btn-close" id="btn-close-account">✕</button>
     </div>
     <div class="modal-body">
       <div class="acct-section">
@@ -788,11 +786,11 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
 </div>
 
 <!-- ══ STATS DASHBOARD MODAL ══ -->
-<div class="modal-overlay" id="stats-modal" onclick="closeStats()">
+<div class="modal-overlay" id="stats-modal">
   <div class="modal" style="width:560px" onclick="event.stopPropagation()">
     <div class="modal-header">
       <span class="modal-header-title">Stats Dashboard</span>
-      <button class="btn-close" onclick="closeStats()">✕</button>
+      <button class="btn-close" id="btn-close-stats">✕</button>
     </div>
     <div class="modal-body" id="stats-modal-body"></div>
   </div>
@@ -2688,6 +2686,21 @@ function openWhatsNew()  {
   localStorage.setItem('homeworks_version_seen', 'v1.5.0');
 }
 function closeWhatsNew() { document.getElementById('whats-new-modal').classList.remove('open'); }
+
+// Wire up modal close buttons and backdrop clicks via addEventListener
+[
+  ['contractor-modal', 'btn-close-contractor', closeContractorManager],
+  ['help-modal',       'btn-close-help',       closeHelp],
+  ['about-modal',      'btn-close-about',      closeAbout],
+  ['whats-new-modal',  'btn-close-whats-new',  closeWhatsNew],
+  ['account-modal',    'btn-close-account',    closeAccountSettings],
+  ['stats-modal',      'btn-close-stats',      closeStats],
+].forEach(([overlayId, btnId, fn]) => {
+  const overlay = document.getElementById(overlayId);
+  const btn     = document.getElementById(btnId);
+  if (overlay) overlay.addEventListener('click', e => { if (e.target === overlay) fn(); });
+  if (btn)     btn.addEventListener('click', fn);
+});
 
 function openStats() {
   const own = projects.filter(p => !p._sharedBy);
