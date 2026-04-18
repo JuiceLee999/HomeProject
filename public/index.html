@@ -554,20 +554,6 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
 .activity-text { color: var(--ink); flex: 1; }
 .activity-empty { font-family: 'DM Mono', monospace; font-size: 11px; color: var(--muted); letter-spacing: 0.5px; }
 
-/* ── NOTIFICATION BANNER ── */
-.notif-banner { background: var(--yellow-light); border: 1.5px solid var(--yellow); border-radius: 2px; padding: 9px 14px; margin-bottom: 10px; display: none; align-items: center; gap: 12px; }
-.notif-banner.show { display: flex; }
-.notif-banner-text { flex: 1; font-size: 13px; color: var(--ink); }
-.btn-notif { background: var(--accent); color: white; border: none; border-radius: 2px; padding: 5px 12px; font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer; white-space: nowrap; }
-.btn-notif-x { background: none; border: none; color: var(--muted); font-size: 16px; cursor: pointer; padding: 0 2px; line-height: 1; }
-
-/* ── INSTALL BANNER ── */
-.install-banner { background: var(--blue-light); border: 1.5px solid var(--blue); border-radius: 2px; padding: 9px 14px; margin-bottom: 10px; display: none; align-items: center; gap: 12px; }
-.install-banner.show { display: flex; }
-.install-banner-text { flex: 1; font-size: 13px; color: var(--blue); }
-.btn-install { background: var(--blue); color: white; border: none; border-radius: 2px; padding: 5px 12px; font-family: 'DM Mono', monospace; font-size: 11px; cursor: pointer; white-space: nowrap; transition: background 0.15s; }
-.btn-install:hover { background: #0a3a6a; }
-.btn-install-x { background: none; border: none; color: var(--blue); font-size: 16px; cursor: pointer; padding: 0 2px; line-height: 1; }
 </style>
 </head>
 <body>
@@ -827,8 +813,7 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
     <div class="stat-pill"><strong id="done-count">0</strong> done</div>
     <div class="stat-pill"><strong id="todo-count">0</strong> remaining</div>
     <div class="stat-pill cost-stat">Est. <strong id="total-cost">$0</strong></div>
-    <button class="btn-header-icon" id="btn-install" onclick="installPWA()" title="Install app" style="display:none">⬇ Install</button>
-    <button class="btn-header-icon" onclick="exportData()" title="Export all data as JSON">⬇ Export</button>
+<button class="btn-header-icon" onclick="exportData()" title="Export all data as JSON">⬇ Export</button>
     <button class="btn-header-icon" onclick="document.getElementById('import-file').click()" title="Import data from JSON">⬆ Import</button>
     <input type="file" id="import-file" accept=".json" style="display:none" onchange="importData(this)" />
     <button class="btn-dark-toggle" onclick="openAccountSettings()" title="Account settings">⚙</button>
@@ -1184,19 +1169,7 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
     </div>
   </div>
 
-  <!-- Notification banner -->
-  <div class="notif-banner" id="notif-banner">
-    <span class="notif-banner-text" id="notif-banner-text">🔔 You have overdue or due-soon projects.</span>
-    <button class="btn-notif" onclick="enableNotifications()">Enable Notifications</button>
-    <button class="btn-notif-x" onclick="dismissNotifBanner()" title="Dismiss">✕</button>
-  </div>
-  <!-- Install banner -->
-  <div class="install-banner" id="install-banner" style="display:none">
-    <span class="install-banner-text">📱 Install Honey-Do as an app for quick access from your home screen.</span>
-    <button class="btn-install" onclick="installPWA()">Install App</button>
-    <button class="btn-install-x" onclick="document.getElementById('install-banner').style.display='none'" title="Dismiss">✕</button>
-  </div>
-  <!-- Budget strip -->
+<!-- Budget strip -->
   <div class="budget-strip">
     <div class="budget-item">
       <div class="budget-label">Total Est. Cost</div>
@@ -2643,7 +2616,6 @@ async function loadAppData() {
   buildCatSelects();
   buildPropertySelects(null, true);
   render();
-  checkNotifBanner();
 }
 
 async function init() {
@@ -2659,15 +2631,7 @@ async function init() {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
 
-  // Capture PWA install prompt
-  window.addEventListener('beforeinstallprompt', e => {
-    e.preventDefault();
-    deferredInstallPrompt = e;
-    document.getElementById('btn-install').style.display = 'flex';
-    document.getElementById('install-banner').style.display = 'flex';
-  });
-
-  const token = localStorage.getItem('homeworks_token');
+const token = localStorage.getItem('homeworks_token');
   if (!token) { showAuthScreen(); return; }
 
   try {
@@ -2693,7 +2657,6 @@ init();
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentSearch = '';
-let deferredInstallPrompt = null;
 let onboardStep = 0;
 
 // ── Search ────────────────────────────────────────────────────────────────────
@@ -2980,51 +2943,6 @@ function renderActivityLog(p) {
     </div>`).join('');
 }
 
-// ── Notifications ─────────────────────────────────────────────────────────────
-function checkNotifBanner() {
-  if (localStorage.getItem('homeworks_notif_dismissed')) return;
-  if (Notification.permission === 'granted') return;
-  const today = new Date().toISOString().slice(0,10);
-  const soon  = datePlus(7);
-  const alertProjects = projects.filter(p =>
-    !p._sharedBy && p.status !== 'done' && p.endDate &&
-    (p.endDate < today || (p.endDate >= today && p.endDate <= soon))
-  );
-  if (!alertProjects.length) return;
-  const overdueCount = alertProjects.filter(p=>p.endDate<today).length;
-  const soonCount    = alertProjects.filter(p=>p.endDate>=today).length;
-  const parts = [];
-  if (overdueCount) parts.push(`${overdueCount} overdue`);
-  if (soonCount)    parts.push(`${soonCount} due soon`);
-  document.getElementById('notif-banner-text').textContent = `🔔 You have ${parts.join(' and ')} project${alertProjects.length>1?'s':''}. Enable notifications to get reminders.`;
-  document.getElementById('notif-banner').classList.add('show');
-}
-
-async function enableNotifications() {
-  const perm = await Notification.requestPermission();
-  document.getElementById('notif-banner').classList.remove('show');
-  if (perm !== 'granted') return;
-  const today = new Date().toISOString().slice(0,10);
-  const soon  = datePlus(7);
-  const alertProjects = projects.filter(p =>
-    !p._sharedBy && p.status !== 'done' && p.endDate &&
-    (p.endDate < today || (p.endDate >= today && p.endDate <= soon))
-  );
-  alertProjects.forEach((p, i) => {
-    const isOverdue = p.endDate < today;
-    setTimeout(() => {
-      new Notification(`Honey-Do: ${p.name}`, {
-        body: isOverdue ? `Overdue since ${fmtDate(p.endDate)}` : `Due ${fmtDate(p.endDate)}`,
-        icon: '/manifest.json'
-      });
-    }, i * 600);
-  });
-}
-
-function dismissNotifBanner() {
-  document.getElementById('notif-banner').classList.remove('show');
-  localStorage.setItem('homeworks_notif_dismissed', '1');
-}
 
 // ── Onboarding ────────────────────────────────────────────────────────────────
 function showOnboarding() {
@@ -3058,15 +2976,6 @@ function updateOnboardUI() {
 document.getElementById('btn-onboard-next').addEventListener('click', onboardNext);
 document.getElementById('btn-onboard-skip').addEventListener('click', closeOnboarding);
 
-// ── PWA Install ───────────────────────────────────────────────────────────────
-async function installPWA() {
-  if (!deferredInstallPrompt) return;
-  deferredInstallPrompt.prompt();
-  const { outcome } = await deferredInstallPrompt.userChoice;
-  deferredInstallPrompt = null;
-  document.getElementById('btn-install').style.display = 'none';
-  document.getElementById('install-banner').style.display = 'none';
-}
 </script>
 </body>
 </html>
