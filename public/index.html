@@ -450,6 +450,16 @@ body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
 .btn-contractors-toolbar { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.5px; border: 1.5px solid var(--rule); background: transparent; color: var(--muted); border-radius: 2px; padding: 4px 10px; cursor: pointer; transition: all 0.15s; white-space: nowrap; }
 .btn-contractors-toolbar:hover { border-color: var(--accent); color: var(--accent); }
 
+/* ── FILTER PANEL ── */
+.btn-filter-toggle { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.5px; border: 1.5px solid var(--rule); background: transparent; color: var(--muted); border-radius: 2px; padding: 4px 10px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 5px; white-space: nowrap; }
+.btn-filter-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.btn-filter-toggle.open { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.btn-filter-chevron { font-size: 9px; display: inline-block; transition: transform 0.25s ease; }
+.btn-filter-toggle.open .btn-filter-chevron { transform: rotate(180deg); }
+.filter-panel { overflow: hidden; max-height: 0; opacity: 0; transition: max-height 0.3s ease, opacity 0.2s ease; background: var(--paper); border: 1.5px solid var(--rule); border-top: none; border-radius: 0 0 2px 2px; }
+.filter-panel.open { max-height: 80px; opacity: 1; }
+.filter-panel-inner { display: flex; flex-wrap: wrap; align-items: center; gap: 6px; padding: 7px 10px; }
+
 /* ── SEARCH BAR ── */
 .search-wrap { display: flex; align-items: center; gap: 8px; background: var(--paper); border: 1.5px solid var(--rule); border-top: none; border-radius: 0 0 2px 2px; padding: 6px 10px; margin-bottom: 10px; }
 .search-input { flex: 1; background: var(--bg); border: 1.5px solid var(--rule); border-radius: 2px; padding: 6px 11px; font-family: 'DM Sans', sans-serif; font-size: 13px; color: var(--ink); outline: none; transition: border-color 0.15s; }
@@ -1081,42 +1091,51 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
 
   <!-- Toolbar -->
   <div class="toolbar">
-    <span class="filter-label" style="margin-right:2px">Filter:</span>
-    <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
-    <button class="filter-btn" onclick="setFilter('todo',this)">To-Do</button>
-    <button class="filter-btn" onclick="setFilter('someday',this)">Someday</button>
-    <button class="filter-btn" onclick="setFilter('done',this)">Done</button>
-    <div class="toolbar-sep"></div>
-    <button class="filter-btn" onclick="setFilter('high',this)">🔴 High</button>
-    <button class="filter-btn" onclick="setFilter('medium',this)">🟡 Med</button>
-    <button class="filter-btn" onclick="setFilter('low',this)">🟢 Low</button>
-    <button class="filter-btn" onclick="setFilter('overdue',this)">⚠ Overdue</button>
-    <button class="filter-btn" onclick="setFilter('soon',this)">⏰ Due Soon</button>
+    <button class="btn-filter-toggle" id="btn-filter-toggle">
+      Filters <span class="btn-filter-chevron">▾</span>
+    </button>
     <div class="toolbar-sep ml-auto"></div>
-    <span class="filter-label">Category:</span>
-    <select class="sort-select" id="cat-filter" onchange="setCatFilter(this.value)">
-      <option value="">All</option>
-    </select>
-    <div class="toolbar-sep"></div>
-    <span class="filter-label">Property:</span>
-    <select class="sort-select" id="property-filter" onchange="setPropertyFilter(this.value)">
-      <option value="">All</option>
-    </select>
-    <div class="toolbar-sep"></div>
-    <span class="filter-label">Sort:</span>
-    <select class="sort-select" id="sort-select" onchange="setSort(this.value)">
-      <option value="priority-endDate">Priority + Due Date</option>
-      <option value="created">Date Added</option>
-      <option value="priority">Priority</option>
-      <option value="endDate">Due Date</option>
-      <option value="cost">Cost</option>
-      <option value="modified">Last Modified</option>
-      <option value="name">Name A→Z</option>
-    </select>
-    <div class="toolbar-sep"></div>
     <button class="btn-contractors-toolbar" onclick="openContractorManager()">🔨 Contractors</button>
     <button class="btn-contractors-toolbar" onclick="openStats()">📊 Stats</button>
     <button class="btn-contractors-toolbar" onclick="printAllProjects()">🖨 Print</button>
+  </div>
+
+  <!-- Collapsible filter panel -->
+  <div class="filter-panel" id="filter-panel">
+    <div class="filter-panel-inner">
+      <span class="filter-label">Filter:</span>
+      <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
+      <button class="filter-btn" onclick="setFilter('todo',this)">To-Do</button>
+      <button class="filter-btn" onclick="setFilter('someday',this)">Someday</button>
+      <button class="filter-btn" onclick="setFilter('done',this)">Done</button>
+      <div class="toolbar-sep"></div>
+      <button class="filter-btn" onclick="setFilter('high',this)">🔴 High</button>
+      <button class="filter-btn" onclick="setFilter('medium',this)">🟡 Med</button>
+      <button class="filter-btn" onclick="setFilter('low',this)">🟢 Low</button>
+      <button class="filter-btn" onclick="setFilter('overdue',this)">⚠ Overdue</button>
+      <button class="filter-btn" onclick="setFilter('soon',this)">⏰ Due Soon</button>
+      <div class="toolbar-sep"></div>
+      <span class="filter-label">Category:</span>
+      <select class="sort-select" id="cat-filter" onchange="setCatFilter(this.value)">
+        <option value="">All</option>
+      </select>
+      <div class="toolbar-sep"></div>
+      <span class="filter-label">Property:</span>
+      <select class="sort-select" id="property-filter" onchange="setPropertyFilter(this.value)">
+        <option value="">All</option>
+      </select>
+      <div class="toolbar-sep"></div>
+      <span class="filter-label">Sort:</span>
+      <select class="sort-select" id="sort-select" onchange="setSort(this.value)">
+        <option value="priority-endDate">Priority + Due Date</option>
+        <option value="created">Date Added</option>
+        <option value="priority">Priority</option>
+        <option value="endDate">Due Date</option>
+        <option value="cost">Cost</option>
+        <option value="modified">Last Modified</option>
+        <option value="name">Name A→Z</option>
+      </select>
+    </div>
   </div>
   <!-- Search bar -->
   <div class="search-wrap">
@@ -2052,6 +2071,14 @@ function toggleSection(key) {
   if (body) body.classList.toggle('collapsed', collapsedSections.has(key));
 }
 
+function toggleFilters() {
+  const panel = document.getElementById('filter-panel');
+  const btn   = document.getElementById('btn-filter-toggle');
+  const open  = panel.classList.toggle('open');
+  btn.classList.toggle('open', open);
+  localStorage.setItem('homeworks_filters_open', open ? '1' : '0');
+}
+
 function section(label, count, key) {
   const isCollapsed = collapsedSections.has(key);
   return `<div class="section-head${isCollapsed?' collapsed':''}" data-key="${key}" onclick="toggleSection('${key}')">
@@ -2674,6 +2701,12 @@ const token = localStorage.getItem('homeworks_token');
   if (localStorage.getItem('homeworks_version_seen') !== CURRENT_VERSION && localStorage.getItem('homeworks_onboarded')) {
     setTimeout(() => openWhatsNew(), 800);
   }
+
+  // Restore filter panel open/closed state (default: collapsed)
+  if (localStorage.getItem('homeworks_filters_open') === '1') {
+    document.getElementById('filter-panel').classList.add('open');
+    document.getElementById('btn-filter-toggle').classList.add('open');
+  }
 }
 init();
 
@@ -3012,6 +3045,7 @@ function updateOnboardUI() {
 
 document.getElementById('btn-onboard-next').addEventListener('click', onboardNext);
 document.getElementById('btn-onboard-skip').addEventListener('click', closeOnboarding);
+document.getElementById('btn-filter-toggle').addEventListener('click', toggleFilters);
 
 </script>
 </body>
