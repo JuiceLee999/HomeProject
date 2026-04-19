@@ -2016,6 +2016,25 @@ function render() {
   document.getElementById('project-list').innerHTML = html;
 }
 
+// ── Project list event delegation ─────────────────────────────────────────────
+document.getElementById('project-list').addEventListener('click', e => {
+  // Checkbox toggle — don't open panel
+  const toggle = e.target.closest('[data-toggle-id]');
+  if (toggle) {
+    e.stopPropagation();
+    toggleDone(Number(toggle.dataset.toggleId), e);
+    return;
+  }
+  // Card click — open panel
+  const card = e.target.closest('[data-card-id]');
+  if (card) openPanel(Number(card.dataset.cardId));
+});
+
+document.getElementById('project-list').addEventListener('change', e => {
+  const toggle = e.target.closest('[data-toggle-id]');
+  if (toggle) toggleDone(Number(toggle.dataset.toggleId), e);
+});
+
 const collapsedSections = new Set();
 
 function toggleSection(key) {
@@ -2064,10 +2083,10 @@ function cardHTML(p, today, soon) {
   const summary = p.description||p.note||'';
 
   return `
-  <div class="${classes}" data-priority="${p.priority}" onclick="openPanel(${p.id})">
+  <div class="${classes}" data-priority="${p.priority}" data-card-id="${p.id}">
     <div class="project-main">
       <div class="checkbox-wrap">
-        <input type="checkbox" ${p.status==='done'?'checked':''} onchange="toggleDone(${p.id},event)" onclick="event.stopPropagation()" />
+        <input type="checkbox" ${p.status==='done'?'checked':''} data-toggle-id="${p.id}" />
       </div>
       <div class="project-inner">
         <div class="project-name">${escHtml(p.name)}</div>
