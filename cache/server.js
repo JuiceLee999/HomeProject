@@ -51,6 +51,18 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
+  CREATE TABLE IF NOT EXISTS list_shares (
+    id             INTEGER PRIMARY KEY AUTOINCREMENT,
+    list_id        INTEGER NOT NULL,
+    owner_id       INTEGER NOT NULL,
+    shared_with_id INTEGER NOT NULL,
+    created_at     INTEGER DEFAULT (strftime('%s','now')),
+    UNIQUE(list_id, shared_with_id),
+    FOREIGN KEY (list_id)        REFERENCES lists(id),
+    FOREIGN KEY (owner_id)       REFERENCES users(id),
+    FOREIGN KEY (shared_with_id) REFERENCES users(id)
+  );
+
   CREATE TABLE IF NOT EXISTS list_items (
     list_id INTEGER NOT NULL,
     item_id INTEGER NOT NULL,
@@ -379,8 +391,35 @@ function listWithItems(list) {
 }
 
 app.get('/api/lists', verifyToken, (req, res) => {
-  const rows = db.prepare('SELECT * FROM lists WHERE user_id = ? ORDER BY modified_at DESC').all(req.user.userId);
-  res.json(rows.map(listWithItems));
+  const { userId } = req.user;
+
+  // Own lists — include who they're shared with
+  const ownRows = db.prepare('SELECT * FROM lists WHERE user_id = ? ORDER BY modified_at DESC').all(userId);
+  const ownLists = ownRows.map(list => {
+    const item_ids = db.prepare('SELECT item_id FROM list_items WHERE list_id = ?').all(list.id).map(r => r.item_id);
+    const shared_with = db.prepare(
+      `SELECT ls.shared_with_id as id, u.email FROM list_shares ls
+       JOIN users u ON u.id = ls.shared_with_id WHERE ls.list_id = ?`
+    ).all(list.id);
+    return { ...list, item_ids, is_shared: false, shared_with };
+  });
+
+  // Lists shared with this user — include full item preview data
+  const sharedRows = db.prepare(
+    `SELECT l.*, u.email as owner_email FROM list_shares ls
+     JOIN lists l ON l.id = ls.list_id
+     JOIN users u ON u.id = l.user_id
+     WHERE ls.shared_with_id = ? ORDER BY l.modified_at DESC`
+  ).all(userId);
+  const sharedLists = sharedRows.map(list => {
+    const item_ids = db.prepare('SELECT item_id FROM list_items WHERE list_id = ?').all(list.id).map(r => r.item_id);
+    const shared_items = item_ids.length
+      ? db.prepare(`SELECT name, category, location, condition, quantity, unit FROM items WHERE id IN (${item_ids.map(() => '?').join(',')})`).all(item_ids)
+      : [];
+    return { ...list, item_ids, is_shared: true, shared_with: [], shared_items };
+  });
+
+  res.json([...ownLists, ...sharedLists]);
 });
 
 app.post('/api/lists', verifyToken, (req, res) => {
@@ -415,14 +454,57 @@ app.put('/api/lists/:id', verifyToken, (req, res) => {
 
 app.delete('/api/lists/:id', verifyToken, (req, res) => {
   const listId = Number(req.params.id);
+  db.prepare('DELETE FROM list_shares WHERE list_id = ?').run([listId]);
   db.prepare('DELETE FROM list_items WHERE list_id = ?').run([listId]);
   db.prepare('DELETE FROM lists WHERE id = ? AND user_id = ?').run([listId, req.user.userId]);
   res.json({ ok: true });
 });
 
+// Share a list with another user (owner only)
+app.post('/api/lists/:id/shares', verifyToken, (req, res) => {
+  const { userId } = req.user;
+  const listId = Number(req.params.id);
+  if (!db.prepare('SELECT id FROM lists WHERE id = ? AND user_id = ?').get([listId, userId]))
+    return res.status(404).json({ error: 'Not found' });
+  const { email } = req.body || {};
+  if (!email) return res.status(400).json({ error: 'Email required' });
+  const target = db.prepare('SELECT id, email FROM users WHERE email = ?').get(email.trim().toLowerCase());
+  if (!target) return res.status(404).json({ error: 'No account found with that email' });
+  if (target.id === userId) return res.status(400).json({ error: 'Cannot share with yourself' });
+  try {
+    db.prepare('INSERT INTO list_shares (list_id, owner_id, shared_with_id) VALUES (?, ?, ?)').run([listId, userId, target.id]);
+    res.json({ id: target.id, email: target.email });
+  } catch { res.status(409).json({ error: 'Already shared with this user' }); }
+});
+
+// Revoke share (owner removes a user's access)
+app.delete('/api/lists/:id/shares/:sharedWithId', verifyToken, (req, res) => {
+  const { userId } = req.user;
+  const listId = Number(req.params.id);
+  if (!db.prepare('SELECT id FROM lists WHERE id = ? AND user_id = ?').get([listId, userId]))
+    return res.status(404).json({ error: 'Not found' });
+  db.prepare('DELETE FROM list_shares WHERE list_id = ? AND shared_with_id = ?').run([listId, Number(req.params.sharedWithId)]);
+  res.json({ ok: true });
+});
+
+// Leave a shared list (recipient removes it from their view)
+app.delete('/api/shared-lists/:listId', verifyToken, (req, res) => {
+  db.prepare('DELETE FROM list_shares WHERE list_id = ? AND shared_with_id = ?').run([Number(req.params.listId), req.user.userId]);
+  res.json({ ok: true });
+});
+
 app.get('/api/lists/:id/qr', verifyToken, async (req, res) => {
-  const list = db.prepare('SELECT qr_token FROM lists WHERE id = ? AND user_id = ?')
-    .get([Number(req.params.id), req.user.userId]);
+  const { userId } = req.user;
+  const listId = Number(req.params.id);
+  let list = db.prepare('SELECT qr_token FROM lists WHERE id = ? AND user_id = ?').get([listId, userId]);
+  if (!list) {
+    // Also allow users the list is shared with
+    const row = db.prepare(
+      `SELECT l.qr_token FROM list_shares ls JOIN lists l ON l.id = ls.list_id
+       WHERE ls.list_id = ? AND ls.shared_with_id = ?`
+    ).get([listId, userId]);
+    list = row || null;
+  }
   if (!list) return res.status(404).json({ error: 'Not found' });
   const proto = req.headers['x-forwarded-proto'] || req.protocol;
   const host  = req.headers['x-forwarded-host']  || req.get('host');

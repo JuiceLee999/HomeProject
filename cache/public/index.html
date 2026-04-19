@@ -251,6 +251,19 @@ body.panel-open .detail-panel { transform: translateX(0); }
 [data-tip][data-tip-dir="below"]::after { bottom: auto; top: calc(100% + 8px); }
 [data-tip][data-tip-dir="left"]::after { left: auto; right: 0; transform: none; }
 
+/* ── SHARED LISTS ── */
+.list-card.is-shared { border-left-color: var(--blue); }
+.shared-badge { font-size: 9px; letter-spacing: 1px; padding: 2px 7px; border: 1px solid var(--blue); color: var(--blue); text-transform: uppercase; display: inline-block; margin-bottom: 6px; }
+.shared-by { font-size: 10px; letter-spacing: 1px; color: var(--muted); padding: 8px 0 12px; border-bottom: 1px solid var(--rule); margin-bottom: 4px; }
+.shared-by span { color: var(--accent); }
+.readonly-item-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--rule); }
+.readonly-item-row:last-child { border-bottom: none; }
+.readonly-item-name { flex: 1; font-size: 12px; color: var(--ink); }
+.readonly-item-meta { font-size: 10px; color: var(--muted); white-space: nowrap; }
+.shares-list-row { display: flex; align-items: center; gap: 8px; padding: 5px 0; border-bottom: 1px solid var(--rule); }
+.shares-list-row:last-child { border-bottom: none; }
+.shares-list-email { flex: 1; font-size: 11px; color: var(--ink); letter-spacing: 0.5px; }
+
 /* ── VIEW TOGGLE ── */
 .view-toggle { display: flex; margin-bottom: 12px; }
 .view-btn { background: none; border: 1px solid var(--rule); color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; padding: 6px 22px; cursor: pointer; transition: all 0.15s; }
@@ -475,6 +488,12 @@ body.panel-open .detail-panel { transform: translateX(0); }
   </div>
   <!-- List panel body -->
   <div class="panel-body" id="list-panel-body" style="display:none">
+
+    <!-- Shared-by banner (recipient only) -->
+    <div id="list-shared-by" style="display:none" class="shared-by">
+      SHARED BY <span id="list-owner-email"></span>
+    </div>
+
     <div class="panel-field">
       <label>LIST NAME *</label>
       <input type="text" id="ld-name" placeholder="e.g. Basement Storage" />
@@ -484,11 +503,32 @@ body.panel-open .detail-panel { transform: translateX(0); }
       <textarea id="ld-description" placeholder="What is this list for?" style="min-height:55px"></textarea>
     </div>
     <div class="panel-divider"></div>
-    <div>
+
+    <!-- Owner: item picker -->
+    <div id="list-picker-section">
       <div class="panel-section" style="margin-bottom:8px">ITEMS — <span id="ld-count" style="color:var(--accent)">0 selected</span></div>
       <input class="picker-search" id="picker-search" placeholder="Filter items..." oninput="renderItemPicker()" />
       <div class="picker-list" id="picker-list"></div>
     </div>
+
+    <!-- Recipient: read-only items -->
+    <div id="list-readonly-section" style="display:none">
+      <div class="panel-section" style="margin-bottom:8px">ITEMS</div>
+      <div class="picker-list" id="readonly-items-list"></div>
+    </div>
+
+    <!-- Owner: sharing section -->
+    <div id="list-share-section" style="display:none">
+      <div class="panel-divider"></div>
+      <div class="panel-section" style="margin-bottom:8px">SHARING</div>
+      <div id="list-shares-list" style="margin-bottom:6px;border:1px solid var(--rule)"></div>
+      <div style="display:flex;gap:6px">
+        <input class="tag-input" id="share-email-input" placeholder="user@example.com" style="flex:1" onkeydown="shareEmailKeydown(event)" />
+        <button class="btn-tag-add" onclick="shareList()">SHARE</button>
+      </div>
+      <div class="user-modal-msg" id="share-msg" style="margin-top:6px"></div>
+    </div>
+
     <div class="panel-divider"></div>
     <div id="list-qr-section" style="display:none">
       <div class="panel-section" style="margin-bottom:8px">QR CODE</div>
@@ -630,6 +670,7 @@ body.panel-open .detail-panel { transform: translateX(0); }
     <span class="save-flash" id="save-flash">✓ SAVED</span>
     <button class="btn-delete-item" id="btn-delete-item" style="display:none" onclick="deleteCurrentItem()" data-tip="Delete Item">🗑</button>
     <button class="btn-delete-item" id="btn-delete-list" style="display:none" onclick="deleteCurrentList()" data-tip="Delete List">🗑</button>
+    <button class="btn-delete-item" id="btn-leave-list" style="display:none" onclick="leaveSharedList()" data-tip="Remove from My Lists" style="font-size:10px;letter-spacing:1px">LEAVE</button>
   </div>
 </div>
 
@@ -666,6 +707,8 @@ let currentView = 'items'; // 'items' | 'lists'
 let openListId = null;
 let listPanelMode = 'add';
 let listItemIds = [];
+let listIsShared = false;
+let listSharedWith = []; // [{id, email}] — for owned lists
 
 // ── API helper ────────────────────────────────────────────────────────────────
 async function api(method, path, body) {
@@ -1136,15 +1179,17 @@ function renderListGrid() {
 function listCardHTML(list) {
   const selected = list.id === openListId ? ' selected' : '';
   const count = list.item_ids.length;
-  const previewItems = list.item_ids.slice(0, 5).map(id => {
-    const item = items.find(i => i.id === id);
-    return item ? `<span class="list-pill">${escHtml(item.name)}</span>` : '';
-  }).join('');
-  return `<div class="list-card${selected}" data-list-id="${list.id}">
+  // For own lists use local items array; for shared use shared_items preview
+  const pillNames = list.is_shared
+    ? (list.shared_items || []).slice(0, 5).map(i => i.name)
+    : list.item_ids.slice(0, 5).map(id => { const it = items.find(i => i.id === id); return it ? it.name : null; }).filter(Boolean);
+  const previewPills = pillNames.map(n => `<span class="list-pill">${escHtml(n)}</span>`).join('');
+  return `<div class="list-card${selected}${list.is_shared ? ' is-shared' : ''}" data-list-id="${list.id}">
+    ${list.is_shared ? `<span class="shared-badge">SHARED BY ${escHtml(list.owner_email)}</span>` : ''}
     <div class="list-card-name">${escHtml(list.name)}</div>
     ${list.description ? `<div class="list-card-desc">${escHtml(list.description)}</div>` : ''}
     <div class="list-card-count">${count} ITEM${count !== 1 ? 'S' : ''}</div>
-    ${previewItems ? `<div class="list-card-pills">${previewItems}${count > 5 ? `<span class="list-pill">+${count-5} more</span>` : ''}</div>` : ''}
+    ${previewPills ? `<div class="list-card-pills">${previewPills}${count > 5 ? `<span class="list-pill">+${count-5} more</span>` : ''}</div>` : ''}
     <div class="card-actions">
       <button class="btn-card-qr" onclick="event.stopPropagation();showListQR(${list.id})">⊡ QR CODE</button>
     </div>
@@ -1153,17 +1198,26 @@ function listCardHTML(list) {
 
 function openAddListPanel() {
   listPanelMode = 'add';
+  listIsShared = false;
   openListId = null;
   listItemIds = [];
+  listSharedWith = [];
   document.getElementById('panel-mode-label').innerHTML = '<span>▌</span> NEW LIST';
   document.getElementById('ld-name').value = '';
+  document.getElementById('ld-name').disabled = false;
   document.getElementById('ld-description').value = '';
+  document.getElementById('ld-description').disabled = false;
   document.getElementById('picker-search').value = '';
+  document.getElementById('list-shared-by').style.display = 'none';
+  document.getElementById('list-picker-section').style.display = '';
+  document.getElementById('list-readonly-section').style.display = 'none';
+  document.getElementById('list-share-section').style.display = 'none';
   document.getElementById('list-qr-section').style.display = 'none';
   document.getElementById('btn-qr-panel').style.display = 'none';
   document.getElementById('btn-duplicate').style.display = 'none';
   document.getElementById('btn-delete-list').style.display = 'none';
   document.getElementById('btn-delete-item').style.display = 'none';
+  document.getElementById('btn-leave-list').style.display = 'none';
   document.getElementById('list-panel-body').style.display = 'flex';
   document.getElementById('item-panel-body').style.display = 'none';
   renderItemPicker();
@@ -1174,29 +1228,132 @@ function openAddListPanel() {
 function openListPanel(id) {
   const list = lists.find(l => l.id === id);
   if (!list) return;
-  listPanelMode = 'edit';
+  listIsShared = !!list.is_shared;
+  listPanelMode = listIsShared ? 'view' : 'edit';
   openListId = id;
   listItemIds = [...list.item_ids];
-  document.getElementById('panel-mode-label').innerHTML = `<span>▌</span> EDIT LIST`;
+  listSharedWith = list.shared_with ? [...list.shared_with] : [];
+
+  document.getElementById('panel-mode-label').innerHTML =
+    listIsShared ? `<span>▌</span> SHARED LIST` : `<span>▌</span> EDIT LIST`;
   document.getElementById('ld-name').value = list.name;
+  document.getElementById('ld-name').disabled = listIsShared;
   document.getElementById('ld-description').value = list.description || '';
+  document.getElementById('ld-description').disabled = listIsShared;
   document.getElementById('picker-search').value = '';
+
+  const sharedByEl = document.getElementById('list-shared-by');
+  if (listIsShared) {
+    document.getElementById('list-owner-email').textContent = list.owner_email || '';
+    sharedByEl.style.display = '';
+  } else {
+    sharedByEl.style.display = 'none';
+  }
+
+  document.getElementById('list-picker-section').style.display = listIsShared ? 'none' : '';
+  document.getElementById('list-readonly-section').style.display = listIsShared ? '' : 'none';
+  if (listIsShared) renderReadonlyItems(list.shared_items || []);
+  else renderItemPicker();
+
+  document.getElementById('list-share-section').style.display = listIsShared ? 'none' : '';
+  if (!listIsShared) renderSharesList();
+
   document.getElementById('list-qr-section').style.display = '';
+  loadQRInto(document.getElementById('list-qr-img'), id, 'list');
+
   document.getElementById('btn-qr-panel').style.display = '';
   document.getElementById('btn-duplicate').style.display = 'none';
-  document.getElementById('btn-delete-list').style.display = '';
   document.getElementById('btn-delete-item').style.display = 'none';
+  document.getElementById('btn-delete-list').style.display = listIsShared ? 'none' : '';
+  document.getElementById('btn-leave-list').style.display = listIsShared ? '' : 'none';
+
   document.getElementById('list-panel-body').style.display = 'flex';
   document.getElementById('item-panel-body').style.display = 'none';
-  loadQRInto(document.getElementById('list-qr-img'), id, 'list');
-  renderItemPicker();
   document.body.classList.add('panel-open');
   document.querySelectorAll('.list-card').forEach(c => c.classList.remove('selected'));
   const card = document.querySelector(`[data-list-id="${id}"]`);
   if (card) card.classList.add('selected');
 }
 
+function renderReadonlyItems(sharedItems) {
+  const wrap = document.getElementById('readonly-items-list');
+  if (!sharedItems.length) {
+    wrap.innerHTML = '<div class="picker-empty">NO ITEMS IN THIS LIST</div>';
+    return;
+  }
+  wrap.innerHTML = sharedItems.map(item => {
+    const meta = [item.category, item.location].filter(Boolean).join(' · ');
+    return `<div class="readonly-item-row">
+      <div class="readonly-item-name">${escHtml(item.name)}</div>
+      ${meta ? `<div class="readonly-item-meta">${escHtml(meta)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+// ── List sharing ───────────────────────────────────────────────────────────────
+function renderSharesList() {
+  const wrap = document.getElementById('list-shares-list');
+  if (!listSharedWith.length) {
+    wrap.innerHTML = '<div class="picker-empty">NOT SHARED WITH ANYONE</div>';
+    return;
+  }
+  wrap.innerHTML = listSharedWith.map(u => `
+    <div class="shares-list-row">
+      <span class="shares-list-email">${escHtml(u.email)}</span>
+      <button onclick="revokeShare(${u.id})"
+        style="background:none;border:1px solid var(--rule);color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:10px;padding:2px 8px;cursor:pointer"
+        onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'"
+        onmouseout="this.style.borderColor='var(--rule)';this.style.color='var(--muted)'"
+        data-tip="Revoke Access">✕</button>
+    </div>`).join('');
+}
+
+async function shareList() {
+  const input = document.getElementById('share-email-input');
+  const msg   = document.getElementById('share-msg');
+  const email = input.value.trim();
+  if (!email) return;
+  msg.textContent = ''; msg.className = 'user-modal-msg';
+  try {
+    const user = await api('POST', `/api/lists/${openListId}/shares`, { email });
+    if (!listSharedWith.find(u => u.id === user.id)) listSharedWith.push(user);
+    input.value = '';
+    msg.textContent = `✓ Shared with ${user.email}`;
+    msg.className = 'user-modal-msg ok';
+    setTimeout(() => msg.textContent = '', 3000);
+    renderSharesList();
+  } catch (e) {
+    msg.textContent = e.message;
+    msg.className = 'user-modal-msg err';
+    setTimeout(() => msg.textContent = '', 3000);
+  }
+}
+
+async function revokeShare(userId) {
+  try {
+    await api('DELETE', `/api/lists/${openListId}/shares/${userId}`);
+    listSharedWith = listSharedWith.filter(u => u.id !== userId);
+    renderSharesList();
+  } catch (e) { alert(e.message); }
+}
+
+async function leaveSharedList() {
+  if (!openListId) return;
+  if (!confirm('Remove this shared list from your view?')) return;
+  try {
+    await api('DELETE', `/api/shared-lists/${openListId}`);
+    lists = lists.filter(l => l.id !== openListId);
+    closePanel();
+    renderListGrid();
+  } catch (e) { alert(e.message); }
+}
+
+function shareEmailKeydown(e) {
+  if (e.key === 'Enter') { e.preventDefault(); shareList(); }
+}
+
 async function saveList() {
+  if (listIsShared) return;
   const name = document.getElementById('ld-name').value.trim();
   if (!name) { document.getElementById('ld-name').focus(); return; }
   const body = {
