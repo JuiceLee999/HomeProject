@@ -2,8 +2,8 @@
   "name": "Honey-Do",
   "short_name": "Honey-Do",
   "description": "Home Improvement Project Tracker",
-  "theme_color": "#16191e",
-  "background_color": "#16191e",
+  "theme_color": "#0e1208",
+  "background_color": "#181c12",
   "display": "standalone",
   "start_url": "/",
   "icons": [

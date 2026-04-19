@@ -1,4 +1,4 @@
-const CACHE_NAME = 'honey-do-v1.5.7';
+const CACHE_NAME = 'honey-do-v1.5.8';
 const APP_SHELL = ['/', '/manifest.json'];
 
 self.addEventListener('install', event => {
