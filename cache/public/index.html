@@ -324,6 +324,14 @@ body.panel-open .detail-panel { transform: translateX(0); }
         <input type="file" accept=".json" style="display:none" onchange="importData(this)">
       </label>
       <div style="height:1px;background:var(--rule);margin:4px -16px"></div>
+      <div style="font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:2px;margin-top:4px">LOCATIONS</div>
+      <div id="loc-manage-list" style="display:flex;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto"></div>
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <input class="tag-input" id="loc-manage-input" placeholder="New location..." style="flex:1" onkeydown="locManageKeydown(event)" />
+        <button class="btn-tag-add" onclick="addLocationFromManage()">ADD</button>
+      </div>
+      <div class="user-modal-msg" id="loc-msg"></div>
+      <div style="height:1px;background:var(--rule);margin:4px -16px"></div>
       <button class="user-action-btn" onclick="doLogout()">SIGN OUT</button>
       <button class="user-action-btn danger" onclick="deleteAccount()">DELETE ACCOUNT</button>
       <button class="user-action-btn" onclick="closeUserModal()" style="margin-top:4px">CLOSE</button>
@@ -435,8 +443,15 @@ body.panel-open .detail-panel { transform: translateX(0); }
 
     <div class="panel-field">
       <label>LOCATION</label>
-      <input type="text" id="pd-location" placeholder="e.g. Garage - Top Shelf" list="loc-suggestions" />
-      <datalist id="loc-suggestions"></datalist>
+      <select id="pd-location" onchange="handleLocSelect(this)">
+        <option value="">— Select —</option>
+        <option value="__new__">＋ ADD LOCATION...</option>
+      </select>
+      <div id="loc-new-wrap" style="display:none;margin-top:6px;display:none;gap:6px;align-items:center">
+        <input class="tag-input" id="loc-new-input" placeholder="e.g. Garage - Top Shelf" style="flex:1" onkeydown="locNewKeydown(event)" />
+        <button class="btn-tag-add" onclick="saveNewLocation()">ADD</button>
+        <button class="btn-tag-add" onclick="cancelNewLocation()" style="border-color:var(--red);color:var(--red)">✕</button>
+      </div>
     </div>
 
     <div class="panel-row-3">
@@ -538,6 +553,8 @@ body.panel-open .detail-panel { transform: translateX(0); }
 let token = localStorage.getItem('cache_token') || '';
 let currentUserEmail = '';
 let items = [];
+let customLocations = []; // [{id, name}]
+let prevLocValue = '';
 let currentSearch = '';
 let currentFilter = 'all';
 let currentCatFilter = '';
@@ -560,6 +577,122 @@ async function api(method, path, body) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
+}
+
+// ── Locations ─────────────────────────────────────────────────────────────────
+async function loadLocations() {
+  try { customLocations = await api('GET', '/api/locations'); } catch {}
+}
+
+function allLocNames() {
+  const fromItems = items.map(i => i.location).filter(Boolean);
+  const fromCustom = customLocations.map(l => l.name);
+  return [...new Set([...fromCustom, ...fromItems])].sort();
+}
+
+function buildLocationSelect(selectedVal) {
+  const sel = document.getElementById('pd-location');
+  const locs = allLocNames();
+  sel.innerHTML =
+    '<option value="">— Select —</option>' +
+    locs.map(l => `<option value="${escHtml(l)}"${l === selectedVal ? ' selected' : ''}>${escHtml(l)}</option>`).join('') +
+    '<option value="__new__">＋ ADD LOCATION...</option>';
+  if (selectedVal && !locs.includes(selectedVal)) {
+    // value from import not in list — add it as selected
+    const opt = document.createElement('option');
+    opt.value = selectedVal;
+    opt.textContent = selectedVal;
+    opt.selected = true;
+    sel.insertBefore(opt, sel.lastElementChild);
+  }
+  document.getElementById('loc-new-wrap').style.display = 'none';
+}
+
+function handleLocSelect(sel) {
+  if (sel.value === '__new__') {
+    prevLocValue = '';
+    document.getElementById('loc-new-wrap').style.display = 'flex';
+    document.getElementById('loc-new-input').value = '';
+    setTimeout(() => document.getElementById('loc-new-input').focus(), 50);
+  }
+}
+
+async function saveNewLocation() {
+  const input = document.getElementById('loc-new-input');
+  const name = input.value.trim();
+  if (!name) return;
+  try {
+    const loc = await api('POST', '/api/locations', { name });
+    if (!customLocations.find(l => l.id === loc.id)) customLocations.push(loc);
+    buildLocationSelect(loc.name);
+    renderLocManageList();
+    updateFilterSelects();
+  } catch (e) {
+    // Already exists — just select it
+    buildLocationSelect(name);
+  }
+  input.value = '';
+}
+
+function cancelNewLocation() {
+  buildLocationSelect(prevLocValue);
+}
+
+function locNewKeydown(e) {
+  if (e.key === 'Enter') { e.preventDefault(); saveNewLocation(); }
+  if (e.key === 'Escape') cancelNewLocation();
+}
+
+// ── Location manage (in user modal) ──────────────────────────────────────────
+function renderLocManageList() {
+  const list = document.getElementById('loc-manage-list');
+  if (!customLocations.length) {
+    list.innerHTML = '<div style="font-size:10px;color:var(--muted);letter-spacing:1px;padding:4px 0">NO CUSTOM LOCATIONS YET</div>';
+    return;
+  }
+  list.innerHTML = customLocations
+    .slice().sort((a,b) => a.name.localeCompare(b.name))
+    .map(l => `
+      <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--rule)">
+        <span style="flex:1;font-size:11px;letter-spacing:1px;color:var(--ink)">${escHtml(l.name)}</span>
+        <button onclick="deleteLocation(${l.id})" style="background:none;border:1px solid var(--rule);color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:10px;padding:2px 8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--rule)';this.style.color='var(--muted)'">✕</button>
+      </div>`).join('');
+}
+
+async function deleteLocation(id) {
+  try {
+    await api('DELETE', `/api/locations/${id}`);
+    customLocations = customLocations.filter(l => l.id !== id);
+    renderLocManageList();
+    updateFilterSelects();
+  } catch (e) {
+    const msg = document.getElementById('loc-msg');
+    msg.textContent = e.message; msg.className = 'user-modal-msg err';
+    setTimeout(() => msg.textContent = '', 2500);
+  }
+}
+
+async function addLocationFromManage() {
+  const input = document.getElementById('loc-manage-input');
+  const msg = document.getElementById('loc-msg');
+  const name = input.value.trim();
+  if (!name) return;
+  try {
+    const loc = await api('POST', '/api/locations', { name });
+    if (!customLocations.find(l => l.id === loc.id)) customLocations.push(loc);
+    input.value = '';
+    msg.textContent = '✓ Added.'; msg.className = 'user-modal-msg ok';
+    setTimeout(() => msg.textContent = '', 2000);
+    renderLocManageList();
+    updateFilterSelects();
+  } catch (e) {
+    msg.textContent = e.message; msg.className = 'user-modal-msg err';
+    setTimeout(() => msg.textContent = '', 2500);
+  }
+}
+
+function locManageKeydown(e) {
+  if (e.key === 'Enter') { e.preventDefault(); addLocationFromManage(); }
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -634,7 +767,10 @@ async function doLogout() {
 // ── Load data ─────────────────────────────────────────────────────────────────
 async function loadItems() {
   try {
-    items = await api('GET', '/api/items');
+    [items, customLocations] = await Promise.all([
+      api('GET', '/api/items'),
+      api('GET', '/api/locations').catch(() => [])
+    ]);
     render();
   } catch (e) {
     if (e.message === 'Unauthorized' || e.message === 'Token revoked') {
@@ -662,7 +798,7 @@ function updateHeaderStats() {
 
 function updateFilterSelects() {
   const cats = [...new Set(items.map(i => i.category).filter(Boolean))].sort();
-  const locs = [...new Set(items.map(i => i.location).filter(Boolean))].sort();
+  const locs = allLocNames();
 
   const catSel = document.getElementById('cat-filter');
   const curCat = catSel.value;
@@ -673,10 +809,6 @@ function updateFilterSelects() {
   const curLoc = locSel.value;
   locSel.innerHTML = '<option value="">ALL LOCATIONS</option>' +
     locs.map(l => `<option${l === curLoc ? ' selected' : ''}>${escHtml(l)}</option>`).join('');
-
-  // Datalist for location input
-  const dl = document.getElementById('loc-suggestions');
-  dl.innerHTML = locs.map(l => `<option value="${escHtml(l)}">`).join('');
 }
 
 function getFiltered() {
@@ -766,7 +898,7 @@ function openAddPanel() {
   document.getElementById('pd-name').value = '';
   document.getElementById('pd-category').value = '';
   document.getElementById('pd-condition').value = 'good';
-  document.getElementById('pd-location').value = '';
+  buildLocationSelect('');
   document.getElementById('pd-qty').value = '1';
   document.getElementById('pd-unit').value = 'pcs';
   document.getElementById('pd-value').value = '';
@@ -795,7 +927,7 @@ function openPanel(id) {
   document.getElementById('pd-name').value = item.name;
   document.getElementById('pd-category').value = item.category || '';
   document.getElementById('pd-condition').value = item.condition || 'good';
-  document.getElementById('pd-location').value = item.location || '';
+  buildLocationSelect(item.location || '');
   document.getElementById('pd-qty').value = item.quantity;
   document.getElementById('pd-unit').value = item.unit || 'pcs';
   document.getElementById('pd-value').value = item.value || '';
@@ -835,7 +967,7 @@ async function saveItem() {
     name,
     category:    document.getElementById('pd-category').value,
     condition:   document.getElementById('pd-condition').value,
-    location:    document.getElementById('pd-location').value.trim(),
+    location:    (() => { const v = document.getElementById('pd-location').value; return v === '__new__' ? '' : v; })(),
     quantity:    Number(document.getElementById('pd-qty').value) || 1,
     unit:        document.getElementById('pd-unit').value,
     value:       Number(document.getElementById('pd-value').value) || 0,
@@ -1064,6 +1196,9 @@ function openUserModal() {
   document.getElementById('cur-pw').value = '';
   document.getElementById('new-pw').value = '';
   document.getElementById('pw-msg').textContent = '';
+  document.getElementById('loc-manage-input').value = '';
+  document.getElementById('loc-msg').textContent = '';
+  renderLocManageList();
   document.getElementById('user-modal').classList.add('open');
 }
 function closeUserModal() { document.getElementById('user-modal').classList.remove('open'); }

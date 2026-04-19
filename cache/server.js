@@ -32,6 +32,14 @@ db.exec(`
     created_at     INTEGER DEFAULT (strftime('%s','now'))
   );
 
+  CREATE TABLE IF NOT EXISTS locations (
+    id      INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id INTEGER NOT NULL,
+    name    TEXT NOT NULL,
+    UNIQUE(user_id, name),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+
   CREATE TABLE IF NOT EXISTS items (
     id          INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id     INTEGER NOT NULL,
@@ -334,6 +342,29 @@ body{background:#080c09;color:#b4e8b0;font-family:'Share Tech Mono',monospace;mi
 <div class="footer">CACHE // INVENTORY SYSTEM</div>
 </body>
 </html>`);
+});
+
+// ── Locations ─────────────────────────────────────────────────────────────────
+app.get('/api/locations', verifyToken, (req, res) => {
+  const rows = db.prepare('SELECT id, name FROM locations WHERE user_id = ? ORDER BY name').all(req.user.userId);
+  res.json(rows);
+});
+
+app.post('/api/locations', verifyToken, (req, res) => {
+  const { name } = req.body || {};
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Name required' });
+  try {
+    db.prepare('INSERT INTO locations (user_id, name) VALUES (?, ?)').run([req.user.userId, name.trim()]);
+    const row = db.prepare('SELECT id, name FROM locations WHERE user_id = ? AND name = ?').get([req.user.userId, name.trim()]);
+    res.status(201).json(row);
+  } catch {
+    res.status(409).json({ error: 'Location already exists' });
+  }
+});
+
+app.delete('/api/locations/:id', verifyToken, (req, res) => {
+  db.prepare('DELETE FROM locations WHERE id = ? AND user_id = ?').run([Number(req.params.id), req.user.userId]);
+  res.json({ ok: true });
 });
 
 // ── Account ───────────────────────────────────────────────────────────────────
