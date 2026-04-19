@@ -46,13 +46,31 @@ header > span { font-family: 'DM Mono', monospace; font-size: 10px; color: #5a4f
 main { max-width: 980px; margin: 0 auto; padding: 28px 24px 80px; transition: padding-right 0.35s ease; }
 body.panel-open main { padding-right: calc(var(--panel-w) + 28px); }
 
+/* ── INSTALL BANNER ── */
+.install-hero { display: none; background: linear-gradient(135deg, var(--ink) 0%, #2d1f0e 100%); border-radius: 4px; padding: 28px 24px; margin-bottom: 16px; text-align: center; position: relative; }
+.install-hero.show { display: block; }
+.install-hero-title { font-family: 'Playfair Display', serif; font-size: 20px; color: var(--bg); margin-bottom: 6px; }
+.install-hero-sub { font-size: 13px; color: #8a7a6a; margin-bottom: 20px; }
+.btn-install-hero { display: inline-flex; align-items: center; gap: 10px; background: var(--accent); color: white; border: none; border-radius: 3px; padding: 14px 36px; font-family: 'DM Mono', monospace; font-size: 14px; letter-spacing: 1px; cursor: pointer; transition: background 0.15s, transform 0.1s; font-weight: 500; }
+.btn-install-hero:hover { background: #a33408; transform: translateY(-1px); }
+.btn-install-hero:active { transform: translateY(0); }
+.install-hero-dismiss { position: absolute; top: 10px; right: 12px; background: none; border: none; color: #5a4a3a; font-size: 18px; cursor: pointer; line-height: 1; padding: 4px; }
+.install-hero-dismiss:hover { color: var(--bg); }
+
 /* ── TOOLBAR ── */
-.toolbar { display: flex; flex-wrap: wrap; align-items: center; background: var(--paper); border: 1.5px solid var(--rule); border-radius: 2px; padding: 7px 10px; gap: 6px; margin-bottom: 0; }
+.toolbar { background: var(--paper); border: 1.5px solid var(--rule); border-radius: 2px 2px 0 0; padding: 7px 10px; display: flex; align-items: center; gap: 6px; margin-bottom: 0; }
+.filter-row { background: var(--paper); border: 1.5px solid var(--rule); border-top: none; border-radius: 0 0 2px 2px; padding: 6px 10px; display: flex; flex-wrap: wrap; align-items: center; gap: 6px; overflow: hidden; max-height: 0; opacity: 0; transition: max-height 0.3s ease, opacity 0.25s ease, padding 0.3s ease; padding-top: 0; padding-bottom: 0; }
+.filter-row.open { max-height: 100px; opacity: 1; padding-top: 6px; padding-bottom: 6px; }
 .toolbar-sep { width: 1px; background: var(--rule); height: 20px; margin: 0 2px; }
 .filter-label { font-family: 'DM Mono', monospace; font-size: 10px; letter-spacing: 2px; text-transform: uppercase; color: var(--muted); }
 .filter-btn { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.5px; border: 1.5px solid transparent; background: transparent; color: var(--muted); border-radius: 2px; padding: 4px 10px; cursor: pointer; transition: all 0.15s; }
 .filter-btn:hover { background: var(--bg); color: var(--ink); }
 .filter-btn.active { background: var(--ink); color: var(--bg); }
+.btn-filter-toggle { font-family: 'DM Mono', monospace; font-size: 11px; letter-spacing: 0.5px; border: 1.5px solid var(--rule); background: transparent; color: var(--muted); border-radius: 2px; padding: 4px 10px; cursor: pointer; transition: all 0.15s; display: flex; align-items: center; gap: 5px; }
+.btn-filter-toggle:hover { border-color: var(--accent); color: var(--accent); }
+.btn-filter-toggle.active { border-color: var(--accent); color: var(--accent); background: var(--accent-light); }
+.filter-toggle-chevron { display: inline-block; transition: transform 0.25s ease; font-size: 10px; }
+.btn-filter-toggle.active .filter-toggle-chevron { transform: rotate(180deg); }
 .sort-select { font-family: 'DM Mono', monospace; font-size: 11px; background: transparent; border: 1.5px solid var(--rule); border-radius: 2px; padding: 4px 8px; color: var(--muted); outline: none; cursor: pointer; }
 .sort-select:focus { border-color: var(--accent); }
 .ml-auto { margin-left: auto; }
@@ -1070,12 +1088,31 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
 <!-- ══ MAIN ══ -->
 <main>
 
-  <!-- Toolbar with integrated + New button -->
+  <!-- Install hero banner (shown only when PWA installable) -->
+  <div class="install-hero" id="install-banner">
+    <button class="install-hero-dismiss" id="btn-install-dismiss" title="Dismiss">✕</button>
+    <div class="install-hero-title">Install Honey-Do on Your Device</div>
+    <div class="install-hero-sub">Add to your home screen for quick access — works offline too.</div>
+    <button class="btn-install-hero" id="btn-install-hero">⬇ Install App</button>
+  </div>
+
+  <!-- Toolbar -->
   <div class="toolbar">
     <button class="btn-new-project" id="btn-new-project" onclick="toggleAddForm()">
       <span class="btn-new-plus" id="btn-new-plus">+</span> New Project
     </button>
     <div class="toolbar-sep"></div>
+    <button class="btn-filter-toggle" id="btn-filter-toggle">
+      <span>Filters</span><span class="filter-toggle-chevron">▾</span>
+    </button>
+    <div class="toolbar-sep ml-auto"></div>
+    <button class="btn-contractors-toolbar" onclick="openContractorManager()">🔨 Contractors</button>
+    <button class="btn-contractors-toolbar" onclick="openStats()">📊 Stats</button>
+    <button class="btn-contractors-toolbar" onclick="printAllProjects()">🖨 Print</button>
+  </div>
+
+  <!-- Collapsible filter row (collapsed by default) -->
+  <div class="filter-row" id="filter-row">
     <span class="filter-label">Filter:</span>
     <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
     <button class="filter-btn" onclick="setFilter('todo',this)">To-Do</button>
@@ -1087,7 +1124,7 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
     <button class="filter-btn" onclick="setFilter('low',this)">🟢 Low</button>
     <button class="filter-btn" onclick="setFilter('overdue',this)">⚠ Overdue</button>
     <button class="filter-btn" onclick="setFilter('soon',this)">⏰ Due Soon</button>
-    <div class="toolbar-sep ml-auto"></div>
+    <div class="toolbar-sep"></div>
     <span class="filter-label">Category:</span>
     <select class="sort-select" id="cat-filter" onchange="setCatFilter(this.value)">
       <option value="">All</option>
@@ -1108,10 +1145,6 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
       <option value="modified">Last Modified</option>
       <option value="name">Name A→Z</option>
     </select>
-    <div class="toolbar-sep"></div>
-    <button class="btn-contractors-toolbar" onclick="openContractorManager()">🔨 Contractors</button>
-    <button class="btn-contractors-toolbar" onclick="openStats()">📊 Stats</button>
-    <button class="btn-contractors-toolbar" onclick="printAllProjects()">🖨 Print</button>
   </div>
   <!-- Search bar -->
   <div class="search-wrap">
@@ -2648,6 +2681,21 @@ async function init() {
     navigator.serviceWorker.register('/sw.js').catch(() => {});
   }
 
+  // Capture PWA install prompt
+  window.addEventListener('beforeinstallprompt', e => {
+    e.preventDefault();
+    deferredInstallPrompt = e;
+    if (!localStorage.getItem('homeworks_install_dismissed')) {
+      document.getElementById('install-banner').classList.add('show');
+    }
+  });
+
+  // Restore filter panel state (collapsed by default)
+  if (localStorage.getItem('homeworks_filters_open') === '1') {
+    document.getElementById('filter-row').classList.add('open');
+    document.getElementById('btn-filter-toggle').classList.add('active');
+  }
+
 const token = localStorage.getItem('homeworks_token');
   if (!token) { showAuthScreen(); return; }
 
@@ -2675,6 +2723,33 @@ init();
 // ── State ─────────────────────────────────────────────────────────────────────
 let currentSearch = '';
 let onboardStep = 0;
+let deferredInstallPrompt = null;
+
+// ── Filters toggle ────────────────────────────────────────────────────────────
+function toggleFilters() {
+  const row = document.getElementById('filter-row');
+  const btn = document.getElementById('btn-filter-toggle');
+  const open = row.classList.toggle('open');
+  btn.classList.toggle('active', open);
+  localStorage.setItem('homeworks_filters_open', open ? '1' : '0');
+}
+
+// ── PWA Install ───────────────────────────────────────────────────────────────
+async function installPWA() {
+  if (!deferredInstallPrompt) return;
+  deferredInstallPrompt.prompt();
+  const { outcome } = await deferredInstallPrompt.userChoice;
+  deferredInstallPrompt = null;
+  document.getElementById('install-banner').classList.remove('show');
+}
+
+// Wire filter toggle and install buttons
+document.getElementById('btn-filter-toggle').addEventListener('click', toggleFilters);
+document.getElementById('btn-install-hero').addEventListener('click', installPWA);
+document.getElementById('btn-install-dismiss').addEventListener('click', () => {
+  document.getElementById('install-banner').classList.remove('show');
+  localStorage.setItem('homeworks_install_dismissed', '1');
+});
 
 // ── Search ────────────────────────────────────────────────────────────────────
 function setSearch(val) {
