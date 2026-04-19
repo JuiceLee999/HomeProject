@@ -1055,7 +1055,7 @@ function openPanel(id) {
 
   // Show QR
   document.getElementById('panel-qr-section').style.display = '';
-  document.getElementById('panel-qr-img').src = `/api/items/${id}/qr?t=${Date.now()}`;
+  loadQRInto(document.getElementById('panel-qr-img'), id);
   document.getElementById('btn-qr-panel').style.display = '';
   document.getElementById('btn-delete-item').style.display = '';
 
@@ -1103,7 +1103,7 @@ async function saveItem() {
       panelMode = 'edit';
       document.getElementById('panel-mode-label').innerHTML = `<span>▌</span> EDIT #${String(saved.id).padStart(4,'0')}`;
       document.getElementById('panel-qr-section').style.display = '';
-      document.getElementById('panel-qr-img').src = `/api/items/${saved.id}/qr?t=${Date.now()}`;
+      loadQRInto(document.getElementById('panel-qr-img'), saved.id);
       document.getElementById('btn-qr-panel').style.display = '';
       document.getElementById('btn-delete-item').style.display = '';
     } else {
@@ -1164,13 +1164,29 @@ function tagKeydown(e) {
 }
 
 // ── QR Code ───────────────────────────────────────────────────────────────────
+async function loadQRInto(imgEl, itemId) {
+  imgEl.src = '';
+  try {
+    const res = await fetch(`/api/items/${itemId}/qr`, {
+      headers: { 'Authorization': `Bearer ${token}` }
+    });
+    if (!res.ok) return;
+    const blob = await res.blob();
+    const prev = imgEl.dataset.blobUrl;
+    if (prev) URL.revokeObjectURL(prev);
+    const url = URL.createObjectURL(blob);
+    imgEl.dataset.blobUrl = url;
+    imgEl.src = url;
+  } catch {}
+}
+
 function showQR(itemId) {
   const item = items.find(i => i.id === itemId);
   if (!item) return;
   qrItemId = itemId;
   document.getElementById('qr-name').textContent = item.name;
   document.getElementById('qr-loc').textContent = item.location ? '⊹ ' + item.location : '';
-  document.getElementById('qr-img').src = `/api/items/${itemId}/qr?t=${Date.now()}`;
+  loadQRInto(document.getElementById('qr-img'), itemId);
   document.getElementById('qr-modal').classList.add('open');
 }
 
@@ -1183,27 +1199,35 @@ function closeQR() {
   qrItemId = null;
 }
 
-function printQRLabel() {
+async function printQRLabel() {
   const item = items.find(i => i.id === qrItemId);
   if (!item) return;
-  const qrSrc = `/api/items/${qrItemId}/qr?t=${Date.now()}`;
+  let qrHtml = '<div style="width:200px;height:200px;margin:0 auto 10px;background:#eee"></div>';
+  try {
+    const res = await fetch(`/api/items/${qrItemId}/qr`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (res.ok) {
+      const svg = await res.text();
+      qrHtml = `<div style="width:200px;height:200px;margin:0 auto 10px">${svg}</div>`;
+    }
+  } catch {}
   const win = window.open('', '_blank', 'width=400,height=500');
   win.document.write(`<!DOCTYPE html><html><head>
     <title>CACHE Label — ${item.name}</title>
     <style>
       body{margin:0;padding:20px;font-family:monospace;background:#fff;color:#000;text-align:center}
-      img{width:200px;height:200px;display:block;margin:0 auto 10px}
+      svg{width:200px;height:200px;display:block;margin:0 auto}
       .name{font-size:16px;font-weight:bold;letter-spacing:1px;margin-bottom:4px}
       .loc{font-size:11px;color:#555;margin-bottom:4px;letter-spacing:1px}
       .meta{font-size:10px;color:#888;letter-spacing:1px}
       @media print{body{padding:8px}}
     </style>
   </head><body>
-    <img src="${qrSrc}" onload="window.print()" />
+    ${qrHtml}
     <div class="name">${item.name}</div>
     ${item.location ? `<div class="loc">⊹ ${item.location}</div>` : ''}
     <div class="meta">${item.quantity} ${item.unit}${item.brand ? ' · ' + item.brand : ''}</div>
     <div class="meta" style="color:#aaa;font-size:9px;margin-top:6px">CACHE #${String(item.id).padStart(4,'0')}</div>
+    <script>window.print();<\/script>
   </body></html>`);
   win.document.close();
 }
