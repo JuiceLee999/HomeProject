@@ -58,17 +58,19 @@ body.panel-open main { padding-right: calc(var(--panel-w) + 28px); }
 .ml-auto { margin-left: auto; }
 
 /* ── NEW PROJECT BUTTON ── */
+.new-project-hero { display: flex; justify-content: center; padding: 20px 0 16px; }
 .btn-new-project {
-  display: flex; align-items: center; gap: 7px;
-  background: var(--accent); color: white; border: none; border-radius: 2px;
-  padding: 5px 14px; font-family: 'DM Mono', monospace; font-size: 12px;
-  letter-spacing: 0.5px; cursor: pointer; transition: background 0.15s, transform 0.1s;
-  white-space: nowrap; flex-shrink: 0;
+  display: flex; align-items: center; gap: 10px;
+  background: var(--accent); color: white; border: none; border-radius: 3px;
+  padding: 14px 36px; font-family: 'DM Mono', monospace; font-size: 15px;
+  letter-spacing: 1px; cursor: pointer; transition: background 0.15s, transform 0.1s, box-shadow 0.15s;
+  white-space: nowrap; flex-shrink: 0; box-shadow: 0 2px 8px rgba(200,68,10,0.25);
 }
-.btn-new-project:hover { background: #a33408; }
-.btn-new-project.open { background: var(--ink); }
+.btn-new-project:hover { background: #a33408; transform: translateY(-1px); box-shadow: 0 4px 14px rgba(200,68,10,0.35); }
+.btn-new-project:active { transform: translateY(0); }
+.btn-new-project.open { background: var(--ink); box-shadow: none; }
 .btn-new-plus {
-  display: inline-block; font-size: 16px; line-height: 1;
+  display: inline-block; font-size: 20px; line-height: 1;
   transition: transform 0.2s ease;
 }
 .btn-new-project.open .btn-new-plus { transform: rotate(45deg); }
@@ -339,7 +341,7 @@ body.dark {
 }
 body.dark header,
 body.dark .panel-header { background: #0f0c08; }
-body.dark .btn-new-project.open { background: #2a2218; }
+body.dark .btn-new-project.open { background: #2a2218; box-shadow: none; }
 body.dark .project-card.selected { background: #2a241c; box-shadow: 3px 3px 0 var(--accent-light); }
 body.dark .tag-tasks { background: #2a2520; color: #9ca3af; }
 body.dark .tag-someday { background: #1e1a30; color: #a78bfa; }
@@ -1070,13 +1072,16 @@ mark { background: var(--yellow-light); color: var(--ink); border-radius: 1px; p
 <!-- ══ MAIN ══ -->
 <main>
 
-  <!-- Toolbar with integrated + New button -->
-  <div class="toolbar">
+  <!-- New Project button — centered above toolbar -->
+  <div class="new-project-hero">
     <button class="btn-new-project" id="btn-new-project" onclick="toggleAddForm()">
       <span class="btn-new-plus" id="btn-new-plus">+</span> New Project
     </button>
-    <div class="toolbar-sep"></div>
-    <span class="filter-label">Filter:</span>
+  </div>
+
+  <!-- Toolbar -->
+  <div class="toolbar">
+    <span class="filter-label" style="margin-right:2px">Filter:</span>
     <button class="filter-btn active" onclick="setFilter('all',this)">All</button>
     <button class="filter-btn" onclick="setFilter('todo',this)">To-Do</button>
     <button class="filter-btn" onclick="setFilter('someday',this)">Someday</button>
