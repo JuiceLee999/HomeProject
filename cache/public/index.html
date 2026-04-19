@@ -600,6 +600,7 @@ body.panel-open .detail-panel { transform: translateX(0); }
   </div>
   <div class="panel-footer">
     <button class="btn-show-qr-panel" id="btn-qr-panel" style="display:none" onclick="panelShowQR()">⊡ QR</button>
+    <button class="btn-show-qr-panel" id="btn-duplicate" style="display:none" onclick="duplicateCurrentItem()" title="Duplicate item">⧉</button>
     <button class="btn-save" onclick="panelSave()">SAVE →</button>
     <span class="save-flash" id="save-flash">✓ SAVED</span>
     <button class="btn-delete-item" id="btn-delete-item" style="display:none" onclick="deleteCurrentItem()">🗑</button>
@@ -1135,6 +1136,7 @@ function openAddListPanel() {
   document.getElementById('picker-search').value = '';
   document.getElementById('list-qr-section').style.display = 'none';
   document.getElementById('btn-qr-panel').style.display = 'none';
+  document.getElementById('btn-duplicate').style.display = 'none';
   document.getElementById('btn-delete-list').style.display = 'none';
   document.getElementById('btn-delete-item').style.display = 'none';
   document.getElementById('list-panel-body').style.display = 'flex';
@@ -1156,6 +1158,7 @@ function openListPanel(id) {
   document.getElementById('picker-search').value = '';
   document.getElementById('list-qr-section').style.display = '';
   document.getElementById('btn-qr-panel').style.display = '';
+  document.getElementById('btn-duplicate').style.display = 'none';
   document.getElementById('btn-delete-list').style.display = '';
   document.getElementById('btn-delete-item').style.display = 'none';
   document.getElementById('list-panel-body').style.display = 'flex';
@@ -1282,6 +1285,7 @@ function openAddPanel() {
   document.getElementById('tag-input').value = '';
   document.getElementById('panel-qr-section').style.display = 'none';
   document.getElementById('btn-qr-panel').style.display = 'none';
+  document.getElementById('btn-duplicate').style.display = 'none';
   document.getElementById('btn-delete-item').style.display = 'none';
   document.getElementById('btn-delete-list').style.display = 'none';
   document.getElementById('item-panel-body').style.display = 'flex';
@@ -1317,6 +1321,7 @@ function openPanel(id) {
   document.getElementById('panel-qr-section').style.display = '';
   loadQRInto(document.getElementById('panel-qr-img'), id, 'item');
   document.getElementById('btn-qr-panel').style.display = '';
+  document.getElementById('btn-duplicate').style.display = '';
   document.getElementById('btn-delete-item').style.display = '';
   document.getElementById('btn-delete-list').style.display = 'none';
   document.getElementById('item-panel-body').style.display = 'flex';
@@ -1367,6 +1372,7 @@ async function saveItem() {
       document.getElementById('panel-qr-section').style.display = '';
       loadQRInto(document.getElementById('panel-qr-img'), saved.id, 'item');
       document.getElementById('btn-qr-panel').style.display = '';
+      document.getElementById('btn-duplicate').style.display = '';
       document.getElementById('btn-delete-item').style.display = '';
     } else {
       saved = await api('PUT', `/api/items/${openItemId}`, body);
@@ -1391,6 +1397,33 @@ async function deleteCurrentItem() {
   } catch (e) {
     alert('Delete failed: ' + e.message);
   }
+}
+
+async function duplicateCurrentItem() {
+  if (!openItemId) return;
+  const item = items.find(i => i.id === openItemId);
+  if (!item) return;
+  try {
+    const body = {
+      name:        item.name + ' (copy)',
+      category:    item.category,
+      condition:   item.condition,
+      location:    item.location,
+      quantity:    item.quantity,
+      unit:        item.unit,
+      value:       item.value,
+      brand:       item.brand,
+      model:       item.model,
+      serial:      '',
+      description: item.description,
+      notes:       item.notes,
+      tags:        Array.isArray(item.tags) ? [...item.tags] : [],
+    };
+    const saved = await api('POST', '/api/items', body);
+    items.unshift(saved);
+    render();
+    openPanel(saved.id);
+  } catch (e) { alert('Duplicate failed: ' + e.message); }
 }
 
 function flashSaved() {
