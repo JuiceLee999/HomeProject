@@ -226,6 +226,31 @@ body.panel-open .detail-panel { transform: translateX(0); }
 .user-modal-msg.ok  { color: var(--accent); }
 .user-modal-msg.err { color: var(--red); }
 
+/* ── TOOLTIPS ── */
+[data-tip] { position: relative; }
+[data-tip]::after {
+  content: attr(data-tip);
+  position: absolute;
+  bottom: calc(100% + 8px);
+  left: 50%;
+  transform: translateX(-50%);
+  background: #050807;
+  color: var(--ink);
+  border: 1px solid var(--accent);
+  font-family: 'Share Tech Mono', monospace;
+  font-size: 10px;
+  letter-spacing: 1px;
+  padding: 4px 10px;
+  white-space: nowrap;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.15s;
+  z-index: 9999;
+}
+[data-tip]:hover::after { opacity: 1; }
+[data-tip][data-tip-dir="below"]::after { bottom: auto; top: calc(100% + 8px); }
+[data-tip][data-tip-dir="left"]::after { left: auto; right: 0; transform: none; }
+
 /* ── VIEW TOGGLE ── */
 .view-toggle { display: flex; margin-bottom: 12px; }
 .view-btn { background: none; border: 1px solid var(--rule); color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; padding: 6px 22px; cursor: pointer; transition: all 0.15s; }
@@ -307,8 +332,8 @@ body.panel-open .detail-panel { transform: translateX(0); }
       <img id="qr-img" src="" alt="QR Code" />
     </div>
     <div class="qr-modal-actions">
-      <button class="btn-qr-print" onclick="printQRLabel()">⬡ PRINT LABEL</button>
-      <button class="btn-qr-close" onclick="closeQR()">CLOSE</button>
+      <button class="btn-qr-print" onclick="printQRLabel()" data-tip="Print Label">⬡ PRINT LABEL</button>
+      <button class="btn-qr-close" onclick="closeQR()" data-tip="Close">CLOSE</button>
     </div>
   </div>
 </div>
@@ -318,7 +343,7 @@ body.panel-open .detail-panel { transform: translateX(0); }
   <div class="scanner-modal" onclick="event.stopPropagation()">
     <div class="scanner-header">
       <span class="scanner-title">▌ QR SCAN</span>
-      <button class="btn-icon" onclick="closeScanner()">✕</button>
+      <button class="btn-icon" onclick="closeScanner()" data-tip="Close Scanner" data-tip-dir="below">✕</button>
     </div>
     <div class="scanner-viewport">
       <video id="scanner-video" autoplay playsinline muted></video>
@@ -387,8 +412,8 @@ body.panel-open .detail-panel { transform: translateX(0); }
     <div class="hstat">LOCS <strong id="hs-locs">0</strong></div>
   </div>
   <div class="header-right">
-    <button class="btn-scan-header" onclick="openScanner()">⊹ SCAN QR</button>
-    <button class="btn-icon" title="Account" onclick="openUserModal()">⚙</button>
+    <button class="btn-scan-header" onclick="openScanner()" data-tip="Scan QR Code" data-tip-dir="below">⊹ SCAN QR</button>
+    <button class="btn-icon" onclick="openUserModal()" data-tip="Account &amp; Settings" data-tip-dir="below">⚙</button>
   </div>
 </header>
 
@@ -405,7 +430,7 @@ body.panel-open .detail-panel { transform: translateX(0); }
   <div class="search-bar" id="items-search">
     <span class="search-prompt">&gt;_</span>
     <input class="search-input" id="search-input" placeholder="search items..." oninput="setSearch(this.value)" />
-    <button class="search-clear" id="search-clear" style="display:none" onclick="clearSearch()">✕</button>
+    <button class="search-clear" id="search-clear" style="display:none" onclick="clearSearch()" data-tip="Clear Search" data-tip-dir="below">✕</button>
   </div>
 
   <!-- Filter bar (items only) -->
@@ -446,7 +471,7 @@ body.panel-open .detail-panel { transform: translateX(0); }
 <div class="detail-panel" id="detail-panel">
   <div class="panel-header">
     <span class="panel-header-title" id="panel-mode-label"><span>▌</span> ADD ITEM</span>
-    <button class="btn-close-panel" id="btn-close-panel">✕</button>
+    <button class="btn-close-panel" id="btn-close-panel" data-tip="Close" data-tip-dir="below">✕</button>
   </div>
   <!-- List panel body -->
   <div class="panel-body" id="list-panel-body" style="display:none">
@@ -599,17 +624,17 @@ body.panel-open .detail-panel { transform: translateX(0); }
 
   </div>
   <div class="panel-footer">
-    <button class="btn-show-qr-panel" id="btn-qr-panel" style="display:none" onclick="panelShowQR()">⊡ QR</button>
-    <button class="btn-show-qr-panel" id="btn-duplicate" style="display:none" onclick="duplicateCurrentItem()" title="Duplicate item">⧉</button>
-    <button class="btn-save" onclick="panelSave()">SAVE →</button>
+    <button class="btn-show-qr-panel" id="btn-qr-panel" style="display:none" onclick="panelShowQR()" data-tip="Show QR Code">⊡ QR</button>
+    <button class="btn-show-qr-panel" id="btn-duplicate" style="display:none" onclick="duplicateCurrentItem()" data-tip="Duplicate Item">⧉</button>
+    <button class="btn-save" onclick="panelSave()" data-tip="Save Changes">SAVE →</button>
     <span class="save-flash" id="save-flash">✓ SAVED</span>
-    <button class="btn-delete-item" id="btn-delete-item" style="display:none" onclick="deleteCurrentItem()">🗑</button>
-    <button class="btn-delete-item" id="btn-delete-list" style="display:none" onclick="deleteCurrentList()">🗑</button>
+    <button class="btn-delete-item" id="btn-delete-item" style="display:none" onclick="deleteCurrentItem()" data-tip="Delete Item">🗑</button>
+    <button class="btn-delete-item" id="btn-delete-list" style="display:none" onclick="deleteCurrentList()" data-tip="Delete List">🗑</button>
   </div>
 </div>
 
 <!-- ══ FAB ══ -->
-<button class="fab" id="fab" title="Add item">+</button>
+<button class="fab" id="fab" data-tip="Add Item" data-tip-dir="below">+</button>
 
 <script src="/lib/jsqr.js"></script>
 <script>
@@ -1091,7 +1116,7 @@ function setView(v) {
   document.getElementById('items-filter-bar').style.display    = v === 'items' ? '' : 'none';
   document.getElementById('item-grid').style.display           = v === 'items' ? '' : 'none';
   document.getElementById('list-grid').style.display           = v === 'lists' ? '' : 'none';
-  document.getElementById('fab').title = v === 'lists' ? 'New list' : 'Add item';
+  document.getElementById('fab').dataset.tip = v === 'lists' ? 'New List' : 'Add Item';
   closePanel();
 }
 
