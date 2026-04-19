@@ -2702,8 +2702,8 @@ const token = localStorage.getItem('homeworks_token');
     setTimeout(() => openWhatsNew(), 800);
   }
 
-  // Restore filter panel open/closed state (default: collapsed)
-  if (localStorage.getItem('homeworks_filters_open') === '1') {
+  // Restore filter panel open/closed state (default: open)
+  if (localStorage.getItem('homeworks_filters_open') !== '0') {
     document.getElementById('filter-panel').classList.add('open');
     document.getElementById('btn-filter-toggle').classList.add('open');
   }
