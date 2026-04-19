@@ -15,7 +15,7 @@ echo "==> Pushing main to GitHub..."
 git push origin main
 
 echo "==> Deploying CACHE to production ($PROD_HOST)..."
-ssh "$PROD_USER@$PROD_HOST" "bash /var/www/HomeProject/cache/scripts/deploy.sh"
+ssh "$PROD_USER@$PROD_HOST" "cd /var/www/HomeProject && git pull origin main && bash cache/scripts/deploy.sh"
 
 echo "==> Switching back to dev..."
 git checkout dev
