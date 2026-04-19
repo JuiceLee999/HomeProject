@@ -324,6 +324,14 @@ body.panel-open .detail-panel { transform: translateX(0); }
         <input type="file" accept=".json" style="display:none" onchange="importData(this)">
       </label>
       <div style="height:1px;background:var(--rule);margin:4px -16px"></div>
+      <div style="font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:2px;margin-top:4px">CATEGORIES</div>
+      <div id="cat-manage-list" style="display:flex;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto"></div>
+      <div style="display:flex;gap:6px;margin-top:4px">
+        <input class="tag-input" id="cat-manage-input" placeholder="New category..." style="flex:1" onkeydown="catManageKeydown(event)" />
+        <button class="btn-tag-add" onclick="addCategoryFromManage()">ADD</button>
+      </div>
+      <div class="user-modal-msg" id="cat-msg"></div>
+      <div style="height:1px;background:var(--rule);margin:4px -16px"></div>
       <div style="font-size:9px;letter-spacing:2px;color:var(--muted);margin-bottom:2px;margin-top:4px">LOCATIONS</div>
       <div id="loc-manage-list" style="display:flex;flex-direction:column;gap:4px;max-height:140px;overflow-y:auto"></div>
       <div style="display:flex;gap:6px;margin-top:4px">
@@ -410,25 +418,15 @@ body.panel-open .detail-panel { transform: translateX(0); }
     <div class="panel-row">
       <div class="panel-field">
         <label>CATEGORY</label>
-        <select id="pd-category">
+        <select id="pd-category" onchange="handleCatSelect(this)">
           <option value="">— Select —</option>
-          <option>Tools</option>
-          <option>Hardware</option>
-          <option>Electrical</option>
-          <option>Plumbing</option>
-          <option>Automotive</option>
-          <option>Sporting Goods</option>
-          <option>Camping / Outdoor</option>
-          <option>Garden / Lawn</option>
-          <option>Safety Equipment</option>
-          <option>Electronics</option>
-          <option>Appliances</option>
-          <option>Paint / Chemicals</option>
-          <option>Furniture</option>
-          <option>Kitchen</option>
-          <option>Clothing</option>
-          <option>Other</option>
+          <option value="__new__">＋ ADD CATEGORY...</option>
         </select>
+        <div id="cat-new-wrap" style="display:none;margin-top:6px;gap:6px;align-items:center">
+          <input class="tag-input" id="cat-new-input" placeholder="e.g. Tools" style="flex:1" onkeydown="catNewKeydown(event)" />
+          <button class="btn-tag-add" onclick="saveNewCategory()">ADD</button>
+          <button class="btn-tag-add" onclick="cancelNewCategory()" style="border-color:var(--red);color:var(--red)">✕</button>
+        </div>
       </div>
       <div class="panel-field">
         <label>CONDITION</label>
@@ -554,7 +552,9 @@ let token = localStorage.getItem('cache_token') || '';
 let currentUserEmail = '';
 let items = [];
 let customLocations = []; // [{id, name}]
+let customCategories = []; // [{id, name}]
 let prevLocValue = '';
+let prevCatValue = '';
 let currentSearch = '';
 let currentFilter = 'all';
 let currentCatFilter = '';
@@ -577,6 +577,120 @@ async function api(method, path, body) {
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
+}
+
+// ── Categories ────────────────────────────────────────────────────────────────
+async function loadCategories() {
+  try { customCategories = await api('GET', '/api/categories'); } catch {}
+}
+
+function allCatNames() {
+  const fromItems = items.map(i => i.category).filter(Boolean);
+  const fromCustom = customCategories.map(c => c.name);
+  return [...new Set([...fromCustom, ...fromItems])].sort();
+}
+
+function buildCategorySelect(selectedVal) {
+  const sel = document.getElementById('pd-category');
+  const cats = allCatNames();
+  sel.innerHTML =
+    '<option value="">— Select —</option>' +
+    cats.map(c => `<option value="${escHtml(c)}"${c === selectedVal ? ' selected' : ''}>${escHtml(c)}</option>`).join('') +
+    '<option value="__new__">＋ ADD CATEGORY...</option>';
+  if (selectedVal && !cats.includes(selectedVal)) {
+    const opt = document.createElement('option');
+    opt.value = selectedVal;
+    opt.textContent = selectedVal;
+    opt.selected = true;
+    sel.insertBefore(opt, sel.lastElementChild);
+  }
+  document.getElementById('cat-new-wrap').style.display = 'none';
+}
+
+function handleCatSelect(sel) {
+  if (sel.value === '__new__') {
+    prevCatValue = '';
+    document.getElementById('cat-new-wrap').style.display = 'flex';
+    document.getElementById('cat-new-input').value = '';
+    setTimeout(() => document.getElementById('cat-new-input').focus(), 50);
+  }
+}
+
+async function saveNewCategory() {
+  const input = document.getElementById('cat-new-input');
+  const name = input.value.trim();
+  if (!name) return;
+  try {
+    const cat = await api('POST', '/api/categories', { name });
+    if (!customCategories.find(c => c.id === cat.id)) customCategories.push(cat);
+    buildCategorySelect(cat.name);
+    renderCatManageList();
+    updateFilterSelects();
+  } catch {
+    buildCategorySelect(name);
+  }
+  input.value = '';
+}
+
+function cancelNewCategory() {
+  buildCategorySelect(prevCatValue);
+}
+
+function catNewKeydown(e) {
+  if (e.key === 'Enter') { e.preventDefault(); saveNewCategory(); }
+  if (e.key === 'Escape') cancelNewCategory();
+}
+
+// ── Category manage (in user modal) ──────────────────────────────────────────
+function renderCatManageList() {
+  const list = document.getElementById('cat-manage-list');
+  if (!customCategories.length) {
+    list.innerHTML = '<div style="font-size:10px;color:var(--muted);letter-spacing:1px;padding:4px 0">NO CUSTOM CATEGORIES YET</div>';
+    return;
+  }
+  list.innerHTML = customCategories
+    .slice().sort((a,b) => a.name.localeCompare(b.name))
+    .map(c => `
+      <div style="display:flex;align-items:center;gap:6px;padding:4px 0;border-bottom:1px solid var(--rule)">
+        <span style="flex:1;font-size:11px;letter-spacing:1px;color:var(--ink)">${escHtml(c.name)}</span>
+        <button onclick="deleteCategory(${c.id})" style="background:none;border:1px solid var(--rule);color:var(--muted);font-family:'Share Tech Mono',monospace;font-size:10px;padding:2px 8px;cursor:pointer;transition:all 0.15s" onmouseover="this.style.borderColor='var(--red)';this.style.color='var(--red)'" onmouseout="this.style.borderColor='var(--rule)';this.style.color='var(--muted)'">✕</button>
+      </div>`).join('');
+}
+
+async function deleteCategory(id) {
+  try {
+    await api('DELETE', `/api/categories/${id}`);
+    customCategories = customCategories.filter(c => c.id !== id);
+    renderCatManageList();
+    updateFilterSelects();
+  } catch (e) {
+    const msg = document.getElementById('cat-msg');
+    msg.textContent = e.message; msg.className = 'user-modal-msg err';
+    setTimeout(() => msg.textContent = '', 2500);
+  }
+}
+
+async function addCategoryFromManage() {
+  const input = document.getElementById('cat-manage-input');
+  const msg = document.getElementById('cat-msg');
+  const name = input.value.trim();
+  if (!name) return;
+  try {
+    const cat = await api('POST', '/api/categories', { name });
+    if (!customCategories.find(c => c.id === cat.id)) customCategories.push(cat);
+    input.value = '';
+    msg.textContent = '✓ Added.'; msg.className = 'user-modal-msg ok';
+    setTimeout(() => msg.textContent = '', 2000);
+    renderCatManageList();
+    updateFilterSelects();
+  } catch (e) {
+    msg.textContent = e.message; msg.className = 'user-modal-msg err';
+    setTimeout(() => msg.textContent = '', 2500);
+  }
+}
+
+function catManageKeydown(e) {
+  if (e.key === 'Enter') { e.preventDefault(); addCategoryFromManage(); }
 }
 
 // ── Locations ─────────────────────────────────────────────────────────────────
@@ -767,9 +881,10 @@ async function doLogout() {
 // ── Load data ─────────────────────────────────────────────────────────────────
 async function loadItems() {
   try {
-    [items, customLocations] = await Promise.all([
+    [items, customLocations, customCategories] = await Promise.all([
       api('GET', '/api/items'),
-      api('GET', '/api/locations').catch(() => [])
+      api('GET', '/api/locations').catch(() => []),
+      api('GET', '/api/categories').catch(() => [])
     ]);
     render();
   } catch (e) {
@@ -797,7 +912,7 @@ function updateHeaderStats() {
 }
 
 function updateFilterSelects() {
-  const cats = [...new Set(items.map(i => i.category).filter(Boolean))].sort();
+  const cats = allCatNames();
   const locs = allLocNames();
 
   const catSel = document.getElementById('cat-filter');
@@ -896,7 +1011,7 @@ function openAddPanel() {
   itemTags = [];
   document.getElementById('panel-mode-label').innerHTML = '<span>▌</span> ADD ITEM';
   document.getElementById('pd-name').value = '';
-  document.getElementById('pd-category').value = '';
+  buildCategorySelect('');
   document.getElementById('pd-condition').value = 'good';
   buildLocationSelect('');
   document.getElementById('pd-qty').value = '1';
@@ -925,7 +1040,7 @@ function openPanel(id) {
 
   document.getElementById('panel-mode-label').innerHTML = `<span>▌</span> EDIT #${String(id).padStart(4,'0')}`;
   document.getElementById('pd-name').value = item.name;
-  document.getElementById('pd-category').value = item.category || '';
+  buildCategorySelect(item.category || '');
   document.getElementById('pd-condition').value = item.condition || 'good';
   buildLocationSelect(item.location || '');
   document.getElementById('pd-qty').value = item.quantity;
@@ -965,7 +1080,7 @@ async function saveItem() {
 
   const body = {
     name,
-    category:    document.getElementById('pd-category').value,
+    category:    (() => { const v = document.getElementById('pd-category').value; return v === '__new__' ? '' : v; })(),
     condition:   document.getElementById('pd-condition').value,
     location:    (() => { const v = document.getElementById('pd-location').value; return v === '__new__' ? '' : v; })(),
     quantity:    Number(document.getElementById('pd-qty').value) || 1,
@@ -1196,8 +1311,11 @@ function openUserModal() {
   document.getElementById('cur-pw').value = '';
   document.getElementById('new-pw').value = '';
   document.getElementById('pw-msg').textContent = '';
+  document.getElementById('cat-manage-input').value = '';
+  document.getElementById('cat-msg').textContent = '';
   document.getElementById('loc-manage-input').value = '';
   document.getElementById('loc-msg').textContent = '';
+  renderCatManageList();
   renderLocManageList();
   document.getElementById('user-modal').classList.add('open');
 }
