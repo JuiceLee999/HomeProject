@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cache-inv-v1.3.0';
+const CACHE_NAME = 'cache-inv-v1.4.0';
 const APP_SHELL = ['/', '/manifest.json'];
 
 self.addEventListener('install', event => {
@@ -23,6 +23,7 @@ self.addEventListener('fetch', event => {
   if (url.pathname.startsWith('/api/')) return;
   if (url.pathname.startsWith('/lib/')) return;
   if (url.pathname.startsWith('/i/')) return;
+  if (url.pathname.startsWith('/l/')) return;
 
   event.respondWith(
     caches.match(event.request).then(cached => {

@@ -226,6 +226,37 @@ body.panel-open .detail-panel { transform: translateX(0); }
 .user-modal-msg.ok  { color: var(--accent); }
 .user-modal-msg.err { color: var(--red); }
 
+/* ── VIEW TOGGLE ── */
+.view-toggle { display: flex; margin-bottom: 12px; }
+.view-btn { background: none; border: 1px solid var(--rule); color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; padding: 6px 22px; cursor: pointer; transition: all 0.15s; }
+.view-btn:first-child { border-right: none; }
+.view-btn.active { background: var(--accent); color: var(--bg); border-color: var(--accent); }
+.view-btn:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+
+/* ── LIST CARDS ── */
+.list-card { background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--blue); padding: 14px; cursor: pointer; transition: border-color 0.15s, transform 0.1s; animation: fadeIn 0.2s ease both; }
+.list-card:hover { border-left-color: var(--accent); transform: translateY(-1px); }
+.list-card.selected { border-left-color: var(--accent); background: #111a12; }
+.list-card-name { font-size: 15px; letter-spacing: 0.5px; color: #e0f8dc; margin-bottom: 3px; }
+.list-card-count { font-size: 10px; color: var(--muted); margin-bottom: 8px; }
+.list-card-desc { font-size: 11px; color: var(--muted); margin-bottom: 8px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.list-card-pills { display: flex; flex-wrap: wrap; gap: 4px; margin-bottom: 10px; }
+.list-pill { font-size: 9px; letter-spacing: 0.5px; padding: 2px 7px; border: 1px solid var(--rule); color: var(--muted); }
+
+/* ── ITEM PICKER ── */
+.picker-search { width: 100%; background: var(--bg); border: 1px solid var(--rule); padding: 7px 10px; font-family: 'Share Tech Mono', monospace; font-size: 11px; color: var(--ink); outline: none; margin-bottom: 6px; }
+.picker-search:focus { border-color: var(--accent); }
+.picker-list { max-height: 220px; overflow-y: auto; border: 1px solid var(--rule); }
+.picker-row { display: flex; align-items: center; gap: 10px; padding: 8px 10px; border-bottom: 1px solid var(--rule); cursor: pointer; transition: background 0.1s; user-select: none; }
+.picker-row:last-child { border-bottom: none; }
+.picker-row:hover { background: var(--accent-dim); }
+.picker-check { width: 14px; height: 14px; border: 1px solid var(--muted); flex-shrink: 0; display: flex; align-items: center; justify-content: center; font-size: 9px; transition: all 0.15s; }
+.picker-row.selected .picker-check { background: var(--accent); border-color: var(--accent); color: var(--bg); }
+.picker-row.selected { background: var(--accent-dim); }
+.picker-name { flex: 1; font-size: 12px; color: var(--ink); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.picker-meta { font-size: 10px; color: var(--muted); white-space: nowrap; flex-shrink: 0; }
+.picker-empty { padding: 16px; text-align: center; font-size: 10px; color: var(--muted); letter-spacing: 1px; }
+
 @media (max-width: 640px) {
   :root { --panel-w: 100vw; }
   .header-stats { display: none; }
@@ -364,15 +395,21 @@ body.panel-open .detail-panel { transform: translateX(0); }
 <!-- ══ MAIN ══ -->
 <main id="app-main" style="display:none">
 
+  <!-- View toggle -->
+  <div class="view-toggle">
+    <button class="view-btn active" id="view-btn-items" onclick="setView('items')">ITEMS</button>
+    <button class="view-btn" id="view-btn-lists" onclick="setView('lists')">LISTS</button>
+  </div>
+
   <!-- Search -->
-  <div class="search-bar">
+  <div class="search-bar" id="items-search">
     <span class="search-prompt">&gt;_</span>
     <input class="search-input" id="search-input" placeholder="search items..." oninput="setSearch(this.value)" />
     <button class="search-clear" id="search-clear" style="display:none" onclick="clearSearch()">✕</button>
   </div>
 
-  <!-- Filter bar -->
-  <div class="filter-bar">
+  <!-- Filter bar (items only) -->
+  <div class="filter-bar" id="items-filter-bar">
     <button class="filter-chip active" data-filter="all" onclick="setFilter('all',this)">ALL</button>
     <button class="filter-chip" data-filter="new" onclick="setFilter('cond:new',this)">NEW</button>
     <button class="filter-chip" data-filter="good" onclick="setFilter('cond:good',this)">GOOD</button>
@@ -399,6 +436,9 @@ body.panel-open .detail-panel { transform: translateX(0); }
   <!-- Item grid -->
   <div class="item-grid" id="item-grid"></div>
 
+  <!-- List grid -->
+  <div class="item-grid" id="list-grid" style="display:none"></div>
+
 </main>
 
 <!-- ══ PANEL ══ -->
@@ -408,7 +448,33 @@ body.panel-open .detail-panel { transform: translateX(0); }
     <span class="panel-header-title" id="panel-mode-label"><span>▌</span> ADD ITEM</span>
     <button class="btn-close-panel" id="btn-close-panel">✕</button>
   </div>
-  <div class="panel-body">
+  <!-- List panel body -->
+  <div class="panel-body" id="list-panel-body" style="display:none">
+    <div class="panel-field">
+      <label>LIST NAME *</label>
+      <input type="text" id="ld-name" placeholder="e.g. Basement Storage" />
+    </div>
+    <div class="panel-field">
+      <label>DESCRIPTION</label>
+      <textarea id="ld-description" placeholder="What is this list for?" style="min-height:55px"></textarea>
+    </div>
+    <div class="panel-divider"></div>
+    <div>
+      <div class="panel-section" style="margin-bottom:8px">ITEMS — <span id="ld-count" style="color:var(--accent)">0 selected</span></div>
+      <input class="picker-search" id="picker-search" placeholder="Filter items..." oninput="renderItemPicker()" />
+      <div class="picker-list" id="picker-list"></div>
+    </div>
+    <div class="panel-divider"></div>
+    <div id="list-qr-section" style="display:none">
+      <div class="panel-section" style="margin-bottom:8px">QR CODE</div>
+      <div class="panel-qr-wrap">
+        <img id="list-qr-img" src="" alt="QR Code" />
+        <div class="panel-qr-label">SCAN TO VIEW LIST</div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel-body" id="item-panel-body">
 
     <div class="panel-field">
       <label>ITEM NAME *</label>
@@ -533,15 +599,16 @@ body.panel-open .detail-panel { transform: translateX(0); }
 
   </div>
   <div class="panel-footer">
-    <button class="btn-show-qr-panel" id="btn-qr-panel" style="display:none" onclick="showQRFromPanel()">⊡ QR</button>
-    <button class="btn-save" onclick="saveItem()">SAVE →</button>
+    <button class="btn-show-qr-panel" id="btn-qr-panel" style="display:none" onclick="panelShowQR()">⊡ QR</button>
+    <button class="btn-save" onclick="panelSave()">SAVE →</button>
     <span class="save-flash" id="save-flash">✓ SAVED</span>
     <button class="btn-delete-item" id="btn-delete-item" style="display:none" onclick="deleteCurrentItem()">🗑</button>
+    <button class="btn-delete-item" id="btn-delete-list" style="display:none" onclick="deleteCurrentList()">🗑</button>
   </div>
 </div>
 
 <!-- ══ FAB ══ -->
-<button class="fab" id="fab" onclick="openAddPanel()" title="Add item">+</button>
+<button class="fab" id="fab" title="Add item">+</button>
 
 <script src="/lib/jsqr.js"></script>
 <script>
@@ -565,6 +632,14 @@ let panelMode = 'add'; // 'add' | 'edit'
 let itemTags = [];
 let scannerStream = null;
 let qrItemId = null;
+let qrListId = null;
+
+// Lists state
+let lists = [];
+let currentView = 'items'; // 'items' | 'lists'
+let openListId = null;
+let listPanelMode = 'add';
+let listItemIds = [];
 
 // ── API helper ────────────────────────────────────────────────────────────────
 async function api(method, path, body) {
@@ -881,10 +956,11 @@ async function doLogout() {
 // ── Load data ─────────────────────────────────────────────────────────────────
 async function loadItems() {
   try {
-    [items, customLocations, customCategories] = await Promise.all([
+    [items, customLocations, customCategories, lists] = await Promise.all([
       api('GET', '/api/items'),
       api('GET', '/api/locations').catch(() => []),
-      api('GET', '/api/categories').catch(() => [])
+      api('GET', '/api/categories').catch(() => []),
+      api('GET', '/api/lists').catch(() => [])
     ]);
     render();
   } catch (e) {
@@ -901,6 +977,7 @@ function render() {
   updateHeaderStats();
   updateFilterSelects();
   renderGrid();
+  renderListGrid();
 }
 
 function updateHeaderStats() {
@@ -1004,6 +1081,186 @@ function itemCardHTML(item) {
   </div>`;
 }
 
+// ── View toggle ───────────────────────────────────────────────────────────────
+function setView(v) {
+  currentView = v;
+  document.getElementById('view-btn-items').classList.toggle('active', v === 'items');
+  document.getElementById('view-btn-lists').classList.toggle('active', v === 'lists');
+  document.getElementById('items-search').style.display        = v === 'items' ? '' : 'none';
+  document.getElementById('items-filter-bar').style.display    = v === 'items' ? '' : 'none';
+  document.getElementById('item-grid').style.display           = v === 'items' ? '' : 'none';
+  document.getElementById('list-grid').style.display           = v === 'lists' ? '' : 'none';
+  document.getElementById('fab').title = v === 'lists' ? 'New list' : 'Add item';
+  closePanel();
+}
+
+// ── Lists ─────────────────────────────────────────────────────────────────────
+function renderListGrid() {
+  const grid = document.getElementById('list-grid');
+  if (!lists.length) {
+    grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
+      <div class="empty-icon">▣</div>
+      <div class="empty-msg">NO LISTS YET — HIT + TO CREATE</div>
+    </div>`;
+    return;
+  }
+  grid.innerHTML = lists.map(listCardHTML).join('');
+}
+
+function listCardHTML(list) {
+  const selected = list.id === openListId ? ' selected' : '';
+  const count = list.item_ids.length;
+  const previewItems = list.item_ids.slice(0, 5).map(id => {
+    const item = items.find(i => i.id === id);
+    return item ? `<span class="list-pill">${escHtml(item.name)}</span>` : '';
+  }).join('');
+  return `<div class="list-card${selected}" data-list-id="${list.id}">
+    <div class="list-card-name">${escHtml(list.name)}</div>
+    ${list.description ? `<div class="list-card-desc">${escHtml(list.description)}</div>` : ''}
+    <div class="list-card-count">${count} ITEM${count !== 1 ? 'S' : ''}</div>
+    ${previewItems ? `<div class="list-card-pills">${previewItems}${count > 5 ? `<span class="list-pill">+${count-5} more</span>` : ''}</div>` : ''}
+    <div class="card-actions">
+      <button class="btn-card-qr" onclick="event.stopPropagation();showListQR(${list.id})">⊡ QR CODE</button>
+    </div>
+  </div>`;
+}
+
+function openAddListPanel() {
+  listPanelMode = 'add';
+  openListId = null;
+  listItemIds = [];
+  document.getElementById('panel-mode-label').innerHTML = '<span>▌</span> NEW LIST';
+  document.getElementById('ld-name').value = '';
+  document.getElementById('ld-description').value = '';
+  document.getElementById('picker-search').value = '';
+  document.getElementById('list-qr-section').style.display = 'none';
+  document.getElementById('btn-qr-panel').style.display = 'none';
+  document.getElementById('btn-delete-list').style.display = 'none';
+  document.getElementById('btn-delete-item').style.display = 'none';
+  document.getElementById('list-panel-body').style.display = 'flex';
+  document.getElementById('item-panel-body').style.display = 'none';
+  renderItemPicker();
+  document.body.classList.add('panel-open');
+  setTimeout(() => document.getElementById('ld-name').focus(), 320);
+}
+
+function openListPanel(id) {
+  const list = lists.find(l => l.id === id);
+  if (!list) return;
+  listPanelMode = 'edit';
+  openListId = id;
+  listItemIds = [...list.item_ids];
+  document.getElementById('panel-mode-label').innerHTML = `<span>▌</span> EDIT LIST`;
+  document.getElementById('ld-name').value = list.name;
+  document.getElementById('ld-description').value = list.description || '';
+  document.getElementById('picker-search').value = '';
+  document.getElementById('list-qr-section').style.display = '';
+  document.getElementById('btn-qr-panel').style.display = '';
+  document.getElementById('btn-delete-list').style.display = '';
+  document.getElementById('btn-delete-item').style.display = 'none';
+  document.getElementById('list-panel-body').style.display = 'flex';
+  document.getElementById('item-panel-body').style.display = 'none';
+  loadQRInto(document.getElementById('list-qr-img'), id, 'list');
+  renderItemPicker();
+  document.body.classList.add('panel-open');
+  document.querySelectorAll('.list-card').forEach(c => c.classList.remove('selected'));
+  const card = document.querySelector(`[data-list-id="${id}"]`);
+  if (card) card.classList.add('selected');
+}
+
+async function saveList() {
+  const name = document.getElementById('ld-name').value.trim();
+  if (!name) { document.getElementById('ld-name').focus(); return; }
+  const body = {
+    name,
+    description: document.getElementById('ld-description').value.trim(),
+    item_ids: listItemIds
+  };
+  try {
+    let saved;
+    if (listPanelMode === 'add') {
+      saved = await api('POST', '/api/lists', body);
+      lists.unshift(saved);
+      openListId = saved.id;
+      listPanelMode = 'edit';
+      document.getElementById('panel-mode-label').innerHTML = `<span>▌</span> EDIT LIST`;
+      document.getElementById('list-qr-section').style.display = '';
+      document.getElementById('btn-qr-panel').style.display = '';
+      document.getElementById('btn-delete-list').style.display = '';
+      loadQRInto(document.getElementById('list-qr-img'), saved.id, 'list');
+    } else {
+      saved = await api('PUT', `/api/lists/${openListId}`, body);
+      const idx = lists.findIndex(l => l.id === openListId);
+      if (idx !== -1) lists[idx] = saved;
+    }
+    renderListGrid();
+    flashSaved();
+  } catch (e) { alert('Save failed: ' + e.message); }
+}
+
+async function deleteCurrentList() {
+  if (!openListId) return;
+  if (!confirm('Delete this list? The items themselves will not be affected.')) return;
+  try {
+    await api('DELETE', `/api/lists/${openListId}`);
+    lists = lists.filter(l => l.id !== openListId);
+    closePanel();
+    renderListGrid();
+  } catch (e) { alert('Delete failed: ' + e.message); }
+}
+
+function renderItemPicker() {
+  const q = (document.getElementById('picker-search').value || '').toLowerCase();
+  const wrap = document.getElementById('picker-list');
+  const countEl = document.getElementById('ld-count');
+  countEl.textContent = listItemIds.length + ' selected';
+
+  if (!items.length) {
+    wrap.innerHTML = '<div class="picker-empty">NO ITEMS IN INVENTORY</div>';
+    return;
+  }
+
+  const filtered = q
+    ? items.filter(i =>
+        i.name.toLowerCase().includes(q) ||
+        (i.category||'').toLowerCase().includes(q) ||
+        (i.location||'').toLowerCase().includes(q))
+    : items;
+
+  if (!filtered.length) {
+    wrap.innerHTML = '<div class="picker-empty">NO ITEMS MATCH</div>';
+    return;
+  }
+
+  wrap.innerHTML = filtered.map(item => {
+    const sel = listItemIds.includes(item.id);
+    const meta = [item.category, item.location].filter(Boolean).join(' · ');
+    return `<div class="picker-row${sel ? ' selected' : ''}" onclick="togglePickerItem(${item.id})">
+      <div class="picker-check">${sel ? '✓' : ''}</div>
+      <div class="picker-name">${escHtml(item.name)}</div>
+      ${meta ? `<div class="picker-meta">${escHtml(meta)}</div>` : ''}
+    </div>`;
+  }).join('');
+}
+
+function togglePickerItem(itemId) {
+  const idx = listItemIds.indexOf(itemId);
+  if (idx === -1) listItemIds.push(itemId);
+  else listItemIds.splice(idx, 1);
+  renderItemPicker();
+}
+
+function showListQR(listId) {
+  const list = lists.find(l => l.id === listId);
+  if (!list) return;
+  qrListId = listId;
+  qrItemId = null;
+  document.getElementById('qr-name').textContent = list.name;
+  document.getElementById('qr-loc').textContent = `${list.item_ids.length} item${list.item_ids.length !== 1 ? 's' : ''}`;
+  loadQRInto(document.getElementById('qr-img'), listId, 'list');
+  document.getElementById('qr-modal').classList.add('open');
+}
+
 // ── Panel ─────────────────────────────────────────────────────────────────────
 function openAddPanel() {
   panelMode = 'add';
@@ -1026,6 +1283,9 @@ function openAddPanel() {
   document.getElementById('panel-qr-section').style.display = 'none';
   document.getElementById('btn-qr-panel').style.display = 'none';
   document.getElementById('btn-delete-item').style.display = 'none';
+  document.getElementById('btn-delete-list').style.display = 'none';
+  document.getElementById('item-panel-body').style.display = 'flex';
+  document.getElementById('list-panel-body').style.display = 'none';
   renderTagsWrap();
   document.body.classList.add('panel-open');
   setTimeout(() => document.getElementById('pd-name').focus(), 320);
@@ -1055,10 +1315,12 @@ function openPanel(id) {
 
   // Show QR
   document.getElementById('panel-qr-section').style.display = '';
-  loadQRInto(document.getElementById('panel-qr-img'), id);
+  loadQRInto(document.getElementById('panel-qr-img'), id, 'item');
   document.getElementById('btn-qr-panel').style.display = '';
   document.getElementById('btn-delete-item').style.display = '';
-
+  document.getElementById('btn-delete-list').style.display = 'none';
+  document.getElementById('item-panel-body').style.display = 'flex';
+  document.getElementById('list-panel-body').style.display = 'none';
   renderTagsWrap();
   document.body.classList.add('panel-open');
 
@@ -1103,7 +1365,7 @@ async function saveItem() {
       panelMode = 'edit';
       document.getElementById('panel-mode-label').innerHTML = `<span>▌</span> EDIT #${String(saved.id).padStart(4,'0')}`;
       document.getElementById('panel-qr-section').style.display = '';
-      loadQRInto(document.getElementById('panel-qr-img'), saved.id);
+      loadQRInto(document.getElementById('panel-qr-img'), saved.id, 'item');
       document.getElementById('btn-qr-panel').style.display = '';
       document.getElementById('btn-delete-item').style.display = '';
     } else {
@@ -1164,12 +1426,11 @@ function tagKeydown(e) {
 }
 
 // ── QR Code ───────────────────────────────────────────────────────────────────
-async function loadQRInto(imgEl, itemId) {
+async function loadQRInto(imgEl, id, type = 'item') {
   imgEl.src = '';
+  const endpoint = type === 'list' ? `/api/lists/${id}/qr` : `/api/items/${id}/qr`;
   try {
-    const res = await fetch(`/api/items/${itemId}/qr`, {
-      headers: { 'Authorization': `Bearer ${token}` }
-    });
+    const res = await fetch(endpoint, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) return;
     const blob = await res.blob();
     const prev = imgEl.dataset.blobUrl;
@@ -1190,16 +1451,29 @@ function showQR(itemId) {
   document.getElementById('qr-modal').classList.add('open');
 }
 
-function showQRFromPanel() {
-  if (openItemId) showQR(openItemId);
+function panelSave() {
+  if (document.getElementById('list-panel-body').style.display !== 'none') saveList();
+  else saveItem();
 }
+
+function panelShowQR() {
+  if (document.getElementById('list-panel-body').style.display !== 'none') {
+    if (openListId) showListQR(openListId);
+  } else {
+    if (openItemId) showQR(openItemId);
+  }
+}
+
+function showQRFromPanel() { panelShowQR(); }
 
 function closeQR() {
   document.getElementById('qr-modal').classList.remove('open');
   qrItemId = null;
+  qrListId = null;
 }
 
 async function printQRLabel() {
+  if (qrListId) { await printListQRLabel(); return; }
   const item = items.find(i => i.id === qrItemId);
   if (!item) return;
   let qrHtml = '<div style="width:200px;height:200px;margin:0 auto 10px;background:#eee"></div>';
@@ -1227,6 +1501,28 @@ async function printQRLabel() {
     ${item.location ? `<div class="loc">⊹ ${item.location}</div>` : ''}
     <div class="meta">${item.quantity} ${item.unit}${item.brand ? ' · ' + item.brand : ''}</div>
     <div class="meta" style="color:#aaa;font-size:9px;margin-top:6px">CACHE #${String(item.id).padStart(4,'0')}</div>
+    <script>window.print();<\/script>
+  </body></html>`);
+  win.document.close();
+}
+
+async function printListQRLabel() {
+  const list = lists.find(l => l.id === qrListId);
+  if (!list) return;
+  let qrHtml = '<div style="width:200px;height:200px;margin:0 auto 10px;background:#eee"></div>';
+  try {
+    const res = await fetch(`/api/lists/${qrListId}/qr`, { headers: { 'Authorization': `Bearer ${token}` } });
+    if (res.ok) { const svg = await res.text(); qrHtml = `<div style="width:200px;height:200px;margin:0 auto 10px">${svg}</div>`; }
+  } catch {}
+  const win = window.open('', '_blank', 'width=400,height=500');
+  win.document.write(`<!DOCTYPE html><html><head>
+    <title>CACHE List — ${list.name}</title>
+    <style>body{margin:0;padding:20px;font-family:monospace;background:#fff;color:#000;text-align:center}svg{width:200px;height:200px;display:block;margin:0 auto}.name{font-size:16px;font-weight:bold;letter-spacing:1px;margin-bottom:4px}.meta{font-size:10px;color:#888;letter-spacing:1px}@media print{body{padding:8px}}</style>
+  </head><body>
+    ${qrHtml}
+    <div class="name">${list.name}</div>
+    <div class="meta">${list.item_ids.length} ITEM${list.item_ids.length !== 1 ? 'S' : ''}</div>
+    <div class="meta" style="color:#aaa;font-size:9px;margin-top:6px">CACHE LIST</div>
     <script>window.print();<\/script>
   </body></html>`);
   win.document.close();
@@ -1289,6 +1585,16 @@ function closeScanner() {
 }
 
 function handleScanResult(url, statusEl) {
+  // Check if it's a list QR
+  const listMatch = url.match(/\/l\/([a-f0-9]+)$/);
+  if (listMatch) {
+    const listToken = listMatch[1];
+    const list = lists.find(l => l.qr_token === listToken);
+    closeScanner();
+    if (list) { setView('lists'); openListPanel(list.id); }
+    else { alert('List not found in your inventory.'); }
+    return;
+  }
   const match = url.match(/\/i\/([a-f0-9]+)$/);
   if (!match) {
     if (statusEl) { statusEl.textContent = 'NOT A CACHE CODE'; statusEl.className = 'scanner-status detected'; }
@@ -1422,9 +1728,20 @@ document.addEventListener('keydown', e => {
 
 // ── Event delegation — item grid ──────────────────────────────────────────────
 document.getElementById('item-grid').addEventListener('click', e => {
-  if (e.target.closest('[data-qr-id]')) return; // QR button handled by onclick
+  if (e.target.closest('[data-qr-id]')) return;
   const card = e.target.closest('[data-card-id]');
   if (card) openPanel(Number(card.dataset.cardId));
+});
+
+document.getElementById('list-grid').addEventListener('click', e => {
+  if (e.target.closest('.btn-card-qr')) return;
+  const card = e.target.closest('[data-list-id]');
+  if (card) openListPanel(Number(card.dataset.listId));
+});
+
+document.getElementById('fab').addEventListener('click', () => {
+  if (currentView === 'lists') openAddListPanel();
+  else openAddPanel();
 });
 
 document.getElementById('btn-close-panel').addEventListener('click', closePanel);

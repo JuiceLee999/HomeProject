@@ -40,6 +40,25 @@ db.exec(`
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
+  CREATE TABLE IF NOT EXISTS lists (
+    id          INTEGER PRIMARY KEY AUTOINCREMENT,
+    user_id     INTEGER NOT NULL,
+    name        TEXT NOT NULL,
+    description TEXT NOT NULL DEFAULT '',
+    qr_token    TEXT UNIQUE NOT NULL,
+    created_at  INTEGER DEFAULT (strftime('%s','now')),
+    modified_at INTEGER DEFAULT (strftime('%s','now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS list_items (
+    list_id INTEGER NOT NULL,
+    item_id INTEGER NOT NULL,
+    PRIMARY KEY (list_id, item_id),
+    FOREIGN KEY (list_id) REFERENCES lists(id),
+    FOREIGN KEY (item_id) REFERENCES items(id)
+  );
+
   CREATE TABLE IF NOT EXISTS categories (
     id      INTEGER PRIMARY KEY AUTOINCREMENT,
     user_id INTEGER NOT NULL,
@@ -347,6 +366,147 @@ body{background:#080c09;color:#b4e8b0;font-family:'Share Tech Mono',monospace;mi
   ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}</div>` : ''}
   <div style="text-align:center"><a class="open-link" href="/">OPEN IN CACHE →</a></div>
 </div>
+<div class="footer">CACHE // INVENTORY SYSTEM</div>
+</body>
+</html>`);
+});
+
+// ── Lists ─────────────────────────────────────────────────────────────────────
+function listWithItems(list) {
+  const item_ids = db.prepare('SELECT item_id FROM list_items WHERE list_id = ?')
+    .all(list.id).map(r => r.item_id);
+  return { ...list, item_ids };
+}
+
+app.get('/api/lists', verifyToken, (req, res) => {
+  const rows = db.prepare('SELECT * FROM lists WHERE user_id = ? ORDER BY modified_at DESC').all(req.user.userId);
+  res.json(rows.map(listWithItems));
+});
+
+app.post('/api/lists', verifyToken, (req, res) => {
+  const { name, description = '', item_ids = [] } = req.body || {};
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Name required' });
+  const qr_token = crypto.randomBytes(12).toString('hex');
+  const now = Math.floor(Date.now() / 1000);
+  db.prepare(`INSERT INTO lists (user_id, name, description, qr_token, created_at, modified_at)
+              VALUES (?, ?, ?, ?, ?, ?)`).run([req.user.userId, name.trim(), description, qr_token, now, now]);
+  const list = db.prepare('SELECT * FROM lists WHERE qr_token = ?').get(qr_token);
+  for (const id of item_ids) {
+    try { db.prepare('INSERT INTO list_items (list_id, item_id) VALUES (?, ?)').run([list.id, id]); } catch {}
+  }
+  res.status(201).json(listWithItems(list));
+});
+
+app.put('/api/lists/:id', verifyToken, (req, res) => {
+  const { userId } = req.user;
+  const listId = Number(req.params.id);
+  if (!db.prepare('SELECT id FROM lists WHERE id = ? AND user_id = ?').get([listId, userId]))
+    return res.status(404).json({ error: 'Not found' });
+  const { name, description = '', item_ids = [] } = req.body || {};
+  if (!name || !name.trim()) return res.status(400).json({ error: 'Name required' });
+  const now = Math.floor(Date.now() / 1000);
+  db.prepare('UPDATE lists SET name=?, description=?, modified_at=? WHERE id=?').run([name.trim(), description, now, listId]);
+  db.prepare('DELETE FROM list_items WHERE list_id = ?').run([listId]);
+  for (const id of item_ids) {
+    try { db.prepare('INSERT INTO list_items (list_id, item_id) VALUES (?, ?)').run([listId, id]); } catch {}
+  }
+  res.json(listWithItems(db.prepare('SELECT * FROM lists WHERE id = ?').get(listId)));
+});
+
+app.delete('/api/lists/:id', verifyToken, (req, res) => {
+  const listId = Number(req.params.id);
+  db.prepare('DELETE FROM list_items WHERE list_id = ?').run([listId]);
+  db.prepare('DELETE FROM lists WHERE id = ? AND user_id = ?').run([listId, req.user.userId]);
+  res.json({ ok: true });
+});
+
+app.get('/api/lists/:id/qr', verifyToken, async (req, res) => {
+  const list = db.prepare('SELECT qr_token FROM lists WHERE id = ? AND user_id = ?')
+    .get([Number(req.params.id), req.user.userId]);
+  if (!list) return res.status(404).json({ error: 'Not found' });
+  const proto = req.headers['x-forwarded-proto'] || req.protocol;
+  const host  = req.headers['x-forwarded-host']  || req.get('host');
+  try {
+    const svg = await QRCode.toString(`${proto}://${host}/l/${list.qr_token}`,
+      { type: 'svg', margin: 2, width: 256, color: { dark: '#22d45a', light: '#080c09' } });
+    res.setHeader('Content-Type', 'image/svg+xml');
+    res.send(svg);
+  } catch { res.status(500).json({ error: 'QR generation failed' }); }
+});
+
+// ── Public list page ──────────────────────────────────────────────────────────
+app.get('/l/:token', (req, res) => {
+  const list = db.prepare('SELECT * FROM lists WHERE qr_token = ?').get(req.params.token);
+  if (!list) return res.status(404).send(`
+    <!DOCTYPE html><html><head><meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Not Found — CACHE</title>
+    <style>body{background:#080c09;color:#b4e8b0;font-family:monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center}</style>
+    </head><body><div><h1 style="font-size:18px;letter-spacing:2px">▌▌ CACHE</h1><p>List not found.</p></div></body></html>`);
+
+  const itemIds = db.prepare('SELECT item_id FROM list_items WHERE list_id = ?').all(list.id).map(r => r.item_id);
+  const listItems = itemIds.length
+    ? db.prepare(`SELECT * FROM items WHERE id IN (${itemIds.map(() => '?').join(',')})`).all(itemIds)
+    : [];
+  const condColor = { new: '#22d45a', good: '#22d45a', fair: '#d4a020', poor: '#d44020' };
+
+  res.send(`<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>${escHtml(list.name)} — CACHE</title>
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:#080c09;color:#b4e8b0;font-family:'Share Tech Mono',monospace;min-height:100vh}
+.header{background:#050807;border-bottom:2px solid #22d45a;padding:14px 20px;display:flex;align-items:center;gap:10px}
+.logo{font-size:20px;letter-spacing:3px;color:#22d45a;font-weight:bold}
+.logo-sub{font-size:10px;color:#4a7050;letter-spacing:2px}
+.list-head{padding:20px;border-bottom:1px solid #1a3020}
+.list-name{font-size:22px;letter-spacing:1px;color:#e0f8dc;margin-bottom:4px}
+.list-desc{font-size:12px;color:#4a7050;letter-spacing:1px}
+.list-meta{font-size:10px;color:#2a4030;margin-top:6px;letter-spacing:1px}
+.items{padding:16px;display:flex;flex-direction:column;gap:10px}
+.item-row{background:#0e1510;border:1px solid #1a3020;border-left:3px solid #22d45a;padding:14px 16px;text-decoration:none;display:block;transition:border-color 0.15s}
+.item-row:hover{border-left-color:#b4e8b0}
+.item-row[data-cond="fair"]{border-left-color:#d4a020}
+.item-row[data-cond="poor"]{border-left-color:#d44020}
+.row-top{display:flex;align-items:flex-start;gap:8px;margin-bottom:6px}
+.row-name{flex:1;font-size:15px;color:#e0f8dc;letter-spacing:0.5px}
+.row-cond{font-size:9px;letter-spacing:1px;padding:2px 6px;border:1px solid;text-transform:uppercase}
+.row-meta{display:flex;gap:12px;font-size:11px;color:#4a7050;flex-wrap:wrap}
+.empty{padding:40px;text-align:center;color:#2a4030;font-size:11px;letter-spacing:2px}
+.open-link{display:inline-block;margin:16px 20px;background:#22d45a;color:#080c09;padding:10px 24px;text-decoration:none;font-size:11px;letter-spacing:2px}
+.footer{text-align:center;padding:20px;font-size:10px;color:#2a4030;letter-spacing:2px}
+</style>
+</head>
+<body>
+<div class="header">
+  <div><div class="logo">▌▌ CACHE</div><div class="logo-sub">INVENTORY SYSTEM</div></div>
+</div>
+<div class="list-head">
+  <div class="list-name">${escHtml(list.name)}</div>
+  ${list.description ? `<div class="list-desc">${escHtml(list.description)}</div>` : ''}
+  <div class="list-meta">${listItems.length} ITEM${listItems.length !== 1 ? 'S' : ''}</div>
+</div>
+<div class="items">
+${listItems.map(item => {
+  const cc = condColor[item.condition] || '#b4e8b0';
+  return `<a class="item-row" href="/i/${escHtml(item.qr_token)}" data-cond="${escHtml(item.condition)}">
+    <div class="row-top">
+      <span class="row-name">${escHtml(item.name)}</span>
+      <span class="row-cond" style="border-color:${cc};color:${cc}">${escHtml(item.condition.toUpperCase())}</span>
+    </div>
+    <div class="row-meta">
+      ${item.category ? `<span>${escHtml(item.category)}</span>` : ''}
+      ${item.location ? `<span>⊹ ${escHtml(item.location)}</span>` : ''}
+      <span>${item.quantity} ${escHtml(item.unit)}</span>
+    </div>
+  </a>`;
+}).join('') || '<div class="empty">NO ITEMS IN THIS LIST</div>'}
+</div>
+<a class="open-link" href="/">OPEN IN CACHE →</a>
 <div class="footer">CACHE // INVENTORY SYSTEM</div>
 </body>
 </html>`);
