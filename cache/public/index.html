@@ -374,6 +374,30 @@ body.panel-open .detail-panel { transform: translateX(0); }
   </div>
 </div>
 
+<!-- ══ AI PHOTO MODAL ══ -->
+<div class="modal-overlay" id="photo-modal">
+  <div class="scanner-modal" onclick="event.stopPropagation()">
+    <div class="scanner-header">
+      <span class="scanner-title">▌ AI SCAN ITEM</span>
+      <button class="btn-icon" onclick="closePhotoModal()" data-tip="Close">✕</button>
+    </div>
+    <div class="scanner-viewport">
+      <video id="photo-video" autoplay playsinline muted></video>
+      <img id="photo-preview" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0" />
+    </div>
+    <div class="scanner-status" id="photo-status">POINT CAMERA AT ITEM</div>
+    <div style="display:flex;width:100%">
+      <button class="btn-scan-cancel" id="btn-photo-capture" onclick="capturePhoto()" style="flex:1;color:var(--accent);border-right:1px solid #1a3020">📷 CAPTURE</button>
+      <label class="btn-scan-cancel" style="flex:1;cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center">
+        ⬆ UPLOAD
+        <input type="file" accept="image/*" style="display:none" onchange="uploadPhoto(this)">
+      </label>
+    </div>
+    <button class="btn-scan-cancel" id="btn-photo-analyze" onclick="analyzePhoto()" style="display:none;color:var(--accent);font-weight:bold">✦ ANALYZE WITH AI →</button>
+    <button class="btn-scan-cancel" onclick="closePhotoModal()">CANCEL</button>
+  </div>
+</div>
+
 <!-- ══ USER MODAL ══ -->
 <div class="modal-overlay" id="user-modal">
   <div class="user-modal" onclick="event.stopPropagation()">
@@ -425,6 +449,7 @@ body.panel-open .detail-panel { transform: translateX(0); }
     <div class="hstat">LOCS <strong id="hs-locs">0</strong></div>
   </div>
   <div class="header-right">
+    <button class="btn-scan-header" id="btn-ai-scan" onclick="openPhotoModal()" data-tip="Add Item with AI Photo" data-tip-dir="below" style="background:none;border:1px solid var(--accent);color:var(--accent)">✦ AI SCAN</button>
     <button class="btn-scan-header" id="btn-add-item" onclick="openAddPanel()" data-tip="Add Item" data-tip-dir="below">+ ADD ITEM</button>
     <button class="btn-scan-header" onclick="openScanner()" data-tip="Scan QR Code" data-tip-dir="below">⊹ SCAN QR</button>
     <button class="btn-icon" onclick="openUserModal()" data-tip="Account &amp; Settings" data-tip-dir="below">⚙</button>
@@ -704,6 +729,10 @@ let qrListId = null;
 
 // Lists state
 let lists = [];
+
+// AI photo state
+let photoStream = null;
+let capturedImageData = null;
 let currentView = 'items'; // 'items' | 'lists'
 let openListId = null;
 let listPanelMode = 'add';
@@ -1161,6 +1190,7 @@ function setView(v) {
   document.getElementById('item-grid').style.display           = v === 'items' ? '' : 'none';
   document.getElementById('list-grid').style.display           = v === 'lists' ? '' : 'none';
   document.getElementById('btn-add-item').style.display        = v === 'items' ? '' : 'none';
+  document.getElementById('btn-ai-scan').style.display         = v === 'items' ? '' : 'none';
   document.getElementById('fab').style.display                 = v === 'lists' ? 'flex' : 'none';
   closePanel();
 }
@@ -1801,6 +1831,84 @@ function closeScanner() {
   document.getElementById('scanner-modal').classList.remove('open');
 }
 
+// ── AI Photo Modal ────────────────────────────────────────────────────────────
+async function openPhotoModal() {
+  capturedImageData = null;
+  document.getElementById('photo-preview').style.display = 'none';
+  document.getElementById('photo-video').style.display = '';
+  document.getElementById('btn-photo-analyze').style.display = 'none';
+  document.getElementById('btn-photo-capture').style.display = '';
+  document.getElementById('photo-status').textContent = 'POINT CAMERA AT ITEM';
+  document.getElementById('photo-modal').classList.add('open');
+
+  try {
+    photoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    document.getElementById('photo-video').srcObject = photoStream;
+  } catch {
+    document.getElementById('photo-status').textContent = 'CAMERA UNAVAILABLE — USE UPLOAD';
+    document.getElementById('btn-photo-capture').style.display = 'none';
+  }
+}
+
+function closePhotoModal() {
+  if (photoStream) { photoStream.getTracks().forEach(t => t.stop()); photoStream = null; }
+  const vid = document.getElementById('photo-video');
+  vid.srcObject = null;
+  document.getElementById('photo-modal').classList.remove('open');
+}
+
+function capturePhoto() {
+  const video = document.getElementById('photo-video');
+  const canvas = document.createElement('canvas');
+  canvas.width = video.videoWidth;
+  canvas.height = video.videoHeight;
+  canvas.getContext('2d').drawImage(video, 0, 0);
+  capturedImageData = canvas.toDataURL('image/jpeg', 0.85);
+  showPhotoPreview();
+}
+
+function uploadPhoto(input) {
+  const file = input.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => { capturedImageData = e.target.result; showPhotoPreview(); };
+  reader.readAsDataURL(file);
+}
+
+function showPhotoPreview() {
+  document.getElementById('photo-preview').src = capturedImageData;
+  document.getElementById('photo-preview').style.display = '';
+  document.getElementById('photo-video').style.display = 'none';
+  document.getElementById('btn-photo-analyze').style.display = '';
+  document.getElementById('btn-photo-capture').style.display = 'none';
+  document.getElementById('photo-status').textContent = 'READY — ANALYZE OR RETAKE';
+}
+
+async function analyzePhoto() {
+  const statusEl = document.getElementById('photo-status');
+  const analyzeBtn = document.getElementById('btn-photo-analyze');
+  statusEl.textContent = 'ANALYZING...';
+  analyzeBtn.disabled = true;
+  try {
+    const result = await api('POST', '/api/ai/analyze-item', { image_data: capturedImageData });
+    closePhotoModal();
+    openAddPanel();
+    if (result.name)        document.getElementById('pd-name').value = result.name;
+    if (result.brand)       document.getElementById('pd-brand').value = result.brand;
+    if (result.model)       document.getElementById('pd-model').value = result.model;
+    if (result.description) document.getElementById('pd-description').value = result.description;
+    if (result.quantity)    document.getElementById('pd-qty').value = result.quantity;
+    if (result.unit)        document.getElementById('pd-unit').value = result.unit;
+    if (result.value)       document.getElementById('pd-value').value = result.value;
+    if (result.condition)   document.getElementById('pd-condition').value = result.condition;
+    if (result.category)    buildCategorySelect(result.category);
+    if (result.tags?.length) { itemTags = result.tags; renderTagsWrap(); }
+  } catch (e) {
+    statusEl.textContent = 'FAILED: ' + e.message;
+    analyzeBtn.disabled = false;
+  }
+}
+
 function handleScanResult(url, statusEl) {
   // Check if it's a list QR
   const listMatch = url.match(/\/l\/([a-f0-9]+)$/);
@@ -1933,6 +2041,7 @@ async function importData(input) {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (document.getElementById('scanner-modal').classList.contains('open')) { closeScanner(); return; }
+    if (document.getElementById('photo-modal').classList.contains('open')) { closePhotoModal(); return; }
     if (document.getElementById('qr-modal').classList.contains('open')) { closeQR(); return; }
     if (document.getElementById('user-modal').classList.contains('open')) { closeUserModal(); return; }
     if (document.body.classList.contains('panel-open')) { closePanel(); return; }
@@ -1968,11 +2077,12 @@ document.getElementById('tab-login').addEventListener('click', () => switchTab('
 document.getElementById('tab-register').addEventListener('click', () => switchTab('register'));
 
 // Modal close on backdrop click
-['qr-modal','scanner-modal','user-modal'].forEach(id => {
+['qr-modal','scanner-modal','user-modal','photo-modal'].forEach(id => {
   document.getElementById(id).addEventListener('click', e => {
     if (e.target === document.getElementById(id)) {
       if (id === 'scanner-modal') closeScanner();
       else if (id === 'qr-modal') closeQR();
+      else if (id === 'photo-modal') closePhotoModal();
       else closeUserModal();
     }
   });
