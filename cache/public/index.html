@@ -111,6 +111,26 @@ body.panel-open main { padding-right: calc(var(--panel-w) + 20px); }
 .card-actions { display: flex; gap: 6px; margin-top: 10px; border-top: 1px solid var(--rule); padding-top: 10px; }
 .btn-card-qr { background: none; border: 1px solid var(--rule); color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; padding: 4px 10px; cursor: pointer; transition: all 0.15s; }
 .btn-card-qr:hover { border-color: var(--accent); color: var(--accent); }
+.btn-card-co { background: none; border: 1px solid var(--amber); color: var(--amber); font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; padding: 4px 10px; cursor: pointer; transition: all 0.15s; }
+.btn-card-co:hover { opacity: 0.7; }
+.btn-card-ci { background: none; border: 1px solid var(--muted); color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; padding: 4px 10px; cursor: pointer; transition: all 0.15s; }
+.btn-card-ci:hover { border-color: var(--accent); color: var(--accent); }
+
+/* ── CHECKOUT MODAL ── */
+.co-modal { background: var(--paper); border: 1px solid var(--rule); border-top: 2px solid var(--amber); width: 420px; max-width: 96vw; padding: 0; overflow: hidden; }
+.co-modal-header { display: flex; justify-content: space-between; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--rule); }
+.co-modal-title { font-size: 11px; letter-spacing: 3px; color: var(--amber); }
+.co-modal-item { font-size: 10px; letter-spacing: 1px; color: var(--muted); padding: 10px 18px; border-bottom: 1px solid var(--rule); background: var(--bg); }
+.co-modal-body { padding: 18px; display: flex; flex-direction: column; gap: 14px; }
+.co-field label { display: block; font-size: 9px; letter-spacing: 2px; color: var(--muted); margin-bottom: 5px; }
+.co-field input, .co-field textarea { width: 100%; background: var(--bg); border: 1px solid var(--rule); color: var(--ink); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 8px 11px; outline: none; transition: border-color 0.15s; resize: vertical; }
+.co-field input:focus, .co-field textarea:focus { border-color: var(--amber); }
+.co-field textarea { min-height: 60px; }
+.co-modal-footer { display: flex; border-top: 1px solid var(--rule); }
+.btn-co-submit { flex: 1; background: var(--amber); color: var(--bg); border: none; font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 2px; padding: 13px; cursor: pointer; transition: opacity 0.15s; }
+.btn-co-submit:hover { opacity: 0.85; }
+.btn-co-cancel { background: none; border: none; border-left: 1px solid var(--rule); color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 1px; padding: 13px 20px; cursor: pointer; transition: color 0.15s; }
+.btn-co-cancel:hover { color: var(--red); }
 
 /* ── EMPTY STATE ── */
 .empty { text-align: center; padding: 60px 20px; color: var(--muted); }
@@ -423,6 +443,39 @@ body.panel-open .detail-panel { transform: translateX(0); }
     </div>
     <button class="btn-scan-cancel" id="btn-photo-analyze" onclick="analyzePhoto()" style="display:none;color:var(--accent);font-weight:bold">✦ ANALYZE WITH AI →</button>
     <button class="btn-scan-cancel" onclick="closePhotoModal()">CANCEL</button>
+  </div>
+</div>
+
+<!-- ══ CHECKOUT MODAL ══ -->
+<div class="modal-overlay" id="co-modal" onclick="closeCoModal()">
+  <div class="co-modal" onclick="event.stopPropagation()">
+    <div class="co-modal-header">
+      <span class="co-modal-title">▌ CHECK OUT ITEM</span>
+      <button class="btn-icon" onclick="closeCoModal()" data-tip="Close">✕</button>
+    </div>
+    <div class="co-modal-item" id="co-modal-item-name">—</div>
+    <div class="co-modal-body">
+      <div class="co-field">
+        <label>WHO'S TAKING IT *</label>
+        <input id="co-borrower-modal" type="text" placeholder="Name of borrower" autocomplete="off" />
+      </div>
+      <div class="co-field">
+        <label>DATE TAKEN</label>
+        <input id="co-date-modal" type="date" />
+      </div>
+      <div class="co-field">
+        <label>WHERE IT'S GOING</label>
+        <input id="co-dest-modal" type="text" placeholder="e.g. Job site, John's house..." autocomplete="off" />
+      </div>
+      <div class="co-field">
+        <label>NOTES</label>
+        <textarea id="co-notes-modal" placeholder="Any additional info..."></textarea>
+      </div>
+    </div>
+    <div class="co-modal-footer">
+      <button class="btn-co-submit" onclick="submitCoModal()">CHECK OUT →</button>
+      <button class="btn-co-cancel" onclick="closeCoModal()">CANCEL</button>
+    </div>
   </div>
 </div>
 
@@ -1216,9 +1269,12 @@ function itemCardHTML(item) {
       ${valStr ? `<span class="card-val">${escHtml(valStr)}</span>` : ''}
     </div>
     ${item.location ? `<div class="card-loc">⊹ ${escHtml(item.location)}</div>` : ''}
-    ${item.checked_out_to ? `<div class="card-loc" style="color:var(--amber)">→ ${escHtml(item.checked_out_to)}</div>` : ''}
+    ${item.checked_out_to ? `<div class="card-loc" style="color:var(--amber)">→ ${escHtml(item.checked_out_to)}${item.checkout_destination ? ` &nbsp;·&nbsp; ${escHtml(item.checkout_destination)}` : ''}</div>` : ''}
     <div class="card-actions">
       <button class="btn-card-qr" data-qr-id="${item.id}" onclick="event.stopPropagation();showQR(${item.id})">⊡ QR CODE</button>
+      ${item.checked_out_to
+        ? `<button class="btn-card-ci" onclick="event.stopPropagation();checkinFromCard(${item.id})">✓ CHECK IN</button>`
+        : `<button class="btn-card-co" onclick="event.stopPropagation();openCoModal(${item.id})">⊳ CHECK OUT</button>`}
     </div>
   </div>`;
 }
@@ -1664,6 +1720,64 @@ function fmtTs(ts) {
   return new Date(ts * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
 }
 
+// Modal — opened from card ⊳ CHECK OUT button
+let coModalItemId = null;
+
+function openCoModal(itemId) {
+  const item = items.find(i => i.id === itemId);
+  if (!item) return;
+  coModalItemId = itemId;
+  document.getElementById('co-modal-item-name').textContent = item.name;
+  document.getElementById('co-borrower-modal').value = '';
+  document.getElementById('co-date-modal').value = new Date().toISOString().slice(0, 10);
+  document.getElementById('co-dest-modal').value = '';
+  document.getElementById('co-notes-modal').value = '';
+  document.getElementById('co-modal').classList.add('open');
+  setTimeout(() => document.getElementById('co-borrower-modal').focus(), 100);
+}
+
+function closeCoModal() {
+  document.getElementById('co-modal').classList.remove('open');
+  coModalItemId = null;
+}
+
+async function submitCoModal() {
+  const borrower = document.getElementById('co-borrower-modal').value.trim();
+  if (!borrower) { document.getElementById('co-borrower-modal').focus(); return; }
+  const checked_out_date = document.getElementById('co-date-modal').value || null;
+  const destination      = document.getElementById('co-dest-modal').value.trim();
+  const notes            = document.getElementById('co-notes-modal').value.trim();
+
+  try {
+    const updated = await api('POST', `/api/items/${coModalItemId}/checkout`,
+      { borrower, checked_out_date, destination, notes });
+    const idx = items.findIndex(i => i.id === coModalItemId);
+    if (idx !== -1) items[idx] = updated;
+    // Update panel if this item is open
+    if (openItemId === coModalItemId) renderCheckoutSection(updated);
+    closeCoModal();
+    render();
+  } catch (e) {
+    alert('Checkout failed: ' + e.message);
+  }
+}
+
+// Check in directly from card
+async function checkinFromCard(itemId) {
+  const item = items.find(i => i.id === itemId);
+  if (!confirm(`Check in "${item?.name}"?`)) return;
+  try {
+    const updated = await api('POST', `/api/items/${itemId}/checkin`, {});
+    const idx = items.findIndex(i => i.id === itemId);
+    if (idx !== -1) items[idx] = updated;
+    if (openItemId === itemId) renderCheckoutSection(updated);
+    render();
+  } catch (e) {
+    alert('Check-in failed: ' + e.message);
+  }
+}
+
+// Panel checkout section (detail panel, edit mode)
 function renderCheckoutSection(item) {
   const section = document.getElementById('panel-checkout-section');
   const box = document.getElementById('checkout-box-content');
@@ -1675,42 +1789,14 @@ function renderCheckoutSection(item) {
       <div class="checkout-box active">
         <div class="checkout-who">→ ${escHtml(item.checked_out_to)}</div>
         <div class="checkout-meta">
-          Since ${fmtTs(item.checked_out_at)}
-          ${item.due_back ? ` &nbsp;|&nbsp; Due ${fmtTs(item.due_back)}${overdue ? ' <span style="color:var(--red)">OVERDUE</span>' : ''}` : ''}
+          ${item.checked_out_at ? `Taken ${fmtTs(item.checked_out_at)}` : ''}
+          ${item.checkout_destination ? ` &nbsp;·&nbsp; ${escHtml(item.checkout_destination)}` : ''}
+          ${item.due_back ? `<br>Due back ${fmtTs(item.due_back)}${overdue ? ' <span style="color:var(--red)">OVERDUE</span>' : ''}` : ''}
         </div>
         <button class="btn-checkin" onclick="checkinItem()">✓ CHECK IN</button>
       </div>`;
   } else {
-    box.innerHTML = `
-      <div class="checkout-box">
-        <div class="checkout-form">
-          <div>
-            <div class="checkout-input-label">BORROWER NAME *</div>
-            <input class="checkout-input" id="co-borrower" placeholder="Who's taking this?" />
-          </div>
-          <div>
-            <div class="checkout-input-label">DUE BACK (OPTIONAL)</div>
-            <input class="checkout-input" id="co-due" type="date" />
-          </div>
-        </div>
-        <button class="btn-checkout" onclick="checkoutItem()">CHECK OUT →</button>
-      </div>`;
-  }
-}
-
-async function checkoutItem() {
-  if (!openItemId) return;
-  const borrower = (document.getElementById('co-borrower')?.value || '').trim();
-  if (!borrower) { document.getElementById('co-borrower').focus(); return; }
-  const due_back = document.getElementById('co-due')?.value || null;
-  try {
-    const updated = await api('POST', `/api/items/${openItemId}/checkout`, { borrower, due_back });
-    const idx = items.findIndex(i => i.id === openItemId);
-    if (idx !== -1) items[idx] = updated;
-    renderCheckoutSection(updated);
-    render();
-  } catch (e) {
-    alert('Checkout failed: ' + e.message);
+    box.innerHTML = `<button class="btn-checkout" onclick="openCoModal(${item.id})">⊳ CHECK OUT →</button>`;
   }
 }
 
@@ -2199,6 +2285,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (document.getElementById('scanner-modal').classList.contains('open')) { closeScanner(); return; }
     if (document.getElementById('photo-modal').classList.contains('open')) { closePhotoModal(); return; }
+    if (document.getElementById('co-modal').classList.contains('open')) { closeCoModal(); return; }
     if (document.getElementById('qr-modal').classList.contains('open')) { closeQR(); return; }
     if (document.getElementById('user-modal').classList.contains('open')) { closeUserModal(); return; }
     if (document.body.classList.contains('panel-open')) { closePanel(); return; }
@@ -2234,12 +2321,13 @@ document.getElementById('tab-login').addEventListener('click', () => switchTab('
 document.getElementById('tab-register').addEventListener('click', () => switchTab('register'));
 
 // Modal close on backdrop click
-['qr-modal','scanner-modal','user-modal','photo-modal'].forEach(id => {
+['qr-modal','scanner-modal','user-modal','photo-modal','co-modal'].forEach(id => {
   document.getElementById(id).addEventListener('click', e => {
     if (e.target === document.getElementById(id)) {
       if (id === 'scanner-modal') closeScanner();
       else if (id === 'qr-modal') closeQR();
       else if (id === 'photo-modal') closePhotoModal();
+      else if (id === 'co-modal') closeCoModal();
       else closeUserModal();
     }
   });
