@@ -209,6 +209,16 @@ body.panel-open .detail-panel { transform: translateX(0); }
 .btn-scan-cancel { margin: 0; width: 100%; background: none; border: none; border-top: 1px solid var(--rule); color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 1px; padding: 12px; cursor: pointer; transition: color 0.15s; }
 .btn-scan-cancel:hover { color: var(--red); }
 
+/* ── PHOTO MODAL (mobile-optimized) ── */
+#photo-modal .scanner-modal { width: 420px; max-width: 100vw; }
+#photo-modal .scanner-viewport { aspect-ratio: 4/3; }
+#photo-video { width: 100%; height: 100%; object-fit: cover; display: block; }
+@media (max-width: 480px) {
+  #photo-modal .scanner-modal { width: 100vw; border-left: none; border-right: none; }
+  #photo-modal .scanner-viewport { aspect-ratio: 4/3; max-height: 55vw; }
+  .btn-scan-cancel { padding: 16px; font-size: 12px; }
+}
+
 /* ── USER MENU MODAL ── */
 .user-modal { background: var(--paper); border: 1px solid var(--rule); border-top: 2px solid var(--accent); width: 340px; max-width: 95vw; }
 .user-modal-header { padding: 14px 16px; border-bottom: 1px solid var(--rule); font-size: 10px; letter-spacing: 2px; color: var(--muted); }
@@ -388,7 +398,8 @@ body.panel-open .detail-panel { transform: translateX(0); }
     <div class="scanner-status" id="photo-status">POINT CAMERA AT ITEM</div>
     <div style="display:flex;width:100%">
       <button class="btn-scan-cancel" id="btn-photo-capture" onclick="capturePhoto()" style="flex:1;color:var(--accent);border-right:1px solid #1a3020">📷 CAPTURE</button>
-      <label class="btn-scan-cancel" style="flex:1;cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center">
+      <button class="btn-scan-cancel" id="btn-photo-retake" onclick="retakePhoto()" style="flex:1;color:var(--muted);border-right:1px solid #1a3020;display:none">↺ RETAKE</button>
+      <label class="btn-scan-cancel" id="lbl-photo-upload" style="flex:1;cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center">
         ⬆ UPLOAD
         <input type="file" accept="image/*" style="display:none" onchange="uploadPhoto(this)">
       </label>
@@ -1838,11 +1849,19 @@ async function openPhotoModal() {
   document.getElementById('photo-video').style.display = '';
   document.getElementById('btn-photo-analyze').style.display = 'none';
   document.getElementById('btn-photo-capture').style.display = '';
+  document.getElementById('btn-photo-retake').style.display = 'none';
+  document.getElementById('lbl-photo-upload').style.display = 'flex';
   document.getElementById('photo-status').textContent = 'POINT CAMERA AT ITEM';
   document.getElementById('photo-modal').classList.add('open');
 
   try {
-    photoStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    photoStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: 'environment' },
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 }
+      }
+    });
     document.getElementById('photo-video').srcObject = photoStream;
   } catch {
     document.getElementById('photo-status').textContent = 'CAMERA UNAVAILABLE — USE UPLOAD';
@@ -1859,20 +1878,51 @@ function closePhotoModal() {
 
 function capturePhoto() {
   const video = document.getElementById('photo-video');
+  const MAX = 1280;
+  let w = video.videoWidth, h = video.videoHeight;
+  if (w > MAX || h > MAX) {
+    if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+    else        { w = Math.round(w * MAX / h); h = MAX; }
+  }
   const canvas = document.createElement('canvas');
-  canvas.width = video.videoWidth;
-  canvas.height = video.videoHeight;
-  canvas.getContext('2d').drawImage(video, 0, 0);
-  capturedImageData = canvas.toDataURL('image/jpeg', 0.85);
+  canvas.width = w; canvas.height = h;
+  canvas.getContext('2d').drawImage(video, 0, 0, w, h);
+  capturedImageData = canvas.toDataURL('image/jpeg', 0.82);
   showPhotoPreview();
 }
 
 function uploadPhoto(input) {
   const file = input.files[0];
   if (!file) return;
-  const reader = new FileReader();
-  reader.onload = e => { capturedImageData = e.target.result; showPhotoPreview(); };
-  reader.readAsDataURL(file);
+  // Resize large uploads before sending
+  const img = new Image();
+  const url = URL.createObjectURL(file);
+  img.onload = () => {
+    URL.revokeObjectURL(url);
+    const MAX = 1280;
+    let w = img.width, h = img.height;
+    if (w > MAX || h > MAX) {
+      if (w > h) { h = Math.round(h * MAX / w); w = MAX; }
+      else        { w = Math.round(w * MAX / h); h = MAX; }
+    }
+    const canvas = document.createElement('canvas');
+    canvas.width = w; canvas.height = h;
+    canvas.getContext('2d').drawImage(img, 0, 0, w, h);
+    capturedImageData = canvas.toDataURL('image/jpeg', 0.82);
+    showPhotoPreview();
+  };
+  img.src = url;
+}
+
+function retakePhoto() {
+  capturedImageData = null;
+  document.getElementById('photo-preview').style.display = 'none';
+  document.getElementById('photo-video').style.display = '';
+  document.getElementById('btn-photo-analyze').style.display = 'none';
+  document.getElementById('btn-photo-capture').style.display = '';
+  document.getElementById('btn-photo-retake').style.display = 'none';
+  document.getElementById('lbl-photo-upload').style.display = 'flex';
+  document.getElementById('photo-status').textContent = 'POINT CAMERA AT ITEM';
 }
 
 function showPhotoPreview() {
@@ -1881,6 +1931,8 @@ function showPhotoPreview() {
   document.getElementById('photo-video').style.display = 'none';
   document.getElementById('btn-photo-analyze').style.display = '';
   document.getElementById('btn-photo-capture').style.display = 'none';
+  document.getElementById('btn-photo-retake').style.display = '';
+  document.getElementById('lbl-photo-upload').style.display = 'none';
   document.getElementById('photo-status').textContent = 'READY — ANALYZE OR RETAKE';
 }
 

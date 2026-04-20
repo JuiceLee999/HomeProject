@@ -1,4 +1,4 @@
-const CACHE_NAME = 'cache-inv-v1.6.3';
+const CACHE_NAME = 'cache-inv-v1.6.4';
 const APP_SHELL = ['/', '/manifest.json'];
 
 self.addEventListener('install', event => {
