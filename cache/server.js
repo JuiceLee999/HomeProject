@@ -100,12 +100,33 @@ db.exec(`
     notes       TEXT NOT NULL DEFAULT '',
     tags        TEXT NOT NULL DEFAULT '[]',
     qr_token    TEXT UNIQUE NOT NULL,
-    image_data  TEXT DEFAULT NULL,
+    image_data      TEXT DEFAULT NULL,
+    checked_out_to  TEXT DEFAULT NULL,
+    checked_out_at  INTEGER DEFAULT NULL,
+    due_back        INTEGER DEFAULT NULL,
     created_at  INTEGER DEFAULT (strftime('%s','now')),
     modified_at INTEGER DEFAULT (strftime('%s','now')),
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
+
+  CREATE TABLE IF NOT EXISTS checkouts (
+    id           INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id      INTEGER NOT NULL,
+    user_id      INTEGER NOT NULL,
+    borrower     TEXT NOT NULL,
+    checked_out  INTEGER NOT NULL,
+    due_back     INTEGER DEFAULT NULL,
+    checked_in   INTEGER DEFAULT NULL,
+    notes        TEXT NOT NULL DEFAULT '',
+    FOREIGN KEY (item_id) REFERENCES items(id),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
 `);
+
+// Add checkout columns to existing databases that predate this schema
+try { db.exec('ALTER TABLE items ADD COLUMN checked_out_to TEXT DEFAULT NULL'); } catch {}
+try { db.exec('ALTER TABLE items ADD COLUMN checked_out_at INTEGER DEFAULT NULL'); } catch {}
+try { db.exec('ALTER TABLE items ADD COLUMN due_back INTEGER DEFAULT NULL'); } catch {}
 
 // ── JWT secret ────────────────────────────────────────────────────────────────
 let JWT_SECRET;
@@ -290,6 +311,53 @@ app.put('/api/items/:id', verifyToken, (req, res) => {
 app.delete('/api/items/:id', verifyToken, (req, res) => {
   db.prepare('DELETE FROM items WHERE id = ? AND user_id = ?').run([Number(req.params.id), req.user.userId]);
   res.json({ ok: true });
+});
+
+// ── Checkout / check-in ───────────────────────────────────────────────────────
+app.post('/api/items/:id/checkout', verifyToken, (req, res) => {
+  const { userId } = req.user;
+  const itemId = Number(req.params.id);
+  const item = db.prepare('SELECT * FROM items WHERE id = ? AND user_id = ?').get([itemId, userId]);
+  if (!item) return res.status(404).json({ error: 'Not found' });
+  if (item.checked_out_to) return res.status(409).json({ error: 'Item is already checked out' });
+
+  const { borrower, due_back = null, notes = '' } = req.body || {};
+  if (!borrower || !borrower.trim()) return res.status(400).json({ error: 'Borrower name is required' });
+
+  const now = Math.floor(Date.now() / 1000);
+  const dueTs = due_back ? Math.floor(new Date(due_back).getTime() / 1000) : null;
+
+  db.prepare('UPDATE items SET checked_out_to=?, checked_out_at=?, due_back=?, modified_at=? WHERE id=?')
+    .run([borrower.trim(), now, dueTs, now, itemId]);
+  db.prepare('INSERT INTO checkouts (item_id, user_id, borrower, checked_out, due_back, notes) VALUES (?,?,?,?,?,?)')
+    .run([itemId, userId, borrower.trim(), now, dueTs, notes]);
+
+  res.json(itemToJSON(db.prepare('SELECT * FROM items WHERE id = ?').get(itemId)));
+});
+
+app.post('/api/items/:id/checkin', verifyToken, (req, res) => {
+  const { userId } = req.user;
+  const itemId = Number(req.params.id);
+  const item = db.prepare('SELECT * FROM items WHERE id = ? AND user_id = ?').get([itemId, userId]);
+  if (!item) return res.status(404).json({ error: 'Not found' });
+  if (!item.checked_out_to) return res.status(409).json({ error: 'Item is not checked out' });
+
+  const now = Math.floor(Date.now() / 1000);
+  db.prepare('UPDATE items SET checked_out_to=NULL, checked_out_at=NULL, due_back=NULL, modified_at=? WHERE id=?')
+    .run([now, itemId]);
+  db.prepare('UPDATE checkouts SET checked_in=? WHERE item_id=? AND checked_in IS NULL')
+    .run([now, itemId]);
+
+  res.json(itemToJSON(db.prepare('SELECT * FROM items WHERE id = ?').get(itemId)));
+});
+
+app.get('/api/items/:id/checkouts', verifyToken, (req, res) => {
+  const { userId } = req.user;
+  const itemId = Number(req.params.id);
+  const item = db.prepare('SELECT id FROM items WHERE id = ? AND user_id = ?').get([itemId, userId]);
+  if (!item) return res.status(404).json({ error: 'Not found' });
+  const history = db.prepare('SELECT * FROM checkouts WHERE item_id=? ORDER BY checked_out DESC').all([itemId]);
+  res.json(history);
 });
 
 // ── AI item analysis ──────────────────────────────────────────────────────────
