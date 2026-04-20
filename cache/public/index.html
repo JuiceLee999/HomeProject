@@ -316,8 +316,8 @@ body.panel-open .detail-panel { transform: translateX(0); }
     <div class="auth-logo"><span class="auth-logomark">▌▌ </span>CACHE</div>
     <div class="auth-sub">INVENTORY SYSTEM</div>
     <div class="auth-tabs">
-      <button class="auth-tab active" id="tab-login" onclick="switchTab('login')">SIGN IN</button>
-      <button class="auth-tab" id="tab-register" onclick="switchTab('register')">REGISTER</button>
+      <button class="auth-tab active" id="tab-login">SIGN IN</button>
+      <button class="auth-tab" id="tab-register">REGISTER</button>
     </div>
     <div class="auth-field">
       <label>EMAIL</label>
@@ -425,6 +425,7 @@ body.panel-open .detail-panel { transform: translateX(0); }
     <div class="hstat">LOCS <strong id="hs-locs">0</strong></div>
   </div>
   <div class="header-right">
+    <button class="btn-scan-header" id="btn-add-item" onclick="openAddPanel()" data-tip="Add Item" data-tip-dir="below">+ ADD ITEM</button>
     <button class="btn-scan-header" onclick="openScanner()" data-tip="Scan QR Code" data-tip-dir="below">⊹ SCAN QR</button>
     <button class="btn-icon" onclick="openUserModal()" data-tip="Account &amp; Settings" data-tip-dir="below">⚙</button>
   </div>
@@ -1009,7 +1010,7 @@ function showApp() {
   document.getElementById('auth-screen').style.display = 'none';
   document.getElementById('app-header').style.display = 'flex';
   document.getElementById('app-main').style.display = 'block';
-  document.getElementById('fab').style.display = 'flex';
+  document.getElementById('fab').style.display = 'none'; // FAB only shown in lists view
   document.getElementById('user-email-display').textContent = currentUserEmail;
 }
 
@@ -1159,7 +1160,8 @@ function setView(v) {
   document.getElementById('items-filter-bar').style.display    = v === 'items' ? '' : 'none';
   document.getElementById('item-grid').style.display           = v === 'items' ? '' : 'none';
   document.getElementById('list-grid').style.display           = v === 'lists' ? '' : 'none';
-  document.getElementById('fab').dataset.tip = v === 'lists' ? 'New List' : 'Add Item';
+  document.getElementById('btn-add-item').style.display        = v === 'items' ? '' : 'none';
+  document.getElementById('fab').style.display                 = v === 'lists' ? 'flex' : 'none';
   closePanel();
 }
 
@@ -1960,6 +1962,10 @@ document.getElementById('fab').addEventListener('click', () => {
 });
 
 document.getElementById('btn-close-panel').addEventListener('click', closePanel);
+
+// Auth tab switching
+document.getElementById('tab-login').addEventListener('click', () => switchTab('login'));
+document.getElementById('tab-register').addEventListener('click', () => switchTab('register'));
 
 // Modal close on backdrop click
 ['qr-modal','scanner-modal','user-modal'].forEach(id => {
