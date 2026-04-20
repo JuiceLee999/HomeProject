@@ -46,6 +46,7 @@ body { font-family: 'Share Tech Mono', monospace; background: var(--bg); color: 
 .auth-err { font-size: 11px; color: var(--red); margin-top: 10px; min-height: 16px; letter-spacing: 0.5px; }
 .field-err { font-size: 10px; color: var(--red); letter-spacing: 0.5px; margin-top: 4px; display: none; }
 .input-invalid { border-color: var(--red) !important; }
+.field-hint { font-size: 10px; color: var(--muted); letter-spacing: 0.3px; margin-bottom: 5px; opacity: 0.8; }
 
 /* ── HEADER ── */
 header { background: #050807; border-bottom: 2px solid var(--accent); padding: 0 20px; height: 52px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 200; }
@@ -394,14 +395,17 @@ body.panel-open .detail-panel { transform: translateX(0); }
     </div>
     <div class="auth-field">
       <label>EMAIL *</label>
+      <div class="field-hint">Your account email address</div>
       <input type="email" id="auth-email" placeholder="you@example.com" autocomplete="email" />
     </div>
     <div class="auth-field">
       <label>PASSWORD *</label>
+      <div class="field-hint" id="pw-hint">Enter your password to sign in</div>
       <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password" />
     </div>
     <div class="auth-field" id="auth-confirm-wrap" style="display:none">
       <label>CONFIRM PASSWORD *</label>
+      <div class="field-hint">Re-enter your password to confirm</div>
       <input type="password" id="auth-confirm" placeholder="Repeat password" autocomplete="new-password" />
     </div>
     <button class="btn-auth" id="btn-auth" onclick="authSubmit()">ACCESS SYSTEM →</button>
@@ -483,18 +487,22 @@ body.panel-open .detail-panel { transform: translateX(0); }
     <div class="co-modal-body">
       <div class="co-field">
         <label>WHO'S TAKING IT *</label>
+        <div class="field-hint">Name of the person borrowing this item</div>
         <input id="co-borrower-modal" type="text" placeholder="Name of borrower" autocomplete="off" />
       </div>
       <div class="co-field">
         <label>DATE TAKEN</label>
+        <div class="field-hint">When the item is being taken out</div>
         <input id="co-date-modal" type="date" />
       </div>
       <div class="co-field">
         <label>WHERE IT'S GOING</label>
+        <div class="field-hint">Destination, job site, or address</div>
         <input id="co-dest-modal" type="text" placeholder="e.g. Job site, John's house..." autocomplete="off" />
       </div>
       <div class="co-field">
         <label>NOTES</label>
+        <div class="field-hint">Any additional details about this checkout</div>
         <textarea id="co-notes-modal" placeholder="Any additional info..."></textarea>
       </div>
     </div>
@@ -660,10 +668,12 @@ body.panel-open .detail-panel { transform: translateX(0); }
 
     <div class="panel-field">
       <label>LIST NAME *</label>
+      <div class="field-hint">A descriptive name for this collection of items</div>
       <input type="text" id="ld-name" placeholder="e.g. Basement Storage" />
     </div>
     <div class="panel-field">
       <label>DESCRIPTION</label>
+      <div class="field-hint">What items belong in this list or its purpose</div>
       <textarea id="ld-description" placeholder="What is this list for?" style="min-height:55px"></textarea>
     </div>
     <div class="panel-divider"></div>
@@ -713,12 +723,14 @@ body.panel-open .detail-panel { transform: translateX(0); }
 
     <div class="panel-field">
       <label>ITEM NAME *</label>
+      <div class="field-hint">A clear, searchable name for this item</div>
       <input type="text" id="pd-name" placeholder="e.g. DeWalt Cordless Drill" />
     </div>
 
     <div class="panel-row">
       <div class="panel-field">
         <label>CATEGORY</label>
+        <div class="field-hint">Group similar items together</div>
         <select id="pd-category" onchange="handleCatSelect(this)">
           <option value="">— Select —</option>
           <option value="__new__">＋ ADD CATEGORY...</option>
@@ -731,6 +743,7 @@ body.panel-open .detail-panel { transform: translateX(0); }
       </div>
       <div class="panel-field">
         <label>CONDITION</label>
+        <div class="field-hint">Current physical state</div>
         <select id="pd-condition">
           <option value="new">New</option>
           <option value="good" selected>Good</option>
@@ -742,6 +755,7 @@ body.panel-open .detail-panel { transform: translateX(0); }
 
     <div class="panel-field">
       <label>LOCATION</label>
+      <div class="field-hint">Where this item is stored</div>
       <select id="pd-location" onchange="handleLocSelect(this)">
         <option value="">— Select —</option>
         <option value="__new__">＋ ADD LOCATION...</option>
@@ -756,10 +770,12 @@ body.panel-open .detail-panel { transform: translateX(0); }
     <div class="panel-row-3">
       <div class="panel-field">
         <label>QUANTITY *</label>
+        <div class="field-hint">How many you have</div>
         <input type="number" id="pd-qty" value="1" min="0" step="any" />
       </div>
       <div class="panel-field">
         <label>UNIT</label>
+        <div class="field-hint">Unit of measurement</div>
         <select id="pd-unit">
           <option>pcs</option>
           <option>boxes</option>
@@ -776,6 +792,7 @@ body.panel-open .detail-panel { transform: translateX(0); }
       </div>
       <div class="panel-field">
         <label>VALUE ($)</label>
+        <div class="field-hint">Estimated worth per unit</div>
         <input type="number" id="pd-value" value="" min="0" step="0.01" placeholder="0.00" />
       </div>
     </div>
@@ -785,16 +802,19 @@ body.panel-open .detail-panel { transform: translateX(0); }
     <div class="panel-row">
       <div class="panel-field">
         <label>BRAND</label>
+        <div class="field-hint">Manufacturer or brand name</div>
         <input type="text" id="pd-brand" placeholder="e.g. DeWalt" />
       </div>
       <div class="panel-field">
         <label>MODEL</label>
+        <div class="field-hint">Model number or product name</div>
         <input type="text" id="pd-model" placeholder="e.g. DCD791D2" />
       </div>
     </div>
 
     <div class="panel-field">
       <label>SERIAL NUMBER</label>
+      <div class="field-hint">Serial number, SKU, or barcode</div>
       <input type="text" id="pd-serial" placeholder="Serial / SKU" />
     </div>
 
@@ -802,18 +822,21 @@ body.panel-open .detail-panel { transform: translateX(0); }
 
     <div class="panel-field">
       <label>DESCRIPTION</label>
+      <div class="field-hint">What this item is and what it's used for</div>
       <textarea id="pd-description" placeholder="What is this item?"></textarea>
     </div>
 
     <div class="panel-field">
       <label>NOTES</label>
+      <div class="field-hint">Storage tips, purchase info, maintenance reminders</div>
       <textarea id="pd-notes" placeholder="Storage tips, maintenance, purchase info..."></textarea>
     </div>
 
     <div class="panel-divider"></div>
 
     <div>
-      <div class="panel-section" style="margin-bottom:8px">TAGS</div>
+      <div class="panel-section" style="margin-bottom:4px">TAGS</div>
+      <div class="field-hint" style="margin-bottom:8px">Keywords for quick searching and filtering</div>
       <div class="tags-wrap" id="tags-wrap"></div>
       <div class="tag-input-wrap" style="margin-top:8px">
         <input class="tag-input" id="tag-input" placeholder="Add tag..." onkeydown="tagKeydown(event)" />
@@ -1162,6 +1185,7 @@ function switchTab(mode) {
   document.getElementById('tab-register').classList.toggle('active', mode === 'register');
   document.getElementById('auth-confirm-wrap').style.display = mode === 'register' ? '' : 'none';
   document.getElementById('btn-auth').textContent = mode === 'login' ? 'ACCESS SYSTEM →' : 'CREATE ACCOUNT →';
+  document.getElementById('pw-hint').textContent = mode === 'login' ? 'Enter your password to sign in' : 'Minimum 8 characters';
   document.getElementById('auth-err').textContent = '';
   ['auth-email','auth-password','auth-confirm'].forEach(id => clearErr(document.getElementById(id)));
 }
