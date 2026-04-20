@@ -649,6 +649,12 @@ body.panel-open .detail-panel { transform: translateX(0); }
 
   <div class="panel-body" id="item-panel-body">
 
+    <!-- Checkout banner (edit mode, checked-out items only) -->
+    <div id="panel-checkout-section" style="display:none">
+      <div id="checkout-box-content"></div>
+      <div class="panel-divider"></div>
+    </div>
+
     <div class="panel-field">
       <label>ITEM NAME *</label>
       <input type="text" id="pd-name" placeholder="e.g. DeWalt Cordless Drill" />
@@ -757,14 +763,6 @@ body.panel-open .detail-panel { transform: translateX(0); }
         <input class="tag-input" id="tag-input" placeholder="Add tag..." onkeydown="tagKeydown(event)" />
         <button class="btn-tag-add" onclick="addTag()">+ ADD</button>
       </div>
-    </div>
-
-    <div class="panel-divider"></div>
-
-    <!-- Checkout section (edit mode only) -->
-    <div id="panel-checkout-section" style="display:none">
-      <div class="panel-section" style="margin-bottom:10px">CHECKOUT</div>
-      <div id="checkout-box-content"></div>
     </div>
 
     <div class="panel-divider"></div>
@@ -1777,27 +1775,29 @@ async function checkinFromCard(itemId) {
   }
 }
 
-// Panel checkout section (detail panel, edit mode)
+// Panel checkout section (edit mode — only visible when item is checked out)
 function renderCheckoutSection(item) {
   const section = document.getElementById('panel-checkout-section');
   const box = document.getElementById('checkout-box-content');
-  section.style.display = '';
 
-  if (item.checked_out_to) {
-    const overdue = item.due_back && item.due_back < Math.floor(Date.now() / 1000);
-    box.innerHTML = `
-      <div class="checkout-box active">
-        <div class="checkout-who">→ ${escHtml(item.checked_out_to)}</div>
-        <div class="checkout-meta">
-          ${item.checked_out_at ? `Taken ${fmtTs(item.checked_out_at)}` : ''}
-          ${item.checkout_destination ? ` &nbsp;·&nbsp; ${escHtml(item.checkout_destination)}` : ''}
-          ${item.due_back ? `<br>Due back ${fmtTs(item.due_back)}${overdue ? ' <span style="color:var(--red)">OVERDUE</span>' : ''}` : ''}
-        </div>
-        <button class="btn-checkin" onclick="checkinItem()">✓ CHECK IN</button>
-      </div>`;
-  } else {
-    box.innerHTML = `<button class="btn-checkout" onclick="openCoModal(${item.id})">⊳ CHECK OUT →</button>`;
+  if (!item.checked_out_to) {
+    section.style.display = 'none';
+    return;
   }
+
+  section.style.display = '';
+  const overdue = item.due_back && item.due_back < Math.floor(Date.now() / 1000);
+  box.innerHTML = `
+    <div class="checkout-box active" style="border-radius:0;border-left:none;border-right:none;border-top:none;margin:0 -16px;padding:12px 18px">
+      <div style="font-size:9px;letter-spacing:3px;color:var(--amber);margin-bottom:8px">CHECKED OUT</div>
+      <div class="checkout-who">→ ${escHtml(item.checked_out_to)}</div>
+      <div class="checkout-meta">
+        ${item.checked_out_at ? `Taken ${fmtTs(item.checked_out_at)}` : ''}
+        ${item.checkout_destination ? ` &nbsp;·&nbsp; ${escHtml(item.checkout_destination)}` : ''}
+        ${item.due_back ? `<br>Due back ${fmtTs(item.due_back)}${overdue ? ' <span style="color:var(--red)">OVERDUE</span>' : ''}` : ''}
+      </div>
+      <button class="btn-checkin" onclick="checkinItem()">✓ CHECK IN</button>
+    </div>`;
 }
 
 async function checkinItem() {
