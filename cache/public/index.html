@@ -44,6 +44,8 @@ body { font-family: 'Share Tech Mono', monospace; background: var(--bg); color: 
 .btn-auth:hover { opacity: 0.85; }
 .btn-auth:disabled { opacity: 0.45; cursor: default; }
 .auth-err { font-size: 11px; color: var(--red); margin-top: 10px; min-height: 16px; letter-spacing: 0.5px; }
+.field-err { font-size: 10px; color: var(--red); letter-spacing: 0.5px; margin-top: 4px; display: none; }
+.input-invalid { border-color: var(--red) !important; }
 
 /* ── HEADER ── */
 header { background: #050807; border-bottom: 2px solid var(--accent); padding: 0 20px; height: 52px; display: flex; align-items: center; gap: 14px; position: sticky; top: 0; z-index: 200; }
@@ -391,15 +393,15 @@ body.panel-open .detail-panel { transform: translateX(0); }
       <button class="auth-tab" id="tab-register">REGISTER</button>
     </div>
     <div class="auth-field">
-      <label>EMAIL</label>
+      <label>EMAIL *</label>
       <input type="email" id="auth-email" placeholder="you@example.com" autocomplete="email" />
     </div>
     <div class="auth-field">
-      <label>PASSWORD</label>
+      <label>PASSWORD *</label>
       <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password" />
     </div>
     <div class="auth-field" id="auth-confirm-wrap" style="display:none">
-      <label>CONFIRM PASSWORD</label>
+      <label>CONFIRM PASSWORD *</label>
       <input type="password" id="auth-confirm" placeholder="Repeat password" autocomplete="new-password" />
     </div>
     <button class="btn-auth" id="btn-auth" onclick="authSubmit()">ACCESS SYSTEM →</button>
@@ -753,7 +755,7 @@ body.panel-open .detail-panel { transform: translateX(0); }
 
     <div class="panel-row-3">
       <div class="panel-field">
-        <label>QUANTITY</label>
+        <label>QUANTITY *</label>
         <input type="number" id="pd-qty" value="1" min="0" step="any" />
       </div>
       <div class="panel-field">
@@ -848,6 +850,31 @@ body.panel-open .detail-panel { transform: translateX(0); }
 <script src="/lib/jsqr.js"></script>
 <script>
 'use strict';
+
+// ── Validation helpers ────────────────────────────────────────────────────────
+function showErr(el, msg) {
+  el.classList.add('input-invalid');
+  let errEl = el.parentElement.querySelector('.field-err');
+  if (!errEl) {
+    errEl = document.createElement('div');
+    errEl.className = 'field-err';
+    el.after(errEl);
+  }
+  errEl.textContent = msg;
+  errEl.style.display = '';
+  el.addEventListener('input', () => clearErr(el), { once: true });
+  el.addEventListener('change', () => clearErr(el), { once: true });
+}
+
+function clearErr(el) {
+  el.classList.remove('input-invalid');
+  const errEl = el.parentElement?.querySelector('.field-err');
+  if (errEl) errEl.style.display = 'none';
+}
+
+function isValidEmail(v) {
+  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(v);
+}
 
 // ── State ─────────────────────────────────────────────────────────────────────
 let token = localStorage.getItem('cache_token') || '';
@@ -1136,18 +1163,39 @@ function switchTab(mode) {
   document.getElementById('auth-confirm-wrap').style.display = mode === 'register' ? '' : 'none';
   document.getElementById('btn-auth').textContent = mode === 'login' ? 'ACCESS SYSTEM →' : 'CREATE ACCOUNT →';
   document.getElementById('auth-err').textContent = '';
+  ['auth-email','auth-password','auth-confirm'].forEach(id => clearErr(document.getElementById(id)));
 }
 
 async function authSubmit() {
-  const email = document.getElementById('auth-email').value.trim();
-  const password = document.getElementById('auth-password').value;
-  const confirm = document.getElementById('auth-confirm').value;
-  const errEl = document.getElementById('auth-err');
-  const btn = document.getElementById('btn-auth');
+  const emailEl = document.getElementById('auth-email');
+  const pwEl    = document.getElementById('auth-password');
+  const cfEl    = document.getElementById('auth-confirm');
+  const errEl   = document.getElementById('auth-err');
+  const btn     = document.getElementById('btn-auth');
 
+  const email    = emailEl.value.trim();
+  const password = pwEl.value;
+  const confirm  = cfEl.value;
+
+  // Clear previous errors
   errEl.textContent = '';
-  if (!email || !password) { errEl.textContent = 'Email and password required.'; return; }
-  if (authMode === 'register' && password !== confirm) { errEl.textContent = 'Passwords do not match.'; return; }
+  [emailEl, pwEl, cfEl].forEach(clearErr);
+
+  let valid = true;
+  if (!email) {
+    showErr(emailEl, 'Email is required.'); valid = false;
+  } else if (!isValidEmail(email)) {
+    showErr(emailEl, 'Enter a valid email address.'); valid = false;
+  }
+  if (!password) {
+    showErr(pwEl, 'Password is required.'); valid = false;
+  } else if (authMode === 'register' && password.length < 8) {
+    showErr(pwEl, 'Password must be at least 8 characters.'); valid = false;
+  }
+  if (authMode === 'register' && password && confirm !== password) {
+    showErr(cfEl, 'Passwords do not match.'); valid = false;
+  }
+  if (!valid) return;
 
   btn.disabled = true;
   try {
@@ -1579,8 +1627,10 @@ function shareEmailKeydown(e) {
 
 async function saveList() {
   if (listIsShared) return;
-  const name = document.getElementById('ld-name').value.trim();
-  if (!name) { document.getElementById('ld-name').focus(); return; }
+  const nameEl = document.getElementById('ld-name');
+  clearErr(nameEl);
+  const name = nameEl.value.trim();
+  if (!name) { showErr(nameEl, 'List name is required.'); return; }
   const body = {
     name,
     description: document.getElementById('ld-description').value.trim(),
@@ -1751,8 +1801,27 @@ function closePanel() {
 }
 
 async function saveItem() {
-  const name = document.getElementById('pd-name').value.trim();
-  if (!name) { document.getElementById('pd-name').focus(); return; }
+  const nameEl = document.getElementById('pd-name');
+  const qtyEl  = document.getElementById('pd-qty');
+  const valEl  = document.getElementById('pd-value');
+
+  [nameEl, qtyEl, valEl].forEach(clearErr);
+
+  let valid = true;
+  const name = nameEl.value.trim();
+  if (!name) { showErr(nameEl, 'Item name is required.'); valid = false; }
+
+  const qty = Number(qtyEl.value);
+  if (qtyEl.value === '' || isNaN(qty) || qty < 0) {
+    showErr(qtyEl, 'Enter a valid quantity (0 or more).'); valid = false;
+  }
+
+  const val = valEl.value;
+  if (val !== '' && (isNaN(Number(val)) || Number(val) < 0)) {
+    showErr(valEl, 'Value must be 0 or more.'); valid = false;
+  }
+
+  if (!valid) return;
 
   const body = {
     name,
@@ -1836,8 +1905,10 @@ function closeCoModal() {
 }
 
 async function submitCoModal() {
-  const borrower = document.getElementById('co-borrower-modal').value.trim();
-  if (!borrower) { document.getElementById('co-borrower-modal').focus(); return; }
+  const borrowerEl = document.getElementById('co-borrower-modal');
+  clearErr(borrowerEl);
+  const borrower = borrowerEl.value.trim();
+  if (!borrower) { showErr(borrowerEl, 'Borrower name is required.'); return; }
   const checked_out_date = document.getElementById('co-date-modal').value || null;
   const destination      = document.getElementById('co-dest-modal').value.trim();
   const notes            = document.getElementById('co-notes-modal').value.trim();
