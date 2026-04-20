@@ -92,6 +92,7 @@ body.panel-open main { padding-right: calc(var(--panel-w) + 20px); }
 .item-card[data-cond="good"] { border-left-color: var(--accent); }
 .item-card[data-cond="fair"] { border-left-color: var(--amber); }
 .item-card[data-cond="poor"] { border-left-color: var(--red); }
+.item-card.card-co { border-color: var(--amber); border-left-color: var(--amber); }
 .card-top { display: flex; justify-content: space-between; align-items: flex-start; gap: 6px; margin-bottom: 10px; }
 .card-badges { display: flex; gap: 4px; flex-wrap: wrap; }
 .badge { font-size: 9px; letter-spacing: 1px; padding: 2px 7px; border: 1px solid; text-transform: uppercase; flex-shrink: 0; }
@@ -99,6 +100,7 @@ body.panel-open main { padding-right: calc(var(--panel-w) + 20px); }
 .badge-cond-new, .badge-cond-good { border-color: var(--accent); color: var(--accent); }
 .badge-cond-fair { border-color: var(--amber); color: var(--amber); }
 .badge-cond-poor { border-color: var(--red); color: var(--red); }
+.badge-co { border-color: var(--amber); color: var(--amber); background: var(--amber-dim); }
 .card-id { font-size: 9px; color: var(--rule); flex-shrink: 0; }
 .card-name { font-size: 15px; letter-spacing: 0.5px; color: #e0f8dc; margin-bottom: 3px; line-height: 1.3; }
 .card-brand { font-size: 10px; color: var(--muted); margin-bottom: 10px; }
@@ -149,6 +151,21 @@ body.panel-open .detail-panel { transform: translateX(0); }
 .panel-row-3 { display: grid; grid-template-columns: 2fr 1fr 1fr; gap: 10px; }
 .panel-divider { height: 1px; background: var(--rule); margin: 0 -16px; }
 .panel-section { font-size: 9px; letter-spacing: 3px; color: var(--muted); text-transform: uppercase; }
+.checkout-box { border: 1px solid var(--rule); padding: 12px 14px; display: flex; flex-direction: column; gap: 8px; }
+.checkout-box.active { border-color: var(--amber); background: var(--amber-dim); }
+.checkout-who { font-size: 13px; color: var(--amber); letter-spacing: 0.5px; }
+.checkout-meta { font-size: 10px; color: var(--muted); letter-spacing: 0.5px; }
+.btn-checkin { background: none; border: 1px solid var(--amber); color: var(--amber); font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; padding: 6px 12px; cursor: pointer; align-self: flex-start; transition: opacity 0.15s; }
+.btn-checkin:hover { opacity: 0.7; }
+.btn-checkout { background: none; border: 1px solid var(--accent); color: var(--accent); font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; padding: 6px 12px; cursor: pointer; align-self: flex-end; transition: opacity 0.15s; margin-top: 4px; }
+.btn-checkout:hover { opacity: 0.7; }
+.checkout-form { display: flex; flex-direction: column; gap: 8px; }
+.checkout-input { background: var(--bg); border: 1px solid var(--rule); color: var(--ink); font-family: 'Share Tech Mono', monospace; font-size: 12px; padding: 7px 10px; width: 100%; outline: none; }
+.checkout-input:focus { border-color: var(--accent); }
+.checkout-input-label { font-size: 9px; letter-spacing: 2px; color: var(--muted); margin-bottom: 2px; }
+.checkout-history { margin-top: 8px; }
+.co-hist-row { font-size: 10px; color: var(--muted); padding: 4px 0; border-top: 1px solid var(--rule); letter-spacing: 0.3px; }
+.co-hist-row span { color: var(--ink); }
 /* Tags */
 .tags-wrap { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; }
 .tag-chip { background: var(--accent-dim); border: 1px solid var(--rule); color: var(--accent); font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 0.5px; padding: 3px 8px; display: flex; align-items: center; gap: 5px; }
@@ -490,6 +507,7 @@ body.panel-open .detail-panel { transform: translateX(0); }
     <button class="filter-chip" data-filter="good" onclick="setFilter('cond:good',this)">GOOD</button>
     <button class="filter-chip" data-filter="fair" onclick="setFilter('cond:fair',this)">FAIR</button>
     <button class="filter-chip" data-filter="poor" onclick="setFilter('cond:poor',this)">POOR</button>
+    <button class="filter-chip" data-filter="checkout" onclick="setFilter('checkout',this)" style="border-color:var(--amber);color:var(--amber)">CHECKED OUT</button>
     <div class="filter-sep"></div>
     <select class="filter-select" id="cat-filter" onchange="setCatFilter(this.value)">
       <option value="">ALL CATEGORIES</option>
@@ -686,6 +704,14 @@ body.panel-open .detail-panel { transform: translateX(0); }
         <input class="tag-input" id="tag-input" placeholder="Add tag..." onkeydown="tagKeydown(event)" />
         <button class="btn-tag-add" onclick="addTag()">+ ADD</button>
       </div>
+    </div>
+
+    <div class="panel-divider"></div>
+
+    <!-- Checkout section (edit mode only) -->
+    <div id="panel-checkout-section" style="display:none">
+      <div class="panel-section" style="margin-bottom:10px">CHECKOUT</div>
+      <div id="checkout-box-content"></div>
     </div>
 
     <div class="panel-divider"></div>
@@ -1135,6 +1161,9 @@ function getFiltered() {
     const cond = currentFilter.slice(5);
     list = list.filter(i => i.condition === cond);
   }
+  if (currentFilter === 'checkout') {
+    list = list.filter(i => i.checked_out_to);
+  }
   if (currentCatFilter) list = list.filter(i => i.category === currentCatFilter);
   if (currentLocFilter) list = list.filter(i => i.location === currentLocFilter);
 
@@ -1170,11 +1199,13 @@ function itemCardHTML(item) {
   const condClass = `badge-cond-${item.condition || 'good'}`;
   const condLabel = (item.condition || 'good').toUpperCase();
 
-  return `<div class="item-card${selected}" data-cond="${escHtml(item.condition)}" data-card-id="${item.id}">
+  const coClass = item.checked_out_to ? ' card-co' : '';
+  return `<div class="item-card${selected}${coClass}" data-cond="${escHtml(item.condition)}" data-card-id="${item.id}">
     <div class="card-top">
       <div class="card-badges">
         ${item.category ? `<span class="badge badge-cat">${escHtml(item.category)}</span>` : ''}
         <span class="badge ${condClass}">${condLabel}</span>
+        ${item.checked_out_to ? `<span class="badge badge-co">OUT</span>` : ''}
       </div>
       <span class="card-id">#${String(item.id).padStart(4,'0')}</span>
     </div>
@@ -1185,6 +1216,7 @@ function itemCardHTML(item) {
       ${valStr ? `<span class="card-val">${escHtml(valStr)}</span>` : ''}
     </div>
     ${item.location ? `<div class="card-loc">⊹ ${escHtml(item.location)}</div>` : ''}
+    ${item.checked_out_to ? `<div class="card-loc" style="color:var(--amber)">→ ${escHtml(item.checked_out_to)}</div>` : ''}
     <div class="card-actions">
       <button class="btn-card-qr" data-qr-id="${item.id}" onclick="event.stopPropagation();showQR(${item.id})">⊡ QR CODE</button>
     </div>
@@ -1509,6 +1541,7 @@ function openAddPanel() {
   document.getElementById('pd-notes').value = '';
   document.getElementById('tag-input').value = '';
   document.getElementById('panel-qr-section').style.display = 'none';
+  document.getElementById('panel-checkout-section').style.display = 'none';
   document.getElementById('btn-qr-panel').style.display = 'none';
   document.getElementById('btn-duplicate').style.display = 'none';
   document.getElementById('btn-delete-item').style.display = 'none';
@@ -1552,6 +1585,7 @@ function openPanel(id) {
   document.getElementById('item-panel-body').style.display = 'flex';
   document.getElementById('list-panel-body').style.display = 'none';
   renderTagsWrap();
+  renderCheckoutSection(item);
   document.body.classList.add('panel-open');
 
   // Highlight card
@@ -1621,6 +1655,77 @@ async function deleteCurrentItem() {
     render();
   } catch (e) {
     alert('Delete failed: ' + e.message);
+  }
+}
+
+// ── Checkout ──────────────────────────────────────────────────────────────────
+function fmtTs(ts) {
+  if (!ts) return '';
+  return new Date(ts * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function renderCheckoutSection(item) {
+  const section = document.getElementById('panel-checkout-section');
+  const box = document.getElementById('checkout-box-content');
+  section.style.display = '';
+
+  if (item.checked_out_to) {
+    const overdue = item.due_back && item.due_back < Math.floor(Date.now() / 1000);
+    box.innerHTML = `
+      <div class="checkout-box active">
+        <div class="checkout-who">→ ${escHtml(item.checked_out_to)}</div>
+        <div class="checkout-meta">
+          Since ${fmtTs(item.checked_out_at)}
+          ${item.due_back ? ` &nbsp;|&nbsp; Due ${fmtTs(item.due_back)}${overdue ? ' <span style="color:var(--red)">OVERDUE</span>' : ''}` : ''}
+        </div>
+        <button class="btn-checkin" onclick="checkinItem()">✓ CHECK IN</button>
+      </div>`;
+  } else {
+    box.innerHTML = `
+      <div class="checkout-box">
+        <div class="checkout-form">
+          <div>
+            <div class="checkout-input-label">BORROWER NAME *</div>
+            <input class="checkout-input" id="co-borrower" placeholder="Who's taking this?" />
+          </div>
+          <div>
+            <div class="checkout-input-label">DUE BACK (OPTIONAL)</div>
+            <input class="checkout-input" id="co-due" type="date" />
+          </div>
+        </div>
+        <button class="btn-checkout" onclick="checkoutItem()">CHECK OUT →</button>
+      </div>`;
+  }
+}
+
+async function checkoutItem() {
+  if (!openItemId) return;
+  const borrower = (document.getElementById('co-borrower')?.value || '').trim();
+  if (!borrower) { document.getElementById('co-borrower').focus(); return; }
+  const due_back = document.getElementById('co-due')?.value || null;
+  try {
+    const updated = await api('POST', `/api/items/${openItemId}/checkout`, { borrower, due_back });
+    const idx = items.findIndex(i => i.id === openItemId);
+    if (idx !== -1) items[idx] = updated;
+    renderCheckoutSection(updated);
+    render();
+  } catch (e) {
+    alert('Checkout failed: ' + e.message);
+  }
+}
+
+async function checkinItem() {
+  if (!openItemId) return;
+  const item = items.find(i => i.id === openItemId);
+  if (!confirm(`Check in "${item?.name}"? This will mark it as returned.`)) return;
+  try {
+    const updated = await api('POST', `/api/items/${openItemId}/checkin`, {});
+    const idx = items.findIndex(i => i.id === openItemId);
+    if (idx !== -1) items[idx] = updated;
+    renderCheckoutSection(updated);
+    render();
+  } catch (e) {
+    alert('Check-in failed: ' + e.message);
   }
 }
 
