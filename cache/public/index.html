@@ -80,6 +80,14 @@ body.panel-open main { padding-right: calc(var(--panel-w) + 20px); }
 
 /* ── ITEM GRID ── */
 .item-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.grid-section-head { grid-column: 1/-1; display: flex; align-items: center; gap: 10px; cursor: pointer; padding: 6px 0 2px; user-select: none; }
+.grid-section-head-label { font-size: 9px; letter-spacing: 3px; color: var(--muted); }
+.grid-section-head-count { font-size: 9px; letter-spacing: 1px; color: var(--accent); }
+.grid-section-head-rule { flex: 1; height: 1px; background: var(--rule); }
+.grid-section-head-arrow { font-size: 10px; color: var(--muted); transition: transform 0.2s; }
+.grid-section-head-arrow.collapsed { transform: rotate(-90deg); }
+.grid-section-body { grid-column: 1/-1; display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.grid-section-body.collapsed { display: none; }
 .item-card {
   background: var(--paper); border: 1px solid var(--rule); border-left: 3px solid var(--muted);
   padding: 14px; cursor: pointer; transition: border-color 0.15s, transform 0.1s;
@@ -808,6 +816,7 @@ let currentFilter = 'all';
 let currentCatFilter = '';
 let currentLocFilter = '';
 let currentSort = 'modified';
+let availableSectionCollapsed = false;
 let openItemId = null;
 let panelMode = 'add'; // 'add' | 'edit'
 let itemTags = [];
@@ -1229,9 +1238,18 @@ function getFiltered() {
   return list;
 }
 
+function toggleAvailableSection() {
+  availableSectionCollapsed = !availableSectionCollapsed;
+  const body  = document.getElementById('grid-available-body');
+  const arrow = document.getElementById('grid-available-arrow');
+  if (body)  body.classList.toggle('collapsed', availableSectionCollapsed);
+  if (arrow) arrow.classList.toggle('collapsed', availableSectionCollapsed);
+}
+
 function renderGrid() {
   const list = getFiltered();
   const grid = document.getElementById('item-grid');
+
   if (!list.length) {
     grid.innerHTML = `<div class="empty" style="grid-column:1/-1">
       <div class="empty-icon">▣</div>
@@ -1239,7 +1257,39 @@ function renderGrid() {
     </div>`;
     return;
   }
-  grid.innerHTML = list.map(itemCardHTML).join('');
+
+  // When the CHECKED OUT filter is active, show flat list (no sections needed)
+  if (currentFilter === 'checkout') {
+    grid.innerHTML = list.map(itemCardHTML).join('');
+    return;
+  }
+
+  const checkedOut = list.filter(i => i.checked_out_to);
+  const available  = list.filter(i => !i.checked_out_to);
+
+  // No checked-out items — flat list, no sections
+  if (!checkedOut.length) {
+    grid.innerHTML = list.map(itemCardHTML).join('');
+    return;
+  }
+
+  const collClass = availableSectionCollapsed ? ' collapsed' : '';
+  const arrowClass = availableSectionCollapsed ? ' collapsed' : '';
+
+  grid.innerHTML = `
+    ${checkedOut.map(itemCardHTML).join('')}
+    ${available.length ? `
+      <div class="grid-section-head" onclick="toggleAvailableSection()">
+        <span class="grid-section-head-label">AVAILABLE</span>
+        <span class="grid-section-head-count">${available.length}</span>
+        <span class="grid-section-head-rule"></span>
+        <span class="grid-section-head-arrow${arrowClass}" id="grid-available-arrow">▾</span>
+      </div>
+      <div class="grid-section-body${collClass}" id="grid-available-body">
+        ${available.map(itemCardHTML).join('')}
+      </div>
+    ` : ''}
+  `;
 }
 
 function itemCardHTML(item) {
