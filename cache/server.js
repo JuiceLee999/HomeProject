@@ -8,7 +8,7 @@ const fs = require('fs');
 const rateLimit = require('express-rate-limit');
 const helmet = require('helmet');
 const QRCode = require('qrcode');
-const { GoogleGenerativeAI } = require('@google/generative-ai');
+const Anthropic = require('@anthropic-ai/sdk');
 
 const app = express();
 const PORT = process.env.PORT || 3001;
@@ -291,17 +291,16 @@ app.delete('/api/items/:id', verifyToken, (req, res) => {
 
 // ── AI item analysis ──────────────────────────────────────────────────────────
 app.post('/api/ai/analyze-item', verifyToken, async (req, res) => {
-  const apiKey = process.env.GEMINI_API_KEY;
+  const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(503).json({ error: 'AI not configured on this server' });
 
   const { image_data } = req.body;
   if (!image_data) return res.status(400).json({ error: 'No image provided' });
 
   const base64 = image_data.replace(/^data:image\/\w+;base64,/, '');
-  const mimeType = image_data.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
+  const mediaType = image_data.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
+  const client = new Anthropic({ apiKey });
 
   const prompt = `You are analyzing an image of a physical item for an inventory management system.
 Extract the following details and respond with ONLY valid JSON (no markdown, no code fences, no explanation):
@@ -320,11 +319,15 @@ Extract the following details and respond with ONLY valid JSON (no markdown, no 
 Be concise. If unsure about a field, use empty string or 0. Estimate value in USD if possible.`;
 
   try {
-    const result = await model.generateContent([
-      { inlineData: { data: base64, mimeType } },
-      prompt
-    ]);
-    const text = result.response.text().trim();
+    const message = await client.messages.create({
+      model: 'claude-haiku-4-5-20251001',
+      max_tokens: 512,
+      messages: [{ role: 'user', content: [
+        { type: 'image', source: { type: 'base64', media_type: mediaType, data: base64 } },
+        { type: 'text', text: prompt }
+      ]}]
+    });
+    const text = message.content[0].text.trim();
     const cleaned = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
     const json = JSON.parse(cleaned);
     res.json(json);
