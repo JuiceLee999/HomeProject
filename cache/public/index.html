@@ -257,6 +257,26 @@ body.panel-open .detail-panel { transform: translateX(0); }
 .btn-scan-cancel { margin: 0; width: 100%; background: none; border: none; border-top: 1px solid var(--rule); color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 11px; letter-spacing: 1px; padding: 12px; cursor: pointer; transition: color 0.15s; }
 .btn-scan-cancel:hover { color: var(--red); }
 
+/* ── TUTORIAL MODAL ── */
+.tutorial-card { background: var(--paper); border: 1px solid var(--rule); border-top: 3px solid var(--accent); width: 440px; max-width: 95vw; padding: 32px 28px 24px; display: flex; flex-direction: column; gap: 0; }
+.tutorial-step-icon { font-size: 32px; margin-bottom: 16px; line-height: 1; }
+.tutorial-step-num { font-size: 9px; letter-spacing: 3px; color: var(--muted); margin-bottom: 8px; }
+.tutorial-step-title { font-size: 18px; letter-spacing: 2px; color: var(--accent); margin-bottom: 14px; line-height: 1.3; }
+.tutorial-step-body { font-size: 13px; color: var(--ink); line-height: 1.8; letter-spacing: 0.3px; opacity: 0.9; min-height: 100px; }
+.tutorial-step-body strong { color: var(--accent); font-weight: normal; }
+.tutorial-step-body code { font-family: 'Share Tech Mono', monospace; background: var(--bg); border: 1px solid var(--rule); padding: 1px 6px; font-size: 11px; color: var(--amber); }
+.tutorial-dots { display: flex; gap: 6px; justify-content: center; margin: 20px 0 4px; }
+.tutorial-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--rule); transition: background 0.2s; }
+.tutorial-dot.active { background: var(--accent); }
+.tutorial-actions { display: flex; justify-content: space-between; align-items: center; margin-top: 16px; }
+.btn-tut-skip { background: none; border: none; color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; cursor: pointer; padding: 0; transition: color 0.15s; }
+.btn-tut-skip:hover { color: var(--red); }
+.btn-tut-nav { background: none; border: 1px solid var(--rule); color: var(--muted); font-family: 'Share Tech Mono', monospace; font-size: 10px; letter-spacing: 1px; padding: 8px 14px; cursor: pointer; transition: all 0.15s; }
+.btn-tut-nav:hover { border-color: var(--accent); color: var(--accent); }
+.btn-tut-nav:disabled { opacity: 0.3; cursor: default; pointer-events: none; }
+#tut-next { border-color: var(--accent); color: var(--accent); }
+#tut-next:hover { background: var(--accent-dim); }
+
 /* ── ABOUT MODAL ── */
 .about-modal { background: var(--paper); border: 1px solid var(--rule); border-top: 3px solid var(--accent); width: 400px; max-width: 95vw; padding: 32px 28px 24px; display: flex; flex-direction: column; gap: 0; }
 .about-logo { font-size: 28px; letter-spacing: 5px; color: var(--accent); margin-bottom: 4px; }
@@ -513,6 +533,24 @@ body.panel-open .detail-panel { transform: translateX(0); }
   </div>
 </div>
 
+<!-- ══ TUTORIAL MODAL ══ -->
+<div class="modal-overlay" id="tutorial-modal" style="align-items:center;z-index:700">
+  <div class="tutorial-card" onclick="event.stopPropagation()">
+    <div class="tutorial-step-icon" id="tut-icon"></div>
+    <div class="tutorial-step-num" id="tut-step-num"></div>
+    <div class="tutorial-step-title" id="tut-title"></div>
+    <div class="tutorial-step-body" id="tut-body"></div>
+    <div class="tutorial-dots" id="tut-dots"></div>
+    <div class="tutorial-actions">
+      <button class="btn-tut-skip" id="tut-skip" onclick="endTutorial()">SKIP</button>
+      <div style="display:flex;gap:8px">
+        <button class="btn-tut-nav" id="tut-prev" onclick="tutNav(-1)">← BACK</button>
+        <button class="btn-tut-next" id="tut-next" onclick="tutNav(1)">NEXT →</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <!-- ══ ABOUT MODAL ══ -->
 <div class="modal-overlay" id="about-modal" onclick="closeAboutModal()">
   <div class="about-modal" onclick="event.stopPropagation()">
@@ -579,6 +617,7 @@ body.panel-open .detail-panel { transform: translateX(0); }
       <button class="user-action-btn" onclick="doLogout()">SIGN OUT</button>
       <button class="user-action-btn danger" onclick="deleteAccount()">DELETE ACCOUNT</button>
       <div style="height:1px;background:var(--rule);margin:4px -16px"></div>
+      <button class="user-action-btn" onclick="closeUserModal();startTutorial()" style="color:var(--accent)">▶ TAKE THE TOUR</button>
       <button class="user-action-btn" onclick="closeUserModal();openAboutModal()" style="color:var(--muted)">ABOUT CACHE</button>
       <button class="user-action-btn" onclick="closeUserModal()" style="margin-top:4px">CLOSE</button>
     </div>
@@ -1256,6 +1295,9 @@ function showApp() {
   document.getElementById('app-main').style.display = 'block';
   document.getElementById('fab').style.display = 'none'; // FAB only shown in lists view
   document.getElementById('user-email-display').textContent = currentUserEmail;
+  if (!localStorage.getItem('cache_tutorial_seen')) {
+    setTimeout(startTutorial, 600);
+  }
 }
 
 async function doLogout() {
@@ -2412,6 +2454,158 @@ function closeUserModal() { document.getElementById('user-modal').classList.remo
 function openAboutModal()  { document.getElementById('about-modal').classList.add('open'); }
 function closeAboutModal() { document.getElementById('about-modal').classList.remove('open'); }
 
+// ── Tutorial ──────────────────────────────────────────────────────────────────
+const TUTORIAL_STEPS = [
+  {
+    icon: '▌▌',
+    title: 'WELCOME TO CACHE',
+    body: `CACHE is your personal inventory management system — built to track every item you own, lend out, and store.<br><br>This tour will walk you through all the features in about 2 minutes. You can also access it anytime from <strong>Settings → Take the Tour</strong>.`
+  },
+  {
+    icon: '◈',
+    title: 'YOUR DASHBOARD',
+    body: `The <strong>header</strong> gives you a live snapshot of your inventory at all times:<br><br>
+<strong>ITEMS</strong> — total number of items in your inventory<br>
+<strong>VALUE</strong> — combined estimated value of everything<br>
+<strong>LOCS</strong> — number of unique storage locations<br><br>
+These update instantly whenever you add, edit, or remove an item.`
+  },
+  {
+    icon: '+',
+    title: 'ADDING ITEMS MANUALLY',
+    body: `Tap <strong>+ ADD ITEM</strong> in the header to open the item panel.<br><br>
+Fill in as much or as little as you want — only <strong>Item Name</strong> and <strong>Quantity</strong> are required. The rest helps you search, sort, and value your inventory:<br><br>
+<strong>Category & Condition</strong> — for filtering<br>
+<strong>Location</strong> — where it's stored<br>
+<strong>Brand, Model, Serial</strong> — for identification<br>
+<strong>Value</strong> — tracks total inventory worth<br>
+<strong>Tags</strong> — freeform keywords for searching`
+  },
+  {
+    icon: '✦',
+    title: 'AI PHOTO SCAN',
+    body: `Tap <strong>✦ AI SCAN</strong> to add an item using your camera or a photo from your library.<br><br>
+Point the camera at an item and tap <strong>CAPTURE</strong>, or tap <strong>UPLOAD</strong> to choose an existing photo. Then tap <strong>ANALYZE WITH AI →</strong>.<br><br>
+Claude AI will identify the item and automatically fill in the name, brand, model, category, condition, description, and estimated value — ready for you to review and save.`
+  },
+  {
+    icon: '⊹',
+    title: 'QR CODE SCANNING',
+    body: `Every item gets a unique <strong>QR code</strong> that links directly to its details page.<br><br>
+Tap <strong>⊹ SCAN QR</strong> to open the scanner. Point it at any CACHE QR code label to instantly pull up that item.<br><br>
+To print or view an item's QR code, open the item and tap <strong>⊡ QR</strong> in the panel footer, or tap <strong>⊡ QR CODE</strong> on the item card. Stick labels on shelves, bins, or gear cases for instant lookup.`
+  },
+  {
+    icon: '▣',
+    title: 'READING ITEM CARDS',
+    body: `Each item card shows you the most important info at a glance:<br><br>
+<strong>Top badges</strong> — category and condition (NEW / GOOD / FAIR / POOR)<br>
+<strong>OUT badge</strong> (amber) — item is currently checked out<br>
+<strong>Item ID</strong> — unique number in the top right<br>
+<strong>Brand / Model</strong> — shown below the name<br>
+<strong>Quantity & Value</strong> — how many and what it's worth<br>
+<strong>Location</strong> — where it's stored<br>
+<strong>Borrower</strong> — who has it if checked out<br><br>
+Tap any card to open its full details.`
+  },
+  {
+    icon: '⊳',
+    title: 'CHECKING OUT ITEMS',
+    body: `The checkout system lets you track items that leave your inventory temporarily — lent to someone, taken to a job site, or moved to another location.<br><br>
+Tap <strong>⊳ CHECK OUT</strong> on any item card to open the checkout form:<br><br>
+<strong>Who's taking it</strong> — name of the borrower (required)<br>
+<strong>Date taken</strong> — defaults to today<br>
+<strong>Where it's going</strong> — destination or job site<br>
+<strong>Notes</strong> — any extra details<br><br>
+Checked-out items rise to the top of your list automatically.`
+  },
+  {
+    icon: '✓',
+    title: 'CHECKING ITEMS IN',
+    body: `When an item is returned, tap <strong>✓ CHECK IN</strong> on the item card to mark it as back in your possession.<br><br>
+If you open the item's detail panel while it's checked out, you'll see a <strong>CHECKED OUT</strong> banner at the top showing the borrower, date taken, and destination — with a <strong>✓ CHECK IN</strong> button right there.<br><br>
+Full checkout history is stored behind the scenes for every item.`
+  },
+  {
+    icon: '⊘',
+    title: 'SEARCH & FILTERS',
+    body: `Finding items is fast with the search and filter bar:<br><br>
+<strong>Search</strong> — matches name, brand, model, serial, category, location, notes, and tags<br>
+<strong>Condition chips</strong> — filter to NEW / GOOD / FAIR / POOR<br>
+<strong>CHECKED OUT</strong> — show only items currently out<br>
+<strong>Category & Location dropdowns</strong> — narrow by any category or storage location<br>
+<strong>Sort</strong> — by recently updated, name, value, quantity, or date added`
+  },
+  {
+    icon: '≡',
+    title: 'LISTS',
+    body: `<strong>Lists</strong> let you group items into named collections — a go-bag, a job site kit, a room inventory, or anything else.<br><br>
+Tap <strong>LISTS</strong> in the view toggle, then the <strong>+</strong> button to create a list. Give it a name, pick items from your inventory, and save.<br><br>
+Every list also gets its own QR code — scan it to see the full list contents.<br><br>
+You can <strong>share lists</strong> with other CACHE users by entering their email address in the list's sharing section.`
+  },
+  {
+    icon: '⚙',
+    title: 'SETTINGS',
+    body: `Tap <strong>⚙</strong> in the header to access your account settings:<br><br>
+<strong>Change Password</strong> — update your login credentials<br>
+<strong>Export Inventory</strong> — download all your data as JSON<br>
+<strong>Import Inventory</strong> — restore from a previous export<br>
+<strong>Categories</strong> — add or remove custom item categories<br>
+<strong>Locations</strong> — manage your storage locations<br>
+<strong>Sign Out</strong> — log out of your account<br>
+<strong>Take the Tour</strong> — replay this tutorial anytime`
+  },
+  {
+    icon: '▌▌',
+    title: 'YOU\'RE ALL SET',
+    body: `You now know everything CACHE has to offer. A few tips to get the most out of it:<br><br>
+· <strong>Install as an app</strong> — on mobile, use your browser's "Add to Home Screen" option for a native-like experience<br>
+· <strong>Label your gear</strong> — print QR code stickers for bins, shelves, and cases<br>
+· <strong>Use AI Scan</strong> for bulk entry — photograph items in batches to add them quickly<br>
+· <strong>Export regularly</strong> — keep a backup of your inventory data<br><br>
+Happy inventorying.`
+  }
+];
+
+let tutStep = 0;
+
+function startTutorial() {
+  tutStep = 0;
+  localStorage.setItem('cache_tutorial_seen', '1');
+  renderTutStep();
+  document.getElementById('tutorial-modal').classList.add('open');
+}
+
+function endTutorial() {
+  document.getElementById('tutorial-modal').classList.remove('open');
+}
+
+function tutNav(dir) {
+  tutStep = Math.max(0, Math.min(TUTORIAL_STEPS.length - 1, tutStep + dir));
+  renderTutStep();
+}
+
+function renderTutStep() {
+  const step = TUTORIAL_STEPS[tutStep];
+  const total = TUTORIAL_STEPS.length;
+  const isLast = tutStep === total - 1;
+
+  document.getElementById('tut-icon').textContent = step.icon;
+  document.getElementById('tut-step-num').textContent = `STEP ${tutStep + 1} OF ${total}`;
+  document.getElementById('tut-title').textContent = step.title;
+  document.getElementById('tut-body').innerHTML = step.body;
+  document.getElementById('tut-prev').disabled = tutStep === 0;
+  document.getElementById('tut-skip').style.display = isLast ? 'none' : '';
+  document.getElementById('tut-next').textContent = isLast ? 'FINISH ✓' : 'NEXT →';
+  document.getElementById('tut-next').onclick = isLast ? endTutorial : () => tutNav(1);
+
+  const dotsEl = document.getElementById('tut-dots');
+  dotsEl.innerHTML = TUTORIAL_STEPS.map((_, i) =>
+    `<div class="tutorial-dot${i === tutStep ? ' active' : ''}"></div>`
+  ).join('');
+}
+
 async function changePassword() {
   const cur = document.getElementById('cur-pw').value;
   const nw  = document.getElementById('new-pw').value;
@@ -2478,6 +2672,7 @@ document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (document.getElementById('scanner-modal').classList.contains('open')) { closeScanner(); return; }
     if (document.getElementById('photo-modal').classList.contains('open')) { closePhotoModal(); return; }
+    if (document.getElementById('tutorial-modal').classList.contains('open')) { endTutorial(); return; }
     if (document.getElementById('co-modal').classList.contains('open')) { closeCoModal(); return; }
     if (document.getElementById('about-modal').classList.contains('open')) { closeAboutModal(); return; }
     if (document.getElementById('qr-modal').classList.contains('open')) { closeQR(); return; }
