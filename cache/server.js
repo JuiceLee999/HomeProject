@@ -16,6 +16,9 @@ const DB_DIR = path.join(__dirname, 'db');
 const DB_PATH = path.join(DB_DIR, 'cache.db');
 
 fs.mkdirSync(DB_DIR, { recursive: true });
+// Clear stale lock left by crash loops (node-sqlite3-wasm uses a .lock directory)
+const DB_LOCK = DB_PATH + '.lock';
+try { fs.rmSync(DB_LOCK, { recursive: true, force: true }); } catch {}
 const db = new Database(DB_PATH);
 
 // ── Schema ────────────────────────────────────────────────────────────────────
