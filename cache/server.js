@@ -301,7 +301,7 @@ app.post('/api/ai/analyze-item', verifyToken, async (req, res) => {
   const mimeType = image_data.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
 
   const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+  const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash' });
 
   const prompt = `You are analyzing an image of a physical item for an inventory management system.
 Extract the following details and respond with ONLY valid JSON (no markdown, no code fences, no explanation):
