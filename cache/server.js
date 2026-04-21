@@ -567,7 +567,7 @@ body{background:#080c09;color:#b4e8b0;font-family:'Share Tech Mono',monospace;mi
   ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}</div>` : ''}
   <div style="text-align:center"><a class="open-link" href="/">OPEN IN SHIT →</a></div>
 </div>
-<div class="footer">SHIT // SIMPLE HOME ITEM TRACKER</div>
+<div class="footer">SHIT // SIMPLE HOME ITEM TRACKER &nbsp;&nbsp;·&nbsp;&nbsp; © 2025 JUICE LEE PRODUCTIONS</div>
 </body>
 </html>`);
 });
@@ -778,7 +778,7 @@ ${listItems.map(item => {
 }).join('') || '<div class="empty">NO ITEMS IN THIS LIST</div>'}
 </div>
 <a class="open-link" href="/">OPEN IN SHIT →</a>
-<div class="footer">SHIT // SIMPLE HOME ITEM TRACKER</div>
+<div class="footer">SHIT // SIMPLE HOME ITEM TRACKER &nbsp;&nbsp;·&nbsp;&nbsp; © 2025 JUICE LEE PRODUCTIONS</div>
 </body>
 </html>`);
 });
