@@ -101,11 +101,25 @@ db.exec(`
     tags        TEXT NOT NULL DEFAULT '[]',
     qr_token    TEXT UNIQUE NOT NULL,
     image_data      TEXT DEFAULT NULL,
+    purchased_at    TEXT DEFAULT NULL,
     checked_out_to  TEXT DEFAULT NULL,
     checked_out_at  INTEGER DEFAULT NULL,
     due_back        INTEGER DEFAULT NULL,
     created_at  INTEGER DEFAULT (strftime('%s','now')),
     modified_at INTEGER DEFAULT (strftime('%s','now')),
+    FOREIGN KEY (user_id) REFERENCES users(id)
+  );
+
+  CREATE TABLE IF NOT EXISTS documents (
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    item_id    INTEGER NOT NULL,
+    user_id    INTEGER NOT NULL,
+    filename   TEXT NOT NULL,
+    mime_type  TEXT NOT NULL DEFAULT '',
+    size       INTEGER NOT NULL DEFAULT 0,
+    data       TEXT NOT NULL,
+    created_at INTEGER DEFAULT (strftime('%s','now')),
+    FOREIGN KEY (item_id) REFERENCES items(id),
     FOREIGN KEY (user_id) REFERENCES users(id)
   );
 
@@ -124,12 +138,13 @@ db.exec(`
   );
 `);
 
-// Add checkout columns to existing databases that predate this schema
+// Migrations for existing databases
 try { db.exec('ALTER TABLE items ADD COLUMN checked_out_to TEXT DEFAULT NULL'); } catch {}
 try { db.exec('ALTER TABLE items ADD COLUMN checked_out_at INTEGER DEFAULT NULL'); } catch {}
 try { db.exec('ALTER TABLE items ADD COLUMN due_back INTEGER DEFAULT NULL'); } catch {}
 try { db.exec('ALTER TABLE items ADD COLUMN checkout_destination TEXT DEFAULT NULL'); } catch {}
 try { db.exec('ALTER TABLE checkouts ADD COLUMN destination TEXT NOT NULL DEFAULT \'\''); } catch {}
+try { db.exec('ALTER TABLE items ADD COLUMN purchased_at TEXT DEFAULT NULL'); } catch {}
 
 // ── JWT secret ────────────────────────────────────────────────────────────────
 let JWT_SECRET;
@@ -249,7 +264,8 @@ app.post('/api/items', verifyToken, (req, res) => {
     name, description = '', category = '', location = '',
     quantity = 1, unit = 'pcs', value = 0,
     brand = '', model = '', serial = '',
-    condition = 'good', notes = '', tags = [], image_data = null
+    condition = 'good', notes = '', tags = [], image_data = null,
+    purchased_at = null
   } = req.body || {};
 
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
@@ -260,12 +276,12 @@ app.post('/api/items', verifyToken, (req, res) => {
   db.prepare(`
     INSERT INTO items
       (user_id, name, description, category, location, quantity, unit, value,
-       brand, model, serial, condition, notes, tags, qr_token, image_data, created_at, modified_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+       brand, model, serial, condition, notes, tags, qr_token, image_data, purchased_at, created_at, modified_at)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run([
     userId, name.trim(), description, category, location,
     quantity, unit, value, brand, model, serial, condition,
-    notes, JSON.stringify(tags), qr_token, image_data, now, now
+    notes, JSON.stringify(tags), qr_token, image_data, purchased_at || null, now, now
   ]);
 
   const item = db.prepare('SELECT * FROM items WHERE qr_token = ?').get(qr_token);
@@ -288,7 +304,8 @@ app.put('/api/items/:id', verifyToken, (req, res) => {
     name, description = '', category = '', location = '',
     quantity = 1, unit = 'pcs', value = 0,
     brand = '', model = '', serial = '',
-    condition = 'good', notes = '', tags = [], image_data = null
+    condition = 'good', notes = '', tags = [], image_data = null,
+    purchased_at = null
   } = req.body || {};
 
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
@@ -299,12 +316,12 @@ app.put('/api/items/:id', verifyToken, (req, res) => {
       name=?, description=?, category=?, location=?,
       quantity=?, unit=?, value=?,
       brand=?, model=?, serial=?,
-      condition=?, notes=?, tags=?, image_data=?, modified_at=?
+      condition=?, notes=?, tags=?, image_data=?, purchased_at=?, modified_at=?
     WHERE id=? AND user_id=?
   `).run([
     name.trim(), description, category, location,
     quantity, unit, value, brand, model, serial,
-    condition, notes, JSON.stringify(tags), image_data,
+    condition, notes, JSON.stringify(tags), image_data, purchased_at || null,
     now, itemId, userId
   ]);
 
@@ -362,6 +379,55 @@ app.get('/api/items/:id/checkouts', verifyToken, (req, res) => {
   if (!item) return res.status(404).json({ error: 'Not found' });
   const history = db.prepare('SELECT * FROM checkouts WHERE item_id=? ORDER BY checked_out DESC').all([itemId]);
   res.json(history);
+});
+
+// ── Documents ─────────────────────────────────────────────────────────────────
+app.get('/api/items/:id/documents', verifyToken, (req, res) => {
+  const itemId = Number(req.params.id);
+  const item = db.prepare('SELECT id FROM items WHERE id = ? AND user_id = ?').get([itemId, req.user.userId]);
+  if (!item) return res.status(404).json({ error: 'Not found' });
+  const docs = db.prepare(
+    'SELECT id, filename, mime_type, size, created_at FROM documents WHERE item_id = ? ORDER BY created_at DESC'
+  ).all([itemId]);
+  res.json(docs);
+});
+
+app.post('/api/items/:id/documents', verifyToken, (req, res) => {
+  const itemId = Number(req.params.id);
+  const item = db.prepare('SELECT id FROM items WHERE id = ? AND user_id = ?').get([itemId, req.user.userId]);
+  if (!item) return res.status(404).json({ error: 'Not found' });
+
+  const { filename, mime_type = 'application/octet-stream', data } = req.body || {};
+  if (!filename || !data) return res.status(400).json({ error: 'filename and data required' });
+
+  // Estimate byte size from base64 length
+  const size = Math.round(data.length * 0.75);
+  db.prepare(
+    'INSERT INTO documents (item_id, user_id, filename, mime_type, size, data) VALUES (?,?,?,?,?,?)'
+  ).run([itemId, req.user.userId, filename, mime_type, size, data]);
+
+  const doc = db.prepare(
+    'SELECT id, filename, mime_type, size, created_at FROM documents WHERE rowid = last_insert_rowid()'
+  ).get();
+  res.status(201).json(doc);
+});
+
+app.get('/api/documents/:id/download', verifyToken, (req, res) => {
+  const doc = db.prepare('SELECT * FROM documents WHERE id = ? AND user_id = ?')
+    .get([Number(req.params.id), req.user.userId]);
+  if (!doc) return res.status(404).json({ error: 'Not found' });
+
+  const buf = Buffer.from(doc.data, 'base64');
+  res.setHeader('Content-Disposition', `attachment; filename="${doc.filename.replace(/"/g, '\\"')}"`);
+  res.setHeader('Content-Type', doc.mime_type || 'application/octet-stream');
+  res.setHeader('Content-Length', buf.length);
+  res.send(buf);
+});
+
+app.delete('/api/documents/:id', verifyToken, (req, res) => {
+  db.prepare('DELETE FROM documents WHERE id = ? AND user_id = ?')
+    .run([Number(req.params.id), req.user.userId]);
+  res.json({ ok: true });
 });
 
 // ── AI item analysis ──────────────────────────────────────────────────────────
