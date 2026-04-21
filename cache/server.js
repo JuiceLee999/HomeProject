@@ -508,9 +508,9 @@ app.get('/i/:token', (req, res) => {
   if (!item) return res.status(404).send(`
     <!DOCTYPE html><html><head><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Not Found — CACHE</title>
+    <title>Not Found — SHIT</title>
     <style>body{background:#080c09;color:#b4e8b0;font-family:monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center}h1{font-size:18px;letter-spacing:2px}</style>
-    </head><body><div><h1>▌▌ CACHE</h1><p>Item not found.</p></div></body></html>
+    </head><body><div><h1>▌▌ SHIT</h1><p>Item not found.</p></div></body></html>
   `);
 
   const tags = JSON.parse(item.tags || '[]');
@@ -522,7 +522,7 @@ app.get('/i/:token', (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${escHtml(item.name)} — CACHE</title>
+<title>${escHtml(item.name)} — SHIT</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -548,8 +548,8 @@ body{background:#080c09;color:#b4e8b0;font-family:'Share Tech Mono',monospace;mi
 <body>
 <div class="header">
   <div>
-    <div class="logo">▌▌ CACHE</div>
-    <div class="logo-sub">INVENTORY SYSTEM</div>
+    <div class="logo">▌▌ SHIT</div>
+    <div class="logo-sub">SIMPLE HOME ITEM TRACKER</div>
   </div>
 </div>
 <div class="card">
@@ -565,9 +565,9 @@ body{background:#080c09;color:#b4e8b0;font-family:'Share Tech Mono',monospace;mi
   </div>
   ${item.description ? `<div class="desc">${escHtml(item.description)}</div>` : ''}
   ${tags.length ? `<div class="tags">${tags.map(t => `<span class="tag">${escHtml(t)}</span>`).join('')}</div>` : ''}
-  <div style="text-align:center"><a class="open-link" href="/">OPEN IN CACHE →</a></div>
+  <div style="text-align:center"><a class="open-link" href="/">OPEN IN SHIT →</a></div>
 </div>
-<div class="footer">CACHE // INVENTORY SYSTEM</div>
+<div class="footer">SHIT // SIMPLE HOME ITEM TRACKER</div>
 </body>
 </html>`);
 });
@@ -711,9 +711,9 @@ app.get('/l/:token', (req, res) => {
   if (!list) return res.status(404).send(`
     <!DOCTYPE html><html><head><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
-    <title>Not Found — CACHE</title>
+    <title>Not Found — SHIT</title>
     <style>body{background:#080c09;color:#b4e8b0;font-family:monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center}</style>
-    </head><body><div><h1 style="font-size:18px;letter-spacing:2px">▌▌ CACHE</h1><p>List not found.</p></div></body></html>`);
+    </head><body><div><h1 style="font-size:18px;letter-spacing:2px">▌▌ SHIT</h1><p>List not found.</p></div></body></html>`);
 
   const itemIds = db.prepare('SELECT item_id FROM list_items WHERE list_id = ?').all(list.id).map(r => r.item_id);
   const listItems = itemIds.length
@@ -726,7 +726,7 @@ app.get('/l/:token', (req, res) => {
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>${escHtml(list.name)} — CACHE</title>
+<title>${escHtml(list.name)} — SHIT</title>
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
@@ -754,7 +754,7 @@ body{background:#080c09;color:#b4e8b0;font-family:'Share Tech Mono',monospace;mi
 </head>
 <body>
 <div class="header">
-  <div><div class="logo">▌▌ CACHE</div><div class="logo-sub">INVENTORY SYSTEM</div></div>
+  <div><div class="logo">▌▌ SHIT</div><div class="logo-sub">SIMPLE HOME ITEM TRACKER</div></div>
 </div>
 <div class="list-head">
   <div class="list-name">${escHtml(list.name)}</div>
@@ -777,8 +777,8 @@ ${listItems.map(item => {
   </a>`;
 }).join('') || '<div class="empty">NO ITEMS IN THIS LIST</div>'}
 </div>
-<a class="open-link" href="/">OPEN IN CACHE →</a>
-<div class="footer">CACHE // INVENTORY SYSTEM</div>
+<a class="open-link" href="/">OPEN IN SHIT →</a>
+<div class="footer">SHIT // SIMPLE HOME ITEM TRACKER</div>
 </body>
 </html>`);
 });
@@ -895,5 +895,5 @@ app.post('/api/import', verifyToken, (req, res) => {
 });
 
 app.listen(PORT, () => {
-  console.log(`CACHE running → http://localhost:${PORT}`);
+  console.log(`SHIT running → http://localhost:${PORT}`);
 });

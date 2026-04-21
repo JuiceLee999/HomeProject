@@ -1,7 +1,7 @@
 {
-  "name": "CACHE Inventory",
-  "short_name": "CACHE",
-  "description": "Home Inventory System",
+  "name": "SHIT — Simple Home Item Tracker",
+  "short_name": "SHIT",
+  "description": "Simple Home Item Tracker",
   "theme_color": "#050807",
   "background_color": "#080c09",
   "display": "standalone",
