@@ -319,36 +319,6 @@ body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opaci
   .btn-scan-cancel { padding: 16px; font-size: 12px; }
 }
 
-/* ── BARCODE SCANNER MODAL ── */
-#barcode-modal .scanner-modal { width: 460px; }
-#barcode-modal .scanner-viewport { aspect-ratio: 16/9; }
-#barcode-video { width: 100%; height: 100%; object-fit: cover; display: block; }
-.barcode-guide {
-  position: absolute; top: 50%; left: 8%; right: 8%; height: 72px;
-  transform: translateY(-50%);
-  border: 1.5px solid var(--accent); border-radius: 2px;
-  box-shadow: 0 0 0 2000px rgba(0,3,1,0.55);
-}
-.barcode-scan-line {
-  position: absolute; left: 0; right: 0; height: 1px;
-  background: var(--accent); opacity: 0.8;
-  animation: barcodescan 1.6s ease-in-out infinite;
-}
-@keyframes barcodescan { 0%,100% { top: 0; } 50% { top: calc(100% - 1px); } }
-.barcode-manual-row {
-  width: 100%; padding: 8px 12px; border-top: 1px solid var(--rule);
-  display: flex; gap: 6px; align-items: center;
-}
-.barcode-manual-input {
-  flex: 1; background: var(--bg); border: 1px solid var(--rule);
-  color: var(--ink); font-family: 'Share Tech Mono', monospace;
-  font-size: 12px; padding: 7px 10px; outline: none; border-radius: 5px;
-}
-.barcode-manual-input:focus { border-color: var(--accent); }
-@media (max-width: 480px) {
-  #barcode-modal .scanner-modal { width: 100vw; border-left: none; border-right: none; }
-}
-
 /* ── USER MENU MODAL ── */
 .user-modal { background: var(--paper); border: 1px solid var(--rule); border-top: 2px solid var(--accent); width: 340px; max-width: 95vw; border-radius: 5px; overflow: hidden; }
 .user-modal-header { padding: 14px 16px; border-bottom: 1px solid var(--rule); font-size: 10px; letter-spacing: 2px; color: var(--muted); }
@@ -515,30 +485,6 @@ body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opaci
   </div>
 </div>
 
-<!-- ══ BARCODE MODAL ══ -->
-<div class="modal-overlay" id="barcode-modal">
-  <div class="scanner-modal" onclick="event.stopPropagation()">
-    <div class="scanner-header">
-      <span class="scanner-title">▌ BARCODE LOOKUP</span>
-      <button class="btn-icon" onclick="closeBarcodeScanner()" data-tip="Close" data-tip-dir="below">✕</button>
-    </div>
-    <div class="scanner-viewport" style="aspect-ratio:16/9">
-      <video id="barcode-video" autoplay playsinline muted></video>
-      <div class="scanner-overlay">
-        <div class="barcode-guide">
-          <div class="barcode-scan-line"></div>
-        </div>
-      </div>
-    </div>
-    <div class="scanner-status" id="barcode-status">ALIGN BARCODE IN THE GUIDE BOX</div>
-    <div class="barcode-manual-row">
-      <input class="barcode-manual-input" id="barcode-manual" placeholder="Or type / paste barcode number..." onkeydown="barcodeManualKeydown(event)" autocomplete="off" />
-      <button class="btn-tag-add" onclick="submitManualBarcode()" style="white-space:nowrap">LOOK UP</button>
-    </div>
-    <button class="btn-scan-cancel" onclick="closeBarcodeScanner()">CANCEL</button>
-  </div>
-</div>
-
 <!-- ══ AI PHOTO MODAL ══ -->
 <div class="modal-overlay" id="photo-modal">
   <div class="scanner-modal" onclick="event.stopPropagation()">
@@ -645,7 +591,7 @@ body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opaci
       </div>
     </div>
     <div class="about-divider"></div>
-    <div class="about-version">v1.8.0 &nbsp;·&nbsp; © 2025 Juice Lee Productions</div>
+    <div class="about-version">v1.7.7 &nbsp;·&nbsp; © 2025 Juice Lee Productions</div>
     <button class="about-close" onclick="closeAboutModal()">CLOSE</button>
   </div>
 </div>
@@ -707,7 +653,6 @@ body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opaci
     <div class="hstat">LOCS <strong id="hs-locs">0</strong></div>
   </div>
   <div class="header-right">
-    <button class="btn-scan-header" id="btn-barcode-scan" onclick="openBarcodeScanner()" data-tip="Scan Barcode &amp; Lookup Product" data-tip-dir="below" style="background:none;border:1px solid var(--blue);color:var(--blue)">⊞ BARCODE</button>
     <button class="btn-scan-header" id="btn-ai-scan" onclick="openPhotoModal()" data-tip="Add Item with AI Photo" data-tip-dir="below" style="background:none;border:1px solid var(--accent);color:var(--accent)">✦ AI SCAN</button>
     <button class="btn-scan-header" id="btn-add-item" onclick="openAddPanel()" data-tip="Add Item" data-tip-dir="below">+ ADD ITEM</button>
     <button class="btn-scan-header" onclick="openScanner()" data-tip="Scan QR Code" data-tip-dir="below">⊹ SCAN QR</button>
@@ -1051,8 +996,6 @@ let panelMode = 'add'; // 'add' | 'edit'
 let itemTags = [];
 let openItemDocs = [];
 let scannerStream = null;
-let barcodeStream = null;
-let barcodeDetector = null;
 let qrItemId = null;
 let qrListId = null;
 
@@ -1596,7 +1539,6 @@ function setView(v) {
   document.getElementById('list-grid').style.display           = v === 'lists' ? '' : 'none';
   document.getElementById('btn-add-item').style.display        = v === 'items' ? '' : 'none';
   document.getElementById('btn-ai-scan').style.display         = v === 'items' ? '' : 'none';
-  document.getElementById('btn-barcode-scan').style.display    = v === 'items' ? '' : 'none';
   document.getElementById('fab').style.display                 = v === 'lists' ? 'flex' : 'none';
   closePanel();
 }
@@ -2517,107 +2459,6 @@ async function analyzePhoto() {
   }
 }
 
-// ── Barcode Scanner ───────────────────────────────────────────────────────────
-async function openBarcodeScanner() {
-  const statusEl = document.getElementById('barcode-status');
-  document.getElementById('barcode-manual').value = '';
-  statusEl.textContent = 'STARTING CAMERA...';
-  statusEl.className = 'scanner-status';
-  document.getElementById('barcode-modal').classList.add('open');
-
-  // Require BarcodeDetector — available in Chrome/Edge/Android Chrome
-  if (!('BarcodeDetector' in window)) {
-    statusEl.textContent = 'AUTO-SCAN NOT SUPPORTED — USE MANUAL ENTRY BELOW';
-    return;
-  }
-
-  try {
-    barcodeDetector = new BarcodeDetector({
-      formats: ['ean_13', 'ean_8', 'upc_a', 'upc_e', 'code_128', 'code_39', 'code_93', 'data_matrix', 'itf']
-    });
-  } catch {
-    statusEl.textContent = 'USE MANUAL ENTRY BELOW';
-    return;
-  }
-
-  try {
-    barcodeStream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment', width: { ideal: 1920 } }
-    });
-    const video = document.getElementById('barcode-video');
-    video.srcObject = barcodeStream;
-    await video.play();
-    statusEl.textContent = 'ALIGN BARCODE IN THE GUIDE BOX';
-    scheduleBarcodeCheck();
-  } catch {
-    statusEl.textContent = 'CAMERA UNAVAILABLE — USE MANUAL ENTRY BELOW';
-  }
-}
-
-function scheduleBarcodeCheck() {
-  if (!barcodeStream || !barcodeDetector) return;
-  setTimeout(async () => {
-    const video = document.getElementById('barcode-video');
-    if (!barcodeStream) return;
-    if (video.readyState >= 2) {
-      try {
-        const codes = await barcodeDetector.detect(video);
-        if (codes.length > 0) {
-          const code = codes[0].rawValue;
-          const statusEl = document.getElementById('barcode-status');
-          statusEl.textContent = `FOUND ${code} — LOOKING UP...`;
-          statusEl.className = 'scanner-status detected';
-          await lookupBarcode(code);
-          return;
-        }
-      } catch {}
-    }
-    scheduleBarcodeCheck();
-  }, 180);
-}
-
-function closeBarcodeScanner() {
-  if (barcodeStream) { barcodeStream.getTracks().forEach(t => t.stop()); barcodeStream = null; }
-  const video = document.getElementById('barcode-video');
-  if (video) video.srcObject = null;
-  barcodeDetector = null;
-  document.getElementById('barcode-modal').classList.remove('open');
-}
-
-function barcodeManualKeydown(e) {
-  if (e.key === 'Enter') submitManualBarcode();
-}
-
-async function submitManualBarcode() {
-  const code = document.getElementById('barcode-manual').value.trim();
-  if (!code) return;
-  document.getElementById('barcode-status').textContent = 'LOOKING UP...';
-  await lookupBarcode(code);
-}
-
-async function lookupBarcode(code) {
-  const statusEl = document.getElementById('barcode-status');
-  try {
-    const result = await api('GET', `/api/barcode/${encodeURIComponent(code)}`);
-    closeBarcodeScanner();
-    openAddPanel();
-    if (result.name)        document.getElementById('pd-name').value = result.name;
-    if (result.brand)       document.getElementById('pd-brand').value = result.brand;
-    if (result.model)       document.getElementById('pd-model').value = result.model;
-    if (result.description) document.getElementById('pd-description').value = result.description;
-    if (result.value)       document.getElementById('pd-value').value = result.value;
-    if (result.category)    buildCategorySelect(result.category);
-    // Store the barcode in the serial field
-    document.getElementById('pd-serial').value = code;
-    document.getElementById('pd-name').focus();
-  } catch {
-    statusEl.textContent = 'NOT FOUND — ENTER DETAILS MANUALLY OR TRY AGAIN';
-    statusEl.className = 'scanner-status';
-    // Keep modal open so user can try another barcode or use manual entry
-    if (barcodeStream) scheduleBarcodeCheck();
-  }
-}
-
 function handleScanResult(url, statusEl) {
   // Check if it's a list QR
   const listMatch = url.match(/\/l\/([a-f0-9]+)$/);
@@ -3001,7 +2842,6 @@ async function importData(input) {
 document.addEventListener('keydown', e => {
   if (e.key === 'Escape') {
     if (document.getElementById('scanner-modal').classList.contains('open')) { closeScanner(); return; }
-    if (document.getElementById('barcode-modal').classList.contains('open')) { closeBarcodeScanner(); return; }
     if (document.getElementById('photo-modal').classList.contains('open')) { closePhotoModal(); return; }
     if (document.getElementById('tutorial-modal').classList.contains('open')) { endTutorial(); return; }
     if (document.getElementById('co-modal').classList.contains('open')) { closeCoModal(); return; }
@@ -3041,11 +2881,10 @@ document.getElementById('tab-login').addEventListener('click', () => switchTab('
 document.getElementById('tab-register').addEventListener('click', () => switchTab('register'));
 
 // Modal close on backdrop click
-['qr-modal','scanner-modal','barcode-modal','user-modal','photo-modal','co-modal','about-modal'].forEach(id => {
+['qr-modal','scanner-modal','user-modal','photo-modal','co-modal','about-modal'].forEach(id => {
   document.getElementById(id).addEventListener('click', e => {
     if (e.target === document.getElementById(id)) {
       if (id === 'scanner-modal') closeScanner();
-      else if (id === 'barcode-modal') closeBarcodeScanner();
       else if (id === 'qr-modal') closeQR();
       else if (id === 'photo-modal') closePhotoModal();
       else if (id === 'co-modal') closeCoModal();
