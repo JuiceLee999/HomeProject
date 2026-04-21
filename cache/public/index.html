@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>CACHE — Inventory</title>
+<title>SHIT — Simple Home Item Tracker</title>
 <link rel="manifest" href="/manifest.json">
 <meta name="theme-color" content="#050807">
 <link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&family=DM+Sans:wght@300;400;500&display=swap" rel="stylesheet">
@@ -417,8 +417,8 @@ body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opaci
 <!-- ══ AUTH ══ -->
 <div class="auth-screen" id="auth-screen" style="display:none">
   <div class="auth-card">
-    <div class="auth-logo"><span class="auth-logomark">▌▌ </span>CACHE</div>
-    <div class="auth-sub">INVENTORY SYSTEM</div>
+    <div class="auth-logo"><span class="auth-logomark">▌▌ </span>SHIT</div>
+    <div class="auth-sub">SIMPLE HOME ITEM TRACKER</div>
     <div class="auth-tabs">
       <button class="auth-tab active" id="tab-login">SIGN IN</button>
       <button class="auth-tab" id="tab-register">REGISTER</button>
@@ -567,12 +567,12 @@ body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opaci
 <!-- ══ ABOUT MODAL ══ -->
 <div class="modal-overlay" id="about-modal" onclick="closeAboutModal()">
   <div class="about-modal" onclick="event.stopPropagation()">
-    <div class="about-logo">▌▌ CACHE</div>
+    <div class="about-logo">▌▌ SHIT</div>
     <div class="about-tagline">INVENTORY MANAGEMENT SYSTEM</div>
     <div class="about-divider"></div>
     <div class="about-section">
       <div class="about-section-label">ABOUT</div>
-      <div class="about-text">CACHE is a personal inventory system built for tracking physical items — tools, gear, equipment, and anything else worth keeping tabs on. Check items in and out, scan QR codes, organize by location and category, and use AI to add items instantly from a photo.</div>
+      <div class="about-text">SHIT is a personal inventory system built for tracking physical items — tools, gear, equipment, and anything else worth keeping tabs on. Check items in and out, scan QR codes, organize by location and category, and use AI to add items instantly from a photo.</div>
     </div>
     <div class="about-divider"></div>
     <div class="about-section">
@@ -631,7 +631,7 @@ body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opaci
       <button class="user-action-btn danger" onclick="deleteAccount()">DELETE ACCOUNT</button>
       <div style="height:1px;background:var(--rule);margin:4px -16px"></div>
       <button class="user-action-btn" onclick="closeUserModal();startTutorial()" style="color:var(--accent)">▶ TAKE THE TOUR</button>
-      <button class="user-action-btn" onclick="closeUserModal();openAboutModal()" style="color:var(--muted)">ABOUT CACHE</button>
+      <button class="user-action-btn" onclick="closeUserModal();openAboutModal()" style="color:var(--muted)">ABOUT SHIT</button>
       <button class="user-action-btn" onclick="closeUserModal()" style="margin-top:4px">CLOSE</button>
     </div>
   </div>
@@ -639,7 +639,7 @@ body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opaci
 
 <!-- ══ HEADER ══ -->
 <header id="app-header" style="display:none">
-  <div class="header-logo"><span>▌▌ </span>CACHE</div>
+  <div class="header-logo"><span>▌▌ </span>SHIT</div>
   <div class="header-stats">
     <div class="hstat">ITEMS <strong id="hs-items">0</strong></div>
     <div class="hstat">VALUE <strong id="hs-value">$0</strong></div>
@@ -2215,7 +2215,7 @@ async function printQRLabel() {
   } catch {}
   const win = window.open('', '_blank', 'width=400,height=500');
   win.document.write(`<!DOCTYPE html><html><head>
-    <title>CACHE Label — ${item.name}</title>
+    <title>SHIT Label — ${item.name}</title>
     <style>
       body{margin:0;padding:20px;font-family:monospace;background:#fff;color:#000;text-align:center}
       svg{width:200px;height:200px;display:block;margin:0 auto}
@@ -2229,7 +2229,7 @@ async function printQRLabel() {
     <div class="name">${item.name}</div>
     ${item.location ? `<div class="loc">⊹ ${item.location}</div>` : ''}
     <div class="meta">${item.quantity} ${item.unit}${item.brand ? ' · ' + item.brand : ''}</div>
-    <div class="meta" style="color:#aaa;font-size:9px;margin-top:6px">CACHE #${String(item.id).padStart(4,'0')}</div>
+    <div class="meta" style="color:#aaa;font-size:9px;margin-top:6px">SHIT #${String(item.id).padStart(4,'0')}</div>
     <script>window.print();<\/script>
   </body></html>`);
   win.document.close();
@@ -2245,13 +2245,13 @@ async function printListQRLabel() {
   } catch {}
   const win = window.open('', '_blank', 'width=400,height=500');
   win.document.write(`<!DOCTYPE html><html><head>
-    <title>CACHE List — ${list.name}</title>
+    <title>SHIT List — ${list.name}</title>
     <style>body{margin:0;padding:20px;font-family:monospace;background:#fff;color:#000;text-align:center}svg{width:200px;height:200px;display:block;margin:0 auto}.name{font-size:16px;font-weight:bold;letter-spacing:1px;margin-bottom:4px}.meta{font-size:10px;color:#888;letter-spacing:1px}@media print{body{padding:8px}}</style>
   </head><body>
     ${qrHtml}
     <div class="name">${list.name}</div>
     <div class="meta">${list.item_ids.length} ITEM${list.item_ids.length !== 1 ? 'S' : ''}</div>
-    <div class="meta" style="color:#aaa;font-size:9px;margin-top:6px">CACHE LIST</div>
+    <div class="meta" style="color:#aaa;font-size:9px;margin-top:6px">SHIT LIST</div>
     <script>window.print();<\/script>
   </body></html>`);
   win.document.close();
@@ -2465,7 +2465,7 @@ function handleScanResult(url, statusEl) {
   }
   const match = url.match(/\/i\/([a-f0-9]+)$/);
   if (!match) {
-    if (statusEl) { statusEl.textContent = 'NOT A CACHE CODE'; statusEl.className = 'scanner-status detected'; }
+    if (statusEl) { statusEl.textContent = 'NOT A SHIT CODE'; statusEl.className = 'scanner-status detected'; }
     setTimeout(() => { if (scannerStream) { statusEl.textContent = 'SCANNING...'; statusEl.className = 'scanner-status'; const video = document.getElementById('scanner-video'); const canvas = document.getElementById('scanner-canvas'); const ctx = canvas.getContext('2d'); function tick() { if (!scannerStream) return; if (video.readyState === video.HAVE_ENOUGH_DATA) { canvas.width = video.videoWidth; canvas.height = video.videoHeight; ctx.drawImage(video, 0, 0); const id2 = ctx.getImageData(0, 0, canvas.width, canvas.height); const c2 = jsQR(id2.data, id2.width, id2.height, {inversionAttempts:'dontInvert'}); if (c2 && c2.data) { handleScanResult(c2.data, statusEl); return; } } requestAnimationFrame(tick); } requestAnimationFrame(tick); } }, 1500);
     return;
   }
@@ -2525,8 +2525,8 @@ function closeAboutModal() { document.getElementById('about-modal').classList.re
 const TUTORIAL_STEPS = [
   {
     icon: '▌▌',
-    title: 'WELCOME TO CACHE',
-    body: `CACHE is your personal inventory management system — built to track every item you own, lend out, and store.<br><br>This tour will walk you through all the features in about 2 minutes. You can also access it anytime from <strong>Settings → Take the Tour</strong>.`
+    title: 'WELCOME TO SHIT',
+    body: `SHIT is your personal inventory management system — built to track every item you own, lend out, and store.<br><br>This tour will walk you through all the features in about 2 minutes. You can also access it anytime from <strong>Settings → Take the Tour</strong>.`
   },
   {
     icon: '◈',
@@ -2559,7 +2559,7 @@ Claude AI will identify the item and automatically fill in the name, brand, mode
     icon: '⊹',
     title: 'QR CODE SCANNING',
     body: `Every item gets a unique <strong>QR code</strong> that links directly to its details page.<br><br>
-Tap <strong>⊹ SCAN QR</strong> to open the scanner. Point it at any CACHE QR code label to instantly pull up that item.<br><br>
+Tap <strong>⊹ SCAN QR</strong> to open the scanner. Point it at any SHIT QR code label to instantly pull up that item.<br><br>
 To print or view an item's QR code, open the item and tap <strong>⊡ QR</strong> in the panel footer, or tap <strong>⊡ QR CODE</strong> on the item card. Stick labels on shelves, bins, or gear cases for instant lookup.`
   },
   {
@@ -2609,7 +2609,7 @@ Full checkout history is stored behind the scenes for every item.`
     body: `<strong>Lists</strong> let you group items into named collections — a go-bag, a job site kit, a room inventory, or anything else.<br><br>
 Tap <strong>LISTS</strong> in the view toggle, then the <strong>+</strong> button to create a list. Give it a name, pick items from your inventory, and save.<br><br>
 Every list also gets its own QR code — scan it to see the full list contents.<br><br>
-You can <strong>share lists</strong> with other CACHE users by entering their email address in the list's sharing section.`
+You can <strong>share lists</strong> with other SHIT users by entering their email address in the list's sharing section.`
   },
   {
     icon: '⚙',
@@ -2626,7 +2626,7 @@ You can <strong>share lists</strong> with other CACHE users by entering their em
   {
     icon: '▌▌',
     title: 'YOU\'RE ALL SET',
-    body: `You now know everything CACHE has to offer. A few tips to get the most out of it:<br><br>
+    body: `You now know everything SHIT has to offer. A few tips to get the most out of it:<br><br>
 · <strong>Install as an app</strong> — on mobile, use your browser's "Add to Home Screen" option for a native-like experience<br>
 · <strong>Label your gear</strong> — print QR code stickers for bins, shelves, and cases<br>
 · <strong>Use AI Scan</strong> for bulk entry — photograph items in batches to add them quickly<br>
