@@ -476,7 +476,10 @@ body.panel-open .detail-panel { transform: translateX(0); }
   <div class="scanner-modal" onclick="event.stopPropagation()">
     <div class="scanner-header">
       <span class="scanner-title">▌ AI SCAN ITEM</span>
-      <button class="btn-icon" onclick="closePhotoModal()" data-tip="Close">✕</button>
+      <div style="display:flex;gap:6px">
+        <button class="btn-icon" id="btn-flip-camera" onclick="flipCamera()" data-tip="Flip Camera" style="display:none">⇄</button>
+        <button class="btn-icon" onclick="closePhotoModal()" data-tip="Close">✕</button>
+      </div>
     </div>
     <div class="scanner-viewport">
       <video id="photo-video" autoplay playsinline muted></video>
@@ -964,6 +967,7 @@ let lists = [];
 
 // AI photo state
 let photoStream = null;
+let photoFacing = 'environment'; // 'environment' = rear, 'user' = front
 let capturedImageData = null;
 let currentView = 'items'; // 'items' | 'lists'
 let openListId = null;
@@ -2267,30 +2271,50 @@ function closeScanner() {
 }
 
 // ── AI Photo Modal ────────────────────────────────────────────────────────────
+async function startPhotoStream() {
+  if (photoStream) { photoStream.getTracks().forEach(t => t.stop()); photoStream = null; }
+  const statusEl = document.getElementById('photo-status');
+  try {
+    photoStream = await navigator.mediaDevices.getUserMedia({
+      video: {
+        facingMode: { ideal: photoFacing },
+        width:  { ideal: 1920 },
+        height: { ideal: 1080 }
+      }
+    });
+    document.getElementById('photo-video').srcObject = photoStream;
+
+    // Show flip button only if device has multiple cameras
+    const devices = await navigator.mediaDevices.enumerateDevices();
+    const videoDevices = devices.filter(d => d.kind === 'videoinput');
+    document.getElementById('btn-flip-camera').style.display = videoDevices.length > 1 ? '' : 'none';
+
+    statusEl.textContent = photoFacing === 'environment' ? 'POINT CAMERA AT ITEM' : 'FRONT CAMERA ACTIVE';
+  } catch {
+    statusEl.textContent = 'CAMERA UNAVAILABLE — USE UPLOAD';
+    document.getElementById('btn-photo-capture').style.display = 'none';
+    document.getElementById('btn-flip-camera').style.display = 'none';
+  }
+}
+
 async function openPhotoModal() {
   capturedImageData = null;
+  photoFacing = 'environment';
   document.getElementById('photo-preview').style.display = 'none';
   document.getElementById('photo-video').style.display = '';
   document.getElementById('btn-photo-analyze').style.display = 'none';
   document.getElementById('btn-photo-capture').style.display = '';
   document.getElementById('btn-photo-retake').style.display = 'none';
   document.getElementById('lbl-photo-upload').style.display = 'flex';
+  document.getElementById('btn-flip-camera').style.display = 'none';
   document.getElementById('photo-status').textContent = 'POINT CAMERA AT ITEM';
   document.getElementById('photo-modal').classList.add('open');
+  await startPhotoStream();
+}
 
-  try {
-    photoStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: 'environment' },
-        width:  { ideal: 1920 },
-        height: { ideal: 1080 }
-      }
-    });
-    document.getElementById('photo-video').srcObject = photoStream;
-  } catch {
-    document.getElementById('photo-status').textContent = 'CAMERA UNAVAILABLE — USE UPLOAD';
-    document.getElementById('btn-photo-capture').style.display = 'none';
-  }
+async function flipCamera() {
+  photoFacing = photoFacing === 'environment' ? 'user' : 'environment';
+  await startPhotoStream();
 }
 
 function closePhotoModal() {
