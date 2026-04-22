@@ -1101,6 +1101,7 @@ let panelMode = 'add'; // 'add' | 'edit'
 let itemTags = [];
 let openItemDocs = [];
 let scannerStream = null;
+let sharedCameraStream = null; // persists across modal opens to avoid re-prompting
 let qrItemId = null;
 let qrListId = null;
 
@@ -2405,12 +2406,12 @@ async function openScanner() {
   status.className = 'scanner-status';
 
   try {
-    const stream = await navigator.mediaDevices.getUserMedia({
-      video: { facingMode: 'environment' }
-    });
-    scannerStream = stream;
+    if (!sharedCameraStream || !sharedCameraStream.active) {
+      sharedCameraStream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: 'environment' } });
+    }
+    scannerStream = sharedCameraStream;
     const video = document.getElementById('scanner-video');
-    video.srcObject = stream;
+    video.srcObject = scannerStream;
     await video.play();
     status.textContent = 'SCANNING...';
 
@@ -2443,10 +2444,7 @@ async function openScanner() {
 }
 
 function closeScanner() {
-  if (scannerStream) {
-    scannerStream.getTracks().forEach(t => t.stop());
-    scannerStream = null;
-  }
+  scannerStream = null;
   const video = document.getElementById('scanner-video');
   video.srcObject = null;
   document.getElementById('scanner-modal').classList.remove('open');
@@ -2454,19 +2452,20 @@ function closeScanner() {
 
 // ── AI Photo Modal ────────────────────────────────────────────────────────────
 async function startPhotoStream() {
-  if (photoStream) { photoStream.getTracks().forEach(t => t.stop()); photoStream = null; }
   const statusEl = document.getElementById('photo-status');
   try {
-    photoStream = await navigator.mediaDevices.getUserMedia({
-      video: {
-        facingMode: { ideal: photoFacing },
-        width:  { ideal: 1920 },
-        height: { ideal: 1080 }
-      }
-    });
+    if (photoFacing === 'environment' && sharedCameraStream && sharedCameraStream.active) {
+      photoStream = sharedCameraStream;
+    } else {
+      // Need a new stream (front camera, or shared stream died)
+      if (sharedCameraStream) { sharedCameraStream.getTracks().forEach(t => t.stop()); sharedCameraStream = null; }
+      photoStream = await navigator.mediaDevices.getUserMedia({
+        video: { facingMode: { ideal: photoFacing }, width: { ideal: 1920 }, height: { ideal: 1080 } }
+      });
+      if (photoFacing === 'environment') sharedCameraStream = photoStream;
+    }
     document.getElementById('photo-video').srcObject = photoStream;
 
-    // Show flip button only if device has multiple cameras
     const devices = await navigator.mediaDevices.enumerateDevices();
     const videoDevices = devices.filter(d => d.kind === 'videoinput');
     document.getElementById('btn-flip-camera').style.display = videoDevices.length > 1 ? '' : 'none';
@@ -2500,7 +2499,7 @@ async function flipCamera() {
 }
 
 function closePhotoModal() {
-  if (photoStream) { photoStream.getTracks().forEach(t => t.stop()); photoStream = null; }
+  photoStream = null;
   const vid = document.getElementById('photo-video');
   vid.srcObject = null;
   document.getElementById('photo-modal').classList.remove('open');
@@ -3089,6 +3088,10 @@ async function init() {
 }
 
 init();
+
+window.addEventListener('pagehide', () => {
+  if (sharedCameraStream) sharedCameraStream.getTracks().forEach(t => t.stop());
+});
 </script>
 </body>
 </html>
