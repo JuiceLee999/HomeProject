@@ -1,12 +1,13 @@
 #!/bin/bash
 # Local script — merges dev into main, pushes, then deploys to prod
-# Usage: bash push-prod.sh
-
 set -e
 
 PROD_HOST="159.203.111.124"
 PROD_USER="root"
 PROD_DIR="/var/www/HomeProject"
+
+# Run git commands from repo root
+cd "$(dirname "$0")/.."
 
 echo "==> Switching to main..."
 git checkout main
@@ -18,7 +19,7 @@ echo "==> Pushing main to GitHub..."
 git push origin main
 
 echo "==> Deploying to production ($PROD_HOST)..."
-ssh "$PROD_USER@$PROD_HOST" "bash $PROD_DIR/scripts/deploy.sh"
+ssh "$PROD_USER@$PROD_HOST" "bash $PROD_DIR/inventory/scripts/deploy.sh"
 
 echo "==> Switching back to dev..."
 git checkout dev

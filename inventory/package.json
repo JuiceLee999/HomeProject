@@ -6,6 +6,9 @@
   "scripts": {
     "start": "node server.js"
   },
+  "devDependencies": {
+    "sql.js": "^1.14.1"
+  },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
     "@google/generative-ai": "^0.24.1",
@@ -15,7 +18,8 @@
     "helmet": "^7.1.0",
     "jsonwebtoken": "^9.0.2",
     "jsqr": "^1.4.0",
-    "node-sqlite3-wasm": "^0.8.28",
+    "pdfkit": "^0.18.0",
+    "pg": "^8.20.0",
     "qrcode": "^1.5.3"
   }
 }
