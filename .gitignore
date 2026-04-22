@@ -1,2 +1,5 @@
 node_modules/
-db/
+db/*.db
+db/*.db-shm
+db/*.db-wal
+db/*.lock
