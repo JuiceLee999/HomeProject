@@ -1,0 +1,18 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(awk '{print $9}')",
+      "Bash(npm install *)",
+      "Bash(node -e \"require\\('./server.js'\\)\")",
+      "Bash(curl -s -o /dev/null -w \"%{http_code} %{content_type}\" http://localhost:3001/whitepaper.pdf)",
+      "Bash(pkill -f \"node.*server.js\")",
+      "Bash(node server.js)",
+      "Bash(curl -s -o /dev/null -w '%{http_code}' -X POST http://localhost:3001/api/categories -H 'Authorization: Bearer fake' -d '{\"name\":\"test\"}')",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3001/i/000000000000000000000000)",
+      "Bash(node --check server.js)",
+      "Read(//c/Users/Juicy/japps/**)",
+      "Bash(node *)",
+      "Bash(npm uninstall *)"
+    ]
+  }
+}

@@ -1,160 +1,19 @@
 const express = require('express');
-const { Database } = require('node-sqlite3-wasm');
-const bcrypt = require('bcryptjs');
-const jwt = require('jsonwebtoken');
-const crypto = require('crypto');
-const path = require('path');
-const fs = require('fs');
-const rateLimit = require('express-rate-limit');
-const helmet = require('helmet');
-const QRCode = require('qrcode');
-const Anthropic = require('@anthropic-ai/sdk');
+const bcrypt  = require('bcryptjs');
+const jwt     = require('jsonwebtoken');
+const crypto  = require('crypto');
+const path    = require('path');
+const fs      = require('fs');
+const rateLimit   = require('express-rate-limit');
+const helmet      = require('helmet');
+const QRCode      = require('qrcode');
+const Anthropic   = require('@anthropic-ai/sdk');
+const PDFDocument = require('pdfkit');
+const db          = require('./db/index');
 
-const app = express();
+const app  = express();
 const PORT = process.env.PORT || 3001;
-const DB_DIR = path.join(__dirname, 'db');
-const DB_PATH = path.join(DB_DIR, 'cache.db');
-
-fs.mkdirSync(DB_DIR, { recursive: true });
-// Clear stale lock left by crash loops (node-sqlite3-wasm uses a .lock directory)
-const DB_LOCK = DB_PATH + '.lock';
-try { fs.rmSync(DB_LOCK, { recursive: true, force: true }); } catch {}
-const db = new Database(DB_PATH);
-
-// ── Schema ────────────────────────────────────────────────────────────────────
-db.exec(`
-  CREATE TABLE IF NOT EXISTS store (
-    key   TEXT PRIMARY KEY,
-    value TEXT NOT NULL
-  );
-
-  CREATE TABLE IF NOT EXISTS users (
-    id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    email          TEXT UNIQUE NOT NULL COLLATE NOCASE,
-    password_hash  TEXT NOT NULL,
-    last_logout_at INTEGER DEFAULT 0,
-    created_at     INTEGER DEFAULT (strftime('%s','now'))
-  );
-
-  CREATE TABLE IF NOT EXISTS locations (
-    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    name    TEXT NOT NULL,
-    UNIQUE(user_id, name),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS lists (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id     INTEGER NOT NULL,
-    name        TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    qr_token    TEXT UNIQUE NOT NULL,
-    created_at  INTEGER DEFAULT (strftime('%s','now')),
-    modified_at INTEGER DEFAULT (strftime('%s','now')),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS list_shares (
-    id             INTEGER PRIMARY KEY AUTOINCREMENT,
-    list_id        INTEGER NOT NULL,
-    owner_id       INTEGER NOT NULL,
-    shared_with_id INTEGER NOT NULL,
-    created_at     INTEGER DEFAULT (strftime('%s','now')),
-    UNIQUE(list_id, shared_with_id),
-    FOREIGN KEY (list_id)        REFERENCES lists(id),
-    FOREIGN KEY (owner_id)       REFERENCES users(id),
-    FOREIGN KEY (shared_with_id) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS list_items (
-    list_id INTEGER NOT NULL,
-    item_id INTEGER NOT NULL,
-    PRIMARY KEY (list_id, item_id),
-    FOREIGN KEY (list_id) REFERENCES lists(id),
-    FOREIGN KEY (item_id) REFERENCES items(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS categories (
-    id      INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id INTEGER NOT NULL,
-    name    TEXT NOT NULL,
-    UNIQUE(user_id, name),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS items (
-    id          INTEGER PRIMARY KEY AUTOINCREMENT,
-    user_id     INTEGER NOT NULL,
-    name        TEXT NOT NULL,
-    description TEXT NOT NULL DEFAULT '',
-    category    TEXT NOT NULL DEFAULT '',
-    location    TEXT NOT NULL DEFAULT '',
-    quantity    REAL NOT NULL DEFAULT 1,
-    unit        TEXT NOT NULL DEFAULT 'pcs',
-    value       REAL NOT NULL DEFAULT 0,
-    brand       TEXT NOT NULL DEFAULT '',
-    model       TEXT NOT NULL DEFAULT '',
-    serial      TEXT NOT NULL DEFAULT '',
-    condition   TEXT NOT NULL DEFAULT 'good',
-    notes       TEXT NOT NULL DEFAULT '',
-    tags        TEXT NOT NULL DEFAULT '[]',
-    qr_token    TEXT UNIQUE NOT NULL,
-    image_data      TEXT DEFAULT NULL,
-    purchased_at    TEXT DEFAULT NULL,
-    checked_out_to  TEXT DEFAULT NULL,
-    checked_out_at  INTEGER DEFAULT NULL,
-    due_back        INTEGER DEFAULT NULL,
-    created_at  INTEGER DEFAULT (strftime('%s','now')),
-    modified_at INTEGER DEFAULT (strftime('%s','now')),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS documents (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    item_id    INTEGER NOT NULL,
-    user_id    INTEGER NOT NULL,
-    filename   TEXT NOT NULL,
-    mime_type  TEXT NOT NULL DEFAULT '',
-    size       INTEGER NOT NULL DEFAULT 0,
-    data       TEXT NOT NULL,
-    created_at INTEGER DEFAULT (strftime('%s','now')),
-    FOREIGN KEY (item_id) REFERENCES items(id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
-
-  CREATE TABLE IF NOT EXISTS checkouts (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    item_id      INTEGER NOT NULL,
-    user_id      INTEGER NOT NULL,
-    borrower     TEXT NOT NULL,
-    destination  TEXT NOT NULL DEFAULT '',
-    checked_out  INTEGER NOT NULL,
-    due_back     INTEGER DEFAULT NULL,
-    checked_in   INTEGER DEFAULT NULL,
-    notes        TEXT NOT NULL DEFAULT '',
-    FOREIGN KEY (item_id) REFERENCES items(id),
-    FOREIGN KEY (user_id) REFERENCES users(id)
-  );
-`);
-
-// Migrations for existing databases
-try { db.exec('ALTER TABLE items ADD COLUMN checked_out_to TEXT DEFAULT NULL'); } catch {}
-try { db.exec('ALTER TABLE items ADD COLUMN checked_out_at INTEGER DEFAULT NULL'); } catch {}
-try { db.exec('ALTER TABLE items ADD COLUMN due_back INTEGER DEFAULT NULL'); } catch {}
-try { db.exec('ALTER TABLE items ADD COLUMN checkout_destination TEXT DEFAULT NULL'); } catch {}
-try { db.exec('ALTER TABLE checkouts ADD COLUMN destination TEXT NOT NULL DEFAULT \'\''); } catch {}
-try { db.exec('ALTER TABLE items ADD COLUMN purchased_at TEXT DEFAULT NULL'); } catch {}
-
-// ── JWT secret ────────────────────────────────────────────────────────────────
 let JWT_SECRET;
-const secretRow = db.prepare('SELECT value FROM store WHERE key = ?').get('jwt_secret');
-if (secretRow) {
-  JWT_SECRET = secretRow.value;
-} else {
-  JWT_SECRET = crypto.randomBytes(48).toString('hex');
-  db.prepare('INSERT INTO store (key, value) VALUES (?, ?)').run(['jwt_secret', JWT_SECRET]);
-}
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function escHtml(s) {
@@ -162,8 +21,17 @@ function escHtml(s) {
 }
 
 function itemToJSON(row) {
+  if (!row) return null;
   return { ...row, tags: JSON.parse(row.tags || '[]') };
 }
+
+async function listWithItems(list) {
+  const rows = await db.getAll('SELECT item_id FROM list_items WHERE list_id = $1', [list.id]);
+  return { ...list, item_ids: rows.map(r => r.item_id) };
+}
+
+// Wraps async route handlers so Express 4 catches rejected promises.
+const ar = fn => (req, res, next) => fn(req, res, next).catch(next);
 
 // ── Middleware ────────────────────────────────────────────────────────────────
 app.use(helmet({
@@ -183,28 +51,44 @@ app.use(helmet({
     }
   }
 }));
-app.use(express.json({ limit: '10mb' }));
+app.use(express.json({ limit: '25mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
 
-// Serve jsQR from node_modules
 app.get('/lib/jsqr.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'node_modules', 'jsqr', 'dist', 'jsQR.js'));
 });
 
+// ── Rate limiters ─────────────────────────────────────────────────────────────
 const authLimiter = rateLimit({
-  windowMs: 15 * 60 * 1000,
-  max: 20,
-  standardHeaders: true,
-  legacyHeaders: false,
+  windowMs: 15 * 60 * 1000, max: 20,
+  standardHeaders: true, legacyHeaders: false,
   message: { error: 'Too many attempts, please try again later.' }
 });
 
-function verifyToken(req, res, next) {
+const qrLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, max: 30,
+  standardHeaders: true, legacyHeaders: false,
+});
+
+const aiLimiter = rateLimit({
+  windowMs: 5 * 60 * 1000, max: 10,
+  standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Too many AI analysis requests, please slow down.' }
+});
+
+const docUploadLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, max: 30,
+  standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Upload limit reached, please try again later.' }
+});
+
+// ── Auth helpers ──────────────────────────────────────────────────────────────
+async function verifyToken(req, res, next) {
   const auth = req.headers.authorization;
   if (!auth || !auth.startsWith('Bearer ')) return res.status(401).json({ error: 'Unauthorized' });
   try {
     const decoded = jwt.verify(auth.slice(7), JWT_SECRET);
-    const userRow = db.prepare('SELECT last_logout_at FROM users WHERE id = ?').get(decoded.userId);
+    const userRow = await db.getOne('SELECT last_logout_at FROM users WHERE id = $1', [decoded.userId]);
     if (userRow && decoded.iat * 1000 < (userRow.last_logout_at || 0)) {
       return res.status(401).json({ error: 'Token revoked' });
     }
@@ -217,48 +101,69 @@ function verifyToken(req, res, next) {
 
 function isValidEmail(s) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(s); }
 
+function isStrongPassword(p) {
+  if (!p) return false;
+  if (p.length >= 12) return true;
+  return p.length >= 8 && /[0-9!@#$%^&*()\-_=+[\]{};':",.<>?/\\|`~]/.test(p);
+}
+
+const VALID_CONDITIONS = new Set(['new', 'good', 'fair', 'poor']);
+
+function requireJSON(req, res, next) {
+  if (!req.is('application/json')) return res.status(415).json({ error: 'Content-Type must be application/json' });
+  next();
+}
+
 // ── Auth ──────────────────────────────────────────────────────────────────────
-app.post('/api/register', authLimiter, async (req, res) => {
+app.post('/api/register', authLimiter, requireJSON, ar(async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !isValidEmail(email)) return res.status(400).json({ error: 'Valid email required' });
-  if (!password || password.length < 8) return res.status(400).json({ error: 'Password must be at least 8 characters' });
+  if (!isStrongPassword(password)) return res.status(400).json({ error: 'Password must be 12+ characters, or 8+ characters with at least one number or symbol' });
 
-  const exists = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
+  const exists = await db.getOne('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
   if (exists) return res.status(409).json({ error: 'An account with that email already exists' });
 
   const hash = await bcrypt.hash(password, 10);
-  db.prepare('INSERT INTO users (email, password_hash) VALUES (?, ?)').run([email, hash]);
-  const userRow = db.prepare('SELECT id FROM users WHERE email = ?').get(email);
-  const token = jwt.sign({ userId: userRow.id, email }, JWT_SECRET, { expiresIn: '30d' });
-  res.json({ token, email });
-});
+  const userRow = await db.getOne(
+    'INSERT INTO users (email, password_hash) VALUES ($1, $2) RETURNING id',
+    [email.toLowerCase(), hash]
+  );
+  const token = jwt.sign({ userId: userRow.id, email: email.toLowerCase() }, JWT_SECRET, { expiresIn: '7d' });
+  res.json({ token, email: email.toLowerCase() });
+}));
 
-app.post('/api/login', authLimiter, async (req, res) => {
+app.post('/api/login', authLimiter, requireJSON, ar(async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
-  const user = db.prepare('SELECT id, email, password_hash FROM users WHERE email = ?').get(email);
+  const user = await db.getOne(
+    'SELECT id, email, password_hash FROM users WHERE LOWER(email) = LOWER($1)',
+    [email]
+  );
   if (!user) return res.status(401).json({ error: 'Invalid email or password' });
 
   const match = await bcrypt.compare(password, user.password_hash);
   if (!match) return res.status(401).json({ error: 'Invalid email or password' });
 
-  const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '30d' });
+  const token = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
   res.json({ token, email: user.email });
-});
+}));
 
-app.post('/api/logout', verifyToken, (req, res) => {
-  db.prepare('UPDATE users SET last_logout_at = ? WHERE id = ?').run([Date.now(), req.user.userId]);
+app.post('/api/logout', verifyToken, requireJSON, ar(async (req, res) => {
+  await db.query('UPDATE users SET last_logout_at = $1 WHERE id = $2', [Date.now(), req.user.userId]);
   res.json({ ok: true });
-});
+}));
 
 // ── Items ─────────────────────────────────────────────────────────────────────
-app.get('/api/items', verifyToken, (req, res) => {
-  const rows = db.prepare('SELECT * FROM items WHERE user_id = ? ORDER BY modified_at DESC').all(req.user.userId);
+app.get('/api/items', verifyToken, ar(async (req, res) => {
+  const rows = await db.getAll(
+    'SELECT * FROM items WHERE user_id = $1 ORDER BY modified_at DESC',
+    [req.user.userId]
+  );
   res.json(rows.map(itemToJSON));
-});
+}));
 
-app.post('/api/items', verifyToken, (req, res) => {
+app.post('/api/items', verifyToken, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const {
     name, description = '', category = '', location = '',
@@ -270,34 +175,43 @@ app.post('/api/items', verifyToken, (req, res) => {
 
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
 
+  const qty = Number(quantity);
+  const val = Number(value);
+  if (!Number.isFinite(qty) || qty < 0 || qty > 999999) return res.status(400).json({ error: 'Quantity must be between 0 and 999999' });
+  if (!Number.isFinite(val) || val < 0 || val > 999999999) return res.status(400).json({ error: 'Value must be between 0 and 999999999' });
+  if (!VALID_CONDITIONS.has(condition)) return res.status(400).json({ error: 'Condition must be one of: new, good, fair, poor' });
+
   const qr_token = crypto.randomBytes(12).toString('hex');
   const now = Math.floor(Date.now() / 1000);
 
-  db.prepare(`
+  const item = await db.getOne(`
     INSERT INTO items
       (user_id, name, description, category, location, quantity, unit, value,
        brand, model, serial, condition, notes, tags, qr_token, image_data, purchased_at, created_at, modified_at)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-  `).run([
+    VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17,$18,$19)
+    RETURNING *
+  `, [
     userId, name.trim(), description, category, location,
-    quantity, unit, value, brand, model, serial, condition,
+    qty, unit, val, brand, model, serial, condition,
     notes, JSON.stringify(tags), qr_token, image_data, purchased_at || null, now, now
   ]);
 
-  const item = db.prepare('SELECT * FROM items WHERE qr_token = ?').get(qr_token);
   res.status(201).json(itemToJSON(item));
-});
+}));
 
-app.get('/api/items/:id', verifyToken, (req, res) => {
-  const item = db.prepare('SELECT * FROM items WHERE id = ? AND user_id = ?').get([Number(req.params.id), req.user.userId]);
+app.get('/api/items/:id', verifyToken, ar(async (req, res) => {
+  const item = await db.getOne(
+    'SELECT * FROM items WHERE id = $1 AND user_id = $2',
+    [Number(req.params.id), req.user.userId]
+  );
   if (!item) return res.status(404).json({ error: 'Not found' });
   res.json(itemToJSON(item));
-});
+}));
 
-app.put('/api/items/:id', verifyToken, (req, res) => {
+app.put('/api/items/:id', verifyToken, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const itemId = Number(req.params.id);
-  const existing = db.prepare('SELECT id FROM items WHERE id = ? AND user_id = ?').get([itemId, userId]);
+  const existing = await db.getOne('SELECT id FROM items WHERE id = $1 AND user_id = $2', [itemId, userId]);
   if (!existing) return res.status(404).json({ error: 'Not found' });
 
   const {
@@ -310,111 +224,135 @@ app.put('/api/items/:id', verifyToken, (req, res) => {
 
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name is required' });
 
+  const qty = Number(quantity);
+  const val = Number(value);
+  if (!Number.isFinite(qty) || qty < 0 || qty > 999999) return res.status(400).json({ error: 'Quantity must be between 0 and 999999' });
+  if (!Number.isFinite(val) || val < 0 || val > 999999999) return res.status(400).json({ error: 'Value must be between 0 and 999999999' });
+  if (!VALID_CONDITIONS.has(condition)) return res.status(400).json({ error: 'Condition must be one of: new, good, fair, poor' });
+
   const now = Math.floor(Date.now() / 1000);
-  db.prepare(`
+  const item = await db.getOne(`
     UPDATE items SET
-      name=?, description=?, category=?, location=?,
-      quantity=?, unit=?, value=?,
-      brand=?, model=?, serial=?,
-      condition=?, notes=?, tags=?, image_data=?, purchased_at=?, modified_at=?
-    WHERE id=? AND user_id=?
-  `).run([
+      name=$1, description=$2, category=$3, location=$4,
+      quantity=$5, unit=$6, value=$7,
+      brand=$8, model=$9, serial=$10,
+      condition=$11, notes=$12, tags=$13, image_data=$14, purchased_at=$15, modified_at=$16
+    WHERE id=$17 AND user_id=$18
+    RETURNING *
+  `, [
     name.trim(), description, category, location,
-    quantity, unit, value, brand, model, serial,
+    qty, unit, val, brand, model, serial,
     condition, notes, JSON.stringify(tags), image_data, purchased_at || null,
     now, itemId, userId
   ]);
 
-  res.json(itemToJSON(db.prepare('SELECT * FROM items WHERE id = ?').get(itemId)));
-});
+  res.json(itemToJSON(item));
+}));
 
-app.delete('/api/items/:id', verifyToken, (req, res) => {
-  db.prepare('DELETE FROM items WHERE id = ? AND user_id = ?').run([Number(req.params.id), req.user.userId]);
+app.delete('/api/items/:id', verifyToken, ar(async (req, res) => {
+  await db.query(
+    'DELETE FROM items WHERE id = $1 AND user_id = $2',
+    [Number(req.params.id), req.user.userId]
+  );
   res.json({ ok: true });
-});
+}));
 
 // ── Checkout / check-in ───────────────────────────────────────────────────────
-app.post('/api/items/:id/checkout', verifyToken, (req, res) => {
+app.post('/api/items/:id/checkout', verifyToken, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const itemId = Number(req.params.id);
-  const item = db.prepare('SELECT * FROM items WHERE id = ? AND user_id = ?').get([itemId, userId]);
+  const item = await db.getOne('SELECT * FROM items WHERE id = $1 AND user_id = $2', [itemId, userId]);
   if (!item) return res.status(404).json({ error: 'Not found' });
   if (item.checked_out_to) return res.status(409).json({ error: 'Item is already checked out' });
 
   const { borrower, destination = '', checked_out_date = null, due_back = null, notes = '' } = req.body || {};
   if (!borrower || !borrower.trim()) return res.status(400).json({ error: 'Borrower name is required' });
 
-  const now = Math.floor(Date.now() / 1000);
+  const now   = Math.floor(Date.now() / 1000);
   const coTs  = checked_out_date ? Math.floor(new Date(checked_out_date).getTime() / 1000) : now;
   const dueTs = due_back ? Math.floor(new Date(due_back).getTime() / 1000) : null;
 
-  db.prepare('UPDATE items SET checked_out_to=?, checked_out_at=?, due_back=?, checkout_destination=?, modified_at=? WHERE id=?')
-    .run([borrower.trim(), coTs, dueTs, destination.trim(), now, itemId]);
-  db.prepare('INSERT INTO checkouts (item_id, user_id, borrower, destination, checked_out, due_back, notes) VALUES (?,?,?,?,?,?,?)')
-    .run([itemId, userId, borrower.trim(), destination.trim(), coTs, dueTs, notes]);
+  const updated = await db.getOne(`
+    UPDATE items SET checked_out_to=$1, checked_out_at=$2, due_back=$3, checkout_destination=$4, modified_at=$5
+    WHERE id=$6 RETURNING *
+  `, [borrower.trim(), coTs, dueTs, destination.trim(), now, itemId]);
 
-  res.json(itemToJSON(db.prepare('SELECT * FROM items WHERE id = ?').get(itemId)));
-});
+  await db.query(
+    'INSERT INTO checkouts (item_id, user_id, borrower, destination, checked_out, due_back, notes) VALUES ($1,$2,$3,$4,$5,$6,$7)',
+    [itemId, userId, borrower.trim(), destination.trim(), coTs, dueTs, notes]
+  );
 
-app.post('/api/items/:id/checkin', verifyToken, (req, res) => {
+  res.json(itemToJSON(updated));
+}));
+
+app.post('/api/items/:id/checkin', verifyToken, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const itemId = Number(req.params.id);
-  const item = db.prepare('SELECT * FROM items WHERE id = ? AND user_id = ?').get([itemId, userId]);
+  const item = await db.getOne('SELECT * FROM items WHERE id = $1 AND user_id = $2', [itemId, userId]);
   if (!item) return res.status(404).json({ error: 'Not found' });
   if (!item.checked_out_to) return res.status(409).json({ error: 'Item is not checked out' });
 
   const now = Math.floor(Date.now() / 1000);
-  db.prepare('UPDATE items SET checked_out_to=NULL, checked_out_at=NULL, due_back=NULL, checkout_destination=NULL, modified_at=? WHERE id=?')
-    .run([now, itemId]);
-  db.prepare('UPDATE checkouts SET checked_in=? WHERE item_id=? AND checked_in IS NULL')
-    .run([now, itemId]);
+  const updated = await db.getOne(`
+    UPDATE items SET checked_out_to=NULL, checked_out_at=NULL, due_back=NULL, checkout_destination=NULL, modified_at=$1
+    WHERE id=$2 RETURNING *
+  `, [now, itemId]);
 
-  res.json(itemToJSON(db.prepare('SELECT * FROM items WHERE id = ?').get(itemId)));
-});
+  await db.query(
+    'UPDATE checkouts SET checked_in=$1 WHERE item_id=$2 AND checked_in IS NULL',
+    [now, itemId]
+  );
 
-app.get('/api/items/:id/checkouts', verifyToken, (req, res) => {
+  res.json(itemToJSON(updated));
+}));
+
+app.get('/api/items/:id/checkouts', verifyToken, ar(async (req, res) => {
   const { userId } = req.user;
   const itemId = Number(req.params.id);
-  const item = db.prepare('SELECT id FROM items WHERE id = ? AND user_id = ?').get([itemId, userId]);
+  const item = await db.getOne('SELECT id FROM items WHERE id = $1 AND user_id = $2', [itemId, userId]);
   if (!item) return res.status(404).json({ error: 'Not found' });
-  const history = db.prepare('SELECT * FROM checkouts WHERE item_id=? ORDER BY checked_out DESC').all([itemId]);
+  const history = await db.getAll(
+    'SELECT * FROM checkouts WHERE item_id=$1 ORDER BY checked_out DESC',
+    [itemId]
+  );
   res.json(history);
-});
+}));
 
 // ── Documents ─────────────────────────────────────────────────────────────────
-app.get('/api/items/:id/documents', verifyToken, (req, res) => {
+app.get('/api/items/:id/documents', verifyToken, ar(async (req, res) => {
   const itemId = Number(req.params.id);
-  const item = db.prepare('SELECT id FROM items WHERE id = ? AND user_id = ?').get([itemId, req.user.userId]);
+  const item = await db.getOne('SELECT id FROM items WHERE id = $1 AND user_id = $2', [itemId, req.user.userId]);
   if (!item) return res.status(404).json({ error: 'Not found' });
-  const docs = db.prepare(
-    'SELECT id, filename, mime_type, size, created_at FROM documents WHERE item_id = ? ORDER BY created_at DESC'
-  ).all([itemId]);
+  const docs = await db.getAll(
+    'SELECT id, filename, mime_type, size, thumb_data, created_at FROM documents WHERE item_id = $1 ORDER BY created_at DESC',
+    [itemId]
+  );
   res.json(docs);
-});
+}));
 
-app.post('/api/items/:id/documents', verifyToken, (req, res) => {
+app.post('/api/items/:id/documents', verifyToken, docUploadLimiter, requireJSON, ar(async (req, res) => {
   const itemId = Number(req.params.id);
-  const item = db.prepare('SELECT id FROM items WHERE id = ? AND user_id = ?').get([itemId, req.user.userId]);
+  const item = await db.getOne('SELECT id FROM items WHERE id = $1 AND user_id = $2', [itemId, req.user.userId]);
   if (!item) return res.status(404).json({ error: 'Not found' });
 
-  const { filename, mime_type = 'application/octet-stream', data } = req.body || {};
+  const { filename, mime_type = 'application/octet-stream', data, thumb_data = null } = req.body || {};
   if (!filename || !data) return res.status(400).json({ error: 'filename and data required' });
 
-  // Estimate byte size from base64 length
   const size = Math.round(data.length * 0.75);
-  db.prepare(
-    'INSERT INTO documents (item_id, user_id, filename, mime_type, size, data) VALUES (?,?,?,?,?,?)'
-  ).run([itemId, req.user.userId, filename, mime_type, size, data]);
+  const doc = await db.getOne(`
+    INSERT INTO documents (item_id, user_id, filename, mime_type, size, data, thumb_data)
+    VALUES ($1,$2,$3,$4,$5,$6,$7)
+    RETURNING id, filename, mime_type, size, thumb_data, created_at
+  `, [itemId, req.user.userId, filename, mime_type, size, data, thumb_data]);
 
-  const doc = db.prepare(
-    'SELECT id, filename, mime_type, size, created_at FROM documents WHERE rowid = last_insert_rowid()'
-  ).get();
   res.status(201).json(doc);
-});
+}));
 
-app.get('/api/documents/:id/download', verifyToken, (req, res) => {
-  const doc = db.prepare('SELECT * FROM documents WHERE id = ? AND user_id = ?')
-    .get([Number(req.params.id), req.user.userId]);
+app.get('/api/documents/:id/download', verifyToken, ar(async (req, res) => {
+  const doc = await db.getOne(
+    'SELECT * FROM documents WHERE id = $1 AND user_id = $2',
+    [Number(req.params.id), req.user.userId]
+  );
   if (!doc) return res.status(404).json({ error: 'Not found' });
 
   const buf = Buffer.from(doc.data, 'base64');
@@ -422,26 +360,27 @@ app.get('/api/documents/:id/download', verifyToken, (req, res) => {
   res.setHeader('Content-Type', doc.mime_type || 'application/octet-stream');
   res.setHeader('Content-Length', buf.length);
   res.send(buf);
-});
+}));
 
-app.delete('/api/documents/:id', verifyToken, (req, res) => {
-  db.prepare('DELETE FROM documents WHERE id = ? AND user_id = ?')
-    .run([Number(req.params.id), req.user.userId]);
+app.delete('/api/documents/:id', verifyToken, ar(async (req, res) => {
+  await db.query(
+    'DELETE FROM documents WHERE id = $1 AND user_id = $2',
+    [Number(req.params.id), req.user.userId]
+  );
   res.json({ ok: true });
-});
+}));
 
 // ── AI item analysis ──────────────────────────────────────────────────────────
-app.post('/api/ai/analyze-item', verifyToken, async (req, res) => {
+app.post('/api/ai/analyze-item', verifyToken, aiLimiter, requireJSON, async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(503).json({ error: 'AI not configured on this server' });
 
   const { image_data } = req.body;
   if (!image_data) return res.status(400).json({ error: 'No image provided' });
 
-  const base64 = image_data.replace(/^data:image\/\w+;base64,/, '');
+  const base64    = image_data.replace(/^data:image\/\w+;base64,/, '');
   const mediaType = image_data.startsWith('data:image/png') ? 'image/png' : 'image/jpeg';
-
-  const client = new Anthropic({ apiKey });
+  const client    = new Anthropic({ apiKey });
 
   const prompt = `You are analyzing an image of a physical item for an inventory management system.
 Extract the following details and respond with ONLY valid JSON (no markdown, no code fences, no explanation):
@@ -468,19 +407,21 @@ Be concise. If unsure about a field, use empty string or 0. Estimate value in US
         { type: 'text', text: prompt }
       ]}]
     });
-    const text = message.content[0].text.trim();
+    const text    = message.content[0].text.trim();
     const cleaned = text.replace(/^```(?:json)?\n?/, '').replace(/\n?```$/, '').trim();
-    const json = JSON.parse(cleaned);
-    res.json(json);
+    res.json(JSON.parse(cleaned));
   } catch (e) {
-    res.status(500).json({ error: 'AI analysis failed: ' + e.message });
+    console.error('AI analysis error:', e.message);
+    res.status(500).json({ error: 'AI analysis failed. Please try again.' });
   }
 });
 
 // ── QR code generation ────────────────────────────────────────────────────────
-app.get('/api/items/:id/qr', verifyToken, async (req, res) => {
-  const item = db.prepare('SELECT qr_token FROM items WHERE id = ? AND user_id = ?')
-    .get([Number(req.params.id), req.user.userId]);
+app.get('/api/items/:id/qr', verifyToken, ar(async (req, res) => {
+  const item = await db.getOne(
+    'SELECT qr_token FROM items WHERE id = $1 AND user_id = $2',
+    [Number(req.params.id), req.user.userId]
+  );
   if (!item) return res.status(404).json({ error: 'Not found' });
 
   const proto = req.headers['x-forwarded-proto'] || req.protocol;
@@ -495,15 +436,11 @@ app.get('/api/items/:id/qr', verifyToken, async (req, res) => {
   } catch {
     res.status(500).json({ error: 'QR generation failed' });
   }
-});
+}));
 
 // ── Public item page (no auth — for QR scan) ──────────────────────────────────
-app.get('/i/:token', (req, res) => {
-  const item = db.prepare(`
-    SELECT i.*, u.email AS owner_email
-    FROM items i JOIN users u ON u.id = i.user_id
-    WHERE i.qr_token = ?
-  `).get(req.params.token);
+app.get('/i/:token', qrLimiter, ar(async (req, res) => {
+  const item = await db.getOne('SELECT * FROM items WHERE qr_token = $1', [req.params.token]);
 
   if (!item) return res.status(404).send(`
     <!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -513,9 +450,9 @@ app.get('/i/:token', (req, res) => {
     </head><body><div><h1>▌▌ SHIT</h1><p>Item not found.</p></div></body></html>
   `);
 
-  const tags = JSON.parse(item.tags || '[]');
+  const tags      = JSON.parse(item.tags || '[]');
   const condColor = { new: '#22d45a', good: '#22d45a', fair: '#d4a020', poor: '#d44020' }[item.condition] || '#b4e8b0';
-  const fmt = (n) => n ? `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '—';
+  const fmt       = (n) => n ? `$${Number(n).toLocaleString('en-US', { minimumFractionDigits: 2 })}` : '—';
 
   res.send(`<!DOCTYPE html>
 <html lang="en">
@@ -570,131 +507,153 @@ body{background:#080c09;color:#b4e8b0;font-family:'Share Tech Mono',monospace;mi
 <div class="footer">SHIT // SIMPLE HOME ITEM TRACKER &nbsp;&nbsp;·&nbsp;&nbsp; © 2025 JUICE LEE PRODUCTIONS</div>
 </body>
 </html>`);
-});
+}));
 
 // ── Lists ─────────────────────────────────────────────────────────────────────
-function listWithItems(list) {
-  const item_ids = db.prepare('SELECT item_id FROM list_items WHERE list_id = ?')
-    .all(list.id).map(r => r.item_id);
-  return { ...list, item_ids };
-}
-
-app.get('/api/lists', verifyToken, (req, res) => {
+app.get('/api/lists', verifyToken, ar(async (req, res) => {
   const { userId } = req.user;
 
-  // Own lists — include who they're shared with
-  const ownRows = db.prepare('SELECT * FROM lists WHERE user_id = ? ORDER BY modified_at DESC').all(userId);
-  const ownLists = ownRows.map(list => {
-    const item_ids = db.prepare('SELECT item_id FROM list_items WHERE list_id = ?').all(list.id).map(r => r.item_id);
-    const shared_with = db.prepare(
-      `SELECT ls.shared_with_id as id, u.email FROM list_shares ls
-       JOIN users u ON u.id = ls.shared_with_id WHERE ls.list_id = ?`
-    ).all(list.id);
+  const ownRows  = await db.getAll('SELECT * FROM lists WHERE user_id = $1 ORDER BY modified_at DESC', [userId]);
+  const ownLists = await Promise.all(ownRows.map(async list => {
+    const item_ids   = (await db.getAll('SELECT item_id FROM list_items WHERE list_id = $1', [list.id])).map(r => r.item_id);
+    const shared_with = await db.getAll(
+      `SELECT ls.shared_with_id AS id, u.email FROM list_shares ls
+       JOIN users u ON u.id = ls.shared_with_id WHERE ls.list_id = $1`,
+      [list.id]
+    );
     return { ...list, item_ids, is_shared: false, shared_with };
-  });
+  }));
 
-  // Lists shared with this user — include full item preview data
-  const sharedRows = db.prepare(
-    `SELECT l.*, u.email as owner_email FROM list_shares ls
+  const sharedRows  = await db.getAll(
+    `SELECT l.*, u.email AS owner_email FROM list_shares ls
      JOIN lists l ON l.id = ls.list_id
      JOIN users u ON u.id = l.user_id
-     WHERE ls.shared_with_id = ? ORDER BY l.modified_at DESC`
-  ).all(userId);
-  const sharedLists = sharedRows.map(list => {
-    const item_ids = db.prepare('SELECT item_id FROM list_items WHERE list_id = ?').all(list.id).map(r => r.item_id);
+     WHERE ls.shared_with_id = $1 ORDER BY l.modified_at DESC`,
+    [userId]
+  );
+  const sharedLists = await Promise.all(sharedRows.map(async list => {
+    const item_ids    = (await db.getAll('SELECT item_id FROM list_items WHERE list_id = $1', [list.id])).map(r => r.item_id);
     const shared_items = item_ids.length
-      ? db.prepare(`SELECT name, category, location, condition, quantity, unit FROM items WHERE id IN (${item_ids.map(() => '?').join(',')})`).all(item_ids)
+      ? await db.getAll('SELECT name, category, location, condition, quantity, unit FROM items WHERE id = ANY($1)', [item_ids])
       : [];
     return { ...list, item_ids, is_shared: true, shared_with: [], shared_items };
-  });
+  }));
 
   res.json([...ownLists, ...sharedLists]);
-});
+}));
 
-app.post('/api/lists', verifyToken, (req, res) => {
+app.post('/api/lists', verifyToken, requireJSON, ar(async (req, res) => {
   const { name, description = '', item_ids = [] } = req.body || {};
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name required' });
+
   const qr_token = crypto.randomBytes(12).toString('hex');
-  const now = Math.floor(Date.now() / 1000);
-  db.prepare(`INSERT INTO lists (user_id, name, description, qr_token, created_at, modified_at)
-              VALUES (?, ?, ?, ?, ?, ?)`).run([req.user.userId, name.trim(), description, qr_token, now, now]);
-  const list = db.prepare('SELECT * FROM lists WHERE qr_token = ?').get(qr_token);
-  for (const id of item_ids) {
-    try { db.prepare('INSERT INTO list_items (list_id, item_id) VALUES (?, ?)').run([list.id, id]); } catch {}
-  }
-  res.status(201).json(listWithItems(list));
-});
+  const now      = Math.floor(Date.now() / 1000);
+  const list     = await db.getOne(
+    'INSERT INTO lists (user_id, name, description, qr_token, created_at, modified_at) VALUES ($1,$2,$3,$4,$5,$6) RETURNING *',
+    [req.user.userId, name.trim(), description, qr_token, now, now]
+  );
 
-app.put('/api/lists/:id', verifyToken, (req, res) => {
+  for (const id of item_ids) {
+    await db.query(
+      'INSERT INTO list_items (list_id, item_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+      [list.id, id]
+    );
+  }
+
+  res.status(201).json(await listWithItems(list));
+}));
+
+app.put('/api/lists/:id', verifyToken, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const listId = Number(req.params.id);
-  if (!db.prepare('SELECT id FROM lists WHERE id = ? AND user_id = ?').get([listId, userId]))
+  if (!await db.getOne('SELECT id FROM lists WHERE id = $1 AND user_id = $2', [listId, userId]))
     return res.status(404).json({ error: 'Not found' });
+
   const { name, description = '', item_ids = [] } = req.body || {};
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name required' });
-  const now = Math.floor(Date.now() / 1000);
-  db.prepare('UPDATE lists SET name=?, description=?, modified_at=? WHERE id=?').run([name.trim(), description, now, listId]);
-  db.prepare('DELETE FROM list_items WHERE list_id = ?').run([listId]);
+
+  const now  = Math.floor(Date.now() / 1000);
+  const list = await db.getOne(
+    'UPDATE lists SET name=$1, description=$2, modified_at=$3 WHERE id=$4 RETURNING *',
+    [name.trim(), description, now, listId]
+  );
+
+  await db.query('DELETE FROM list_items WHERE list_id = $1', [listId]);
   for (const id of item_ids) {
-    try { db.prepare('INSERT INTO list_items (list_id, item_id) VALUES (?, ?)').run([listId, id]); } catch {}
+    await db.query(
+      'INSERT INTO list_items (list_id, item_id) VALUES ($1,$2) ON CONFLICT DO NOTHING',
+      [listId, id]
+    );
   }
-  res.json(listWithItems(db.prepare('SELECT * FROM lists WHERE id = ?').get(listId)));
-});
 
-app.delete('/api/lists/:id', verifyToken, (req, res) => {
+  res.json(await listWithItems(list));
+}));
+
+app.delete('/api/lists/:id', verifyToken, ar(async (req, res) => {
   const listId = Number(req.params.id);
-  db.prepare('DELETE FROM list_shares WHERE list_id = ?').run([listId]);
-  db.prepare('DELETE FROM list_items WHERE list_id = ?').run([listId]);
-  db.prepare('DELETE FROM lists WHERE id = ? AND user_id = ?').run([listId, req.user.userId]);
+  await db.query('DELETE FROM lists WHERE id = $1 AND user_id = $2', [listId, req.user.userId]);
   res.json({ ok: true });
-});
+}));
 
-// Share a list with another user (owner only)
-app.post('/api/lists/:id/shares', verifyToken, (req, res) => {
+app.post('/api/lists/:id/shares', verifyToken, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const listId = Number(req.params.id);
-  if (!db.prepare('SELECT id FROM lists WHERE id = ? AND user_id = ?').get([listId, userId]))
+  if (!await db.getOne('SELECT id FROM lists WHERE id = $1 AND user_id = $2', [listId, userId]))
     return res.status(404).json({ error: 'Not found' });
+
   const { email } = req.body || {};
   if (!email) return res.status(400).json({ error: 'Email required' });
-  const target = db.prepare('SELECT id, email FROM users WHERE email = ?').get(email.trim().toLowerCase());
+
+  const target = await db.getOne('SELECT id, email FROM users WHERE LOWER(email) = LOWER($1)', [email.trim()]);
   if (!target) return res.status(404).json({ error: 'No account found with that email' });
   if (target.id === userId) return res.status(400).json({ error: 'Cannot share with yourself' });
+
   try {
-    db.prepare('INSERT INTO list_shares (list_id, owner_id, shared_with_id) VALUES (?, ?, ?)').run([listId, userId, target.id]);
+    await db.query(
+      'INSERT INTO list_shares (list_id, owner_id, shared_with_id) VALUES ($1,$2,$3)',
+      [listId, userId, target.id]
+    );
     res.json({ id: target.id, email: target.email });
-  } catch { res.status(409).json({ error: 'Already shared with this user' }); }
-});
+  } catch {
+    res.status(409).json({ error: 'Already shared with this user' });
+  }
+}));
 
-// Revoke share (owner removes a user's access)
-app.delete('/api/lists/:id/shares/:sharedWithId', verifyToken, (req, res) => {
+app.delete('/api/lists/:id/shares/:sharedWithId', verifyToken, ar(async (req, res) => {
   const { userId } = req.user;
   const listId = Number(req.params.id);
-  if (!db.prepare('SELECT id FROM lists WHERE id = ? AND user_id = ?').get([listId, userId]))
+  if (!await db.getOne('SELECT id FROM lists WHERE id = $1 AND user_id = $2', [listId, userId]))
     return res.status(404).json({ error: 'Not found' });
-  db.prepare('DELETE FROM list_shares WHERE list_id = ? AND shared_with_id = ?').run([listId, Number(req.params.sharedWithId)]);
-  res.json({ ok: true });
-});
 
-// Leave a shared list (recipient removes it from their view)
-app.delete('/api/shared-lists/:listId', verifyToken, (req, res) => {
-  db.prepare('DELETE FROM list_shares WHERE list_id = ? AND shared_with_id = ?').run([Number(req.params.listId), req.user.userId]);
+  await db.query(
+    'DELETE FROM list_shares WHERE list_id = $1 AND shared_with_id = $2',
+    [listId, Number(req.params.sharedWithId)]
+  );
   res.json({ ok: true });
-});
+}));
 
-app.get('/api/lists/:id/qr', verifyToken, async (req, res) => {
+app.delete('/api/shared-lists/:listId', verifyToken, ar(async (req, res) => {
+  await db.query(
+    'DELETE FROM list_shares WHERE list_id = $1 AND shared_with_id = $2',
+    [Number(req.params.listId), req.user.userId]
+  );
+  res.json({ ok: true });
+}));
+
+app.get('/api/lists/:id/qr', verifyToken, ar(async (req, res) => {
   const { userId } = req.user;
   const listId = Number(req.params.id);
-  let list = db.prepare('SELECT qr_token FROM lists WHERE id = ? AND user_id = ?').get([listId, userId]);
+
+  let list = await db.getOne('SELECT qr_token FROM lists WHERE id = $1 AND user_id = $2', [listId, userId]);
   if (!list) {
-    // Also allow users the list is shared with
-    const row = db.prepare(
+    list = await db.getOne(
       `SELECT l.qr_token FROM list_shares ls JOIN lists l ON l.id = ls.list_id
-       WHERE ls.list_id = ? AND ls.shared_with_id = ?`
-    ).get([listId, userId]);
-    list = row || null;
+       WHERE ls.list_id = $1 AND ls.shared_with_id = $2`,
+      [listId, userId]
+    );
   }
   if (!list) return res.status(404).json({ error: 'Not found' });
+
   const proto = req.headers['x-forwarded-proto'] || req.protocol;
   const host  = req.headers['x-forwarded-host']  || req.get('host');
   try {
@@ -702,12 +661,14 @@ app.get('/api/lists/:id/qr', verifyToken, async (req, res) => {
       { type: 'svg', margin: 2, width: 256, color: { dark: '#22d45a', light: '#080c09' } });
     res.setHeader('Content-Type', 'image/svg+xml');
     res.send(svg);
-  } catch { res.status(500).json({ error: 'QR generation failed' }); }
-});
+  } catch {
+    res.status(500).json({ error: 'QR generation failed' });
+  }
+}));
 
 // ── Public list page ──────────────────────────────────────────────────────────
-app.get('/l/:token', (req, res) => {
-  const list = db.prepare('SELECT * FROM lists WHERE qr_token = ?').get(req.params.token);
+app.get('/l/:token', qrLimiter, ar(async (req, res) => {
+  const list = await db.getOne('SELECT * FROM lists WHERE qr_token = $1', [req.params.token]);
   if (!list) return res.status(404).send(`
     <!DOCTYPE html><html><head><meta charset="UTF-8">
     <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -715,9 +676,9 @@ app.get('/l/:token', (req, res) => {
     <style>body{background:#080c09;color:#b4e8b0;font-family:monospace;display:flex;align-items:center;justify-content:center;min-height:100vh;margin:0;text-align:center}</style>
     </head><body><div><h1 style="font-size:18px;letter-spacing:2px">▌▌ SHIT</h1><p>List not found.</p></div></body></html>`);
 
-  const itemIds = db.prepare('SELECT item_id FROM list_items WHERE list_id = ?').all(list.id).map(r => r.item_id);
+  const itemIds   = (await db.getAll('SELECT item_id FROM list_items WHERE list_id = $1', [list.id])).map(r => r.item_id);
   const listItems = itemIds.length
-    ? db.prepare(`SELECT * FROM items WHERE id IN (${itemIds.map(() => '?').join(',')})`).all(itemIds)
+    ? await db.getAll('SELECT * FROM items WHERE id = ANY($1)', [itemIds])
     : [];
   const condColor = { new: '#22d45a', good: '#22d45a', fair: '#d4a020', poor: '#d44020' };
 
@@ -781,104 +742,120 @@ ${listItems.map(item => {
 <div class="footer">SHIT // SIMPLE HOME ITEM TRACKER &nbsp;&nbsp;·&nbsp;&nbsp; © 2025 JUICE LEE PRODUCTIONS</div>
 </body>
 </html>`);
-});
+}));
 
 // ── Categories ────────────────────────────────────────────────────────────────
-app.get('/api/categories', verifyToken, (req, res) => {
-  const rows = db.prepare('SELECT id, name FROM categories WHERE user_id = ? ORDER BY name').all(req.user.userId);
+app.get('/api/categories', verifyToken, ar(async (req, res) => {
+  const rows = await db.getAll(
+    'SELECT id, name FROM categories WHERE user_id = $1 ORDER BY name',
+    [req.user.userId]
+  );
   res.json(rows);
-});
+}));
 
-app.post('/api/categories', verifyToken, (req, res) => {
+app.post('/api/categories', verifyToken, requireJSON, ar(async (req, res) => {
   const { name } = req.body || {};
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name required' });
   try {
-    db.prepare('INSERT INTO categories (user_id, name) VALUES (?, ?)').run([req.user.userId, name.trim()]);
-    const row = db.prepare('SELECT id, name FROM categories WHERE user_id = ? AND name = ?').get([req.user.userId, name.trim()]);
+    const row = await db.getOne(
+      'INSERT INTO categories (user_id, name) VALUES ($1,$2) RETURNING id, name',
+      [req.user.userId, name.trim()]
+    );
     res.status(201).json(row);
   } catch {
     res.status(409).json({ error: 'Category already exists' });
   }
-});
+}));
 
-app.delete('/api/categories/:id', verifyToken, (req, res) => {
-  db.prepare('DELETE FROM categories WHERE id = ? AND user_id = ?').run([Number(req.params.id), req.user.userId]);
+app.delete('/api/categories/:id', verifyToken, ar(async (req, res) => {
+  await db.query(
+    'DELETE FROM categories WHERE id = $1 AND user_id = $2',
+    [Number(req.params.id), req.user.userId]
+  );
   res.json({ ok: true });
-});
+}));
 
 // ── Locations ─────────────────────────────────────────────────────────────────
-app.get('/api/locations', verifyToken, (req, res) => {
-  const rows = db.prepare('SELECT id, name FROM locations WHERE user_id = ? ORDER BY name').all(req.user.userId);
+app.get('/api/locations', verifyToken, ar(async (req, res) => {
+  const rows = await db.getAll(
+    'SELECT id, name FROM locations WHERE user_id = $1 ORDER BY name',
+    [req.user.userId]
+  );
   res.json(rows);
-});
+}));
 
-app.post('/api/locations', verifyToken, (req, res) => {
+app.post('/api/locations', verifyToken, requireJSON, ar(async (req, res) => {
   const { name } = req.body || {};
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name required' });
   try {
-    db.prepare('INSERT INTO locations (user_id, name) VALUES (?, ?)').run([req.user.userId, name.trim()]);
-    const row = db.prepare('SELECT id, name FROM locations WHERE user_id = ? AND name = ?').get([req.user.userId, name.trim()]);
+    const row = await db.getOne(
+      'INSERT INTO locations (user_id, name) VALUES ($1,$2) RETURNING id, name',
+      [req.user.userId, name.trim()]
+    );
     res.status(201).json(row);
   } catch {
     res.status(409).json({ error: 'Location already exists' });
   }
-});
+}));
 
-app.delete('/api/locations/:id', verifyToken, (req, res) => {
-  db.prepare('DELETE FROM locations WHERE id = ? AND user_id = ?').run([Number(req.params.id), req.user.userId]);
+app.delete('/api/locations/:id', verifyToken, ar(async (req, res) => {
+  await db.query(
+    'DELETE FROM locations WHERE id = $1 AND user_id = $2',
+    [Number(req.params.id), req.user.userId]
+  );
   res.json({ ok: true });
-});
+}));
 
 // ── Account ───────────────────────────────────────────────────────────────────
-app.post('/api/account/password', verifyToken, async (req, res) => {
+app.post('/api/account/password', verifyToken, authLimiter, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const { currentPassword, newPassword } = req.body || {};
   if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Both passwords required' });
-  if (newPassword.length < 8) return res.status(400).json({ error: 'New password must be at least 8 characters' });
+  if (!isStrongPassword(newPassword)) return res.status(400).json({ error: 'Password must be 12+ characters, or 8+ characters with at least one number or symbol' });
 
-  const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(userId);
+  const user  = await db.getOne('SELECT password_hash FROM users WHERE id = $1', [userId]);
   const match = await bcrypt.compare(currentPassword, user.password_hash);
   if (!match) return res.status(401).json({ error: 'Current password is incorrect' });
 
   const hash = await bcrypt.hash(newPassword, 10);
-  db.prepare('UPDATE users SET password_hash = ? WHERE id = ?').run([hash, userId]);
+  await db.query('UPDATE users SET password_hash = $1 WHERE id = $2', [hash, userId]);
   res.json({ ok: true });
-});
+}));
 
-app.delete('/api/account', verifyToken, async (req, res) => {
+app.delete('/api/account', verifyToken, authLimiter, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const { password } = req.body || {};
-  const user = db.prepare('SELECT password_hash FROM users WHERE id = ?').get(userId);
+  const user  = await db.getOne('SELECT password_hash FROM users WHERE id = $1', [userId]);
   const match = await bcrypt.compare(password, user.password_hash);
   if (!match) return res.status(401).json({ error: 'Password is incorrect' });
 
-  db.prepare('DELETE FROM items WHERE user_id = ?').run([userId]);
-  db.prepare('DELETE FROM users WHERE id = ?').run([userId]);
+  // Cascade deletes are handled by FK ON DELETE CASCADE in the schema.
+  await db.query('DELETE FROM users WHERE id = $1', [userId]);
   res.json({ ok: true });
-});
+}));
 
 // ── Export / Import ───────────────────────────────────────────────────────────
-app.get('/api/export', verifyToken, (req, res) => {
-  const items = db.prepare('SELECT * FROM items WHERE user_id = ?').all(req.user.userId).map(itemToJSON);
-  res.setHeader('Content-Disposition', 'attachment; filename="cache-export.json"');
+app.get('/api/export', verifyToken, ar(async (req, res) => {
+  const items = (await db.getAll('SELECT * FROM items WHERE user_id = $1', [req.user.userId])).map(itemToJSON);
+  res.setHeader('Content-Disposition', 'attachment; filename="shit-export.json"');
   res.json({ version: 1, exported: new Date().toISOString(), items });
-});
+}));
 
-app.post('/api/import', verifyToken, (req, res) => {
+app.post('/api/import', verifyToken, requireJSON, ar(async (req, res) => {
   const { items = [] } = req.body || {};
-  const { userId } = req.user;
+  const { userId }     = req.user;
   const now = Math.floor(Date.now() / 1000);
   let count = 0;
 
   for (const item of items) {
     if (!item.name) continue;
     try {
-      db.prepare(`
+      await db.query(`
         INSERT INTO items
           (user_id, name, description, category, location, quantity, unit, value,
            brand, model, serial, condition, notes, tags, qr_token, created_at, modified_at)
-        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-      `).run([
+        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13,$14,$15,$16,$17)
+      `, [
         userId, item.name, item.description||'', item.category||'', item.location||'',
         item.quantity||1, item.unit||'pcs', item.value||0,
         item.brand||'', item.model||'', item.serial||'',
@@ -892,8 +869,94 @@ app.post('/api/import', verifyToken, (req, res) => {
   }
 
   res.json({ ok: true, imported: count });
+}));
+
+// ── White Paper PDF ───────────────────────────────────────────────────────────
+app.get('/whitepaper.pdf', (req, res) => {
+  const doc = new PDFDocument({ margin: 72, size: 'LETTER', info: {
+    Title: 'SHIT: Simple Home Item Tracker — White Paper',
+    Author: 'Juice Lee Productions',
+    Subject: 'Product white paper for the SHIT personal inventory system',
+  }});
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename="SHIT-whitepaper.pdf"');
+  doc.pipe(res);
+
+  const GREEN = '#22d45a', DARK = '#0a0f0b', GRAY = '#555', BLACK = '#111';
+  const W = doc.page.width - 144;
+
+  const h1 = (txt) => { doc.moveDown(1.2).font('Helvetica-Bold').fontSize(14).fillColor(GREEN).text(txt).moveDown(0.3).rect(doc.x,doc.y,W,1).fill(GREEN).moveDown(0.6).fillColor(BLACK); };
+  const h2 = (txt) => { doc.moveDown(0.8).font('Helvetica-Bold').fontSize(11).fillColor(DARK).text(txt).moveDown(0.3).fillColor(BLACK); };
+  const body = (txt, opts={}) => { doc.font('Helvetica').fontSize(10).fillColor(BLACK).text(txt,{lineGap:3,...opts}).moveDown(0.4); };
+  const bullet = (items) => { items.forEach(i => doc.font('Helvetica').fontSize(10).fillColor(BLACK).text(`• ${i}`,{lineGap:3,indent:12})); doc.moveDown(0.4); };
+  const tableRow = (key,val) => { const y=doc.y; doc.font('Helvetica-Bold').fontSize(9).fillColor(GRAY).text(key,{continued:false,width:140}); doc.font('Helvetica').fontSize(9).fillColor(BLACK).text(val,72+148,y,{width:W-148}); doc.moveDown(0.2); };
+
+  doc.rect(0,0,doc.page.width,180).fill(DARK);
+  doc.font('Courier-Bold').fontSize(36).fillColor(GREEN).text('▌▌ SHIT',72,52);
+  doc.font('Courier').fontSize(11).fillColor('#aaa').text('SIMPLE HOME ITEM TRACKER',72,100);
+  doc.font('Helvetica').fontSize(9).fillColor('#666').text('WHITE PAPER  ·  v1.7.7  ·  © 2025 Juice Lee Productions',72,124);
+  doc.rect(72,148,W,1).fill(GREEN);
+  doc.y=200;
+
+  h1('1. Executive Summary');
+  body('SHIT (Simple Home Item Tracker) is a self-hosted, privacy-first personal inventory management system for the home. It provides a unified platform to catalog physical possessions, track their location and condition, manage loans, and attach documentation — all accessible from any device via a Progressive Web App (PWA).');
+  body('AI-assisted item entry, QR code tagging, and collaborative list sharing reduce friction at every step of managing a home inventory. Because the application is self-hosted, all inventory data stays on hardware the owner controls.');
+
+  h1('2. The Problem');
+  body('Homeowners, renters, and hobbyists accumulate large numbers of physical items without a reliable way to track them. The consequences are predictable:');
+  bullet(['Duplicate purchases — items are bought again because they cannot be located or their existence is forgotten.','Lost loans — items lent to friends or family are never returned because there is no record.','Insurance gaps — without a current inventory and estimated values, claims after loss or disaster are hard to substantiate.','Disorganized storage — without a searchable catalog tied to physical locations, retrieval is time-consuming.']);
+  body('SHIT fills the gap: a focused, self-hosted tool that puts the user in full control of their data.');
+
+  h1('3. Key Features');
+  [['Item CRUD','Rich metadata: name, brand, model, serial, category, location, condition, value, tags, photo'],['QR Tagging','Unique token per item; public scan page requires no login'],['Checkout Tracking','Borrower, destination, date, due date — full audit trail'],['Collections','Named lists with per-user sharing'],['AI Entry','Claude Haiku extracts metadata from a photo automatically'],['Document Vault','Receipts, warranties, manuals attached to items'],['Export / Import','Full JSON backup and restore'],['PWA / Offline','Installable app with service-worker offline cache']].forEach(([k,v])=>tableRow(k,v));
+
+  doc.addPage();
+  h1('4. Technical Architecture');
+  h2('4.1 Stack');
+  [['Runtime','Node.js + Express.js 4.18'],['Database','PostgreSQL (via node-postgres pool)'],['Auth','JWT 7-day expiry + bcryptjs 10 rounds'],['Rate Limiting','express-rate-limit on auth, AI, upload, and QR routes'],['Security','Helmet 7 (CSP, HSTS, X-Frame-Options)'],['AI','Anthropic SDK — Claude Haiku'],['Frontend','Vanilla JS, Share Tech Mono font'],['PWA','Service Worker v1.8.1, Web App Manifest']].forEach(([k,v])=>tableRow(k,v));
+
+  h2('4.2 Security Model');
+  bullet(['Parameterized queries throughout — no SQL injection surface','bcrypt at work factor 10; JWT secret from environment variable','Rate limiting on auth (20/15 min), AI (10/5 min), uploads (30/hr), QR pages (30/15 min)','Content-Type: application/json enforced on all mutation endpoints','owner_email never returned on public QR routes','ON DELETE CASCADE foreign keys prevent orphaned data']);
+
+  h1('5. Conclusion');
+  body('SHIT provides a complete, self-contained solution to the real and underserved problem of personal home inventory management. For individuals and households who want to know what they own, where it is, who has it, and what it is worth, SHIT is purpose-built to answer all four questions.');
+
+  doc.moveDown(2).rect(72,doc.y,W,1).fill(GREEN).moveDown(0.6).font('Helvetica').fontSize(8).fillColor(GRAY).text('© 2025 Juice Lee Productions  ·  SHIT v1.7.7  ·  Self-hosted personal inventory management',{align:'center'});
+  doc.end();
 });
 
-app.listen(PORT, () => {
-  console.log(`SHIT running → http://localhost:${PORT}`);
+// ── Global error handler ──────────────────────────────────────────────────────
+app.use((err, req, res, _next) => {
+  console.error(err);
+  res.status(500).json({ error: 'Internal server error' });
+});
+
+// ── Start ─────────────────────────────────────────────────────────────────────
+async function start() {
+  if (!process.env.DATABASE_URL) {
+    console.error('ERROR: DATABASE_URL environment variable is required.');
+    process.exit(1);
+  }
+
+  await db.initialize();
+
+  // JWT secret: prefer env var, fall back to value stored in DB.
+  JWT_SECRET = process.env.JWT_SECRET || null;
+  if (!JWT_SECRET) {
+    const row = await db.getOne("SELECT value FROM store WHERE key = 'jwt_secret'");
+    if (row) {
+      JWT_SECRET = row.value;
+    } else {
+      JWT_SECRET = crypto.randomBytes(48).toString('hex');
+      await db.query("INSERT INTO store (key, value) VALUES ('jwt_secret', $1)", [JWT_SECRET]);
+    }
+  }
+
+  app.listen(PORT, () => console.log(`SHIT running → http://localhost:${PORT}`));
+}
+
+start().catch(err => {
+  console.error('Failed to start:', err);
+  process.exit(1);
 });
