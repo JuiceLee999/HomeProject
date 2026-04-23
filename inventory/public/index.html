@@ -433,7 +433,7 @@ body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opaci
 
   /* ── Bottom sheet panel ── */
   .detail-panel {
-    top: auto; left: 0;
+    top: auto; bottom: 0; left: 0;
     transform: translateY(32px);
     width: 100%; max-height: 92vh;
     border-radius: 14px 14px 0 0;
@@ -1036,7 +1036,8 @@ body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opaci
   <div class="panel-footer">
     <button class="btn-show-qr-panel" id="btn-qr-panel" style="display:none" onclick="panelShowQR()" data-tip="Show QR Code">⊡ QR</button>
     <button class="btn-show-qr-panel" id="btn-duplicate" style="display:none" onclick="duplicateCurrentItem()" data-tip="Duplicate Item">⧉</button>
-    <button class="btn-save" onclick="panelSave()" data-tip="Save Changes">SAVE →</button>
+    <button class="btn-save" id="btn-save" onclick="panelSave()" data-tip="Save Changes">SAVE</button>
+    <button class="btn-save" id="btn-save-close" onclick="panelSaveAndClose()" data-tip="Save and Close">SAVE/CLOSE</button>
     <span class="save-flash" id="save-flash">✓ SAVED</span>
     <button class="btn-delete-item" id="btn-delete-item" style="display:none" onclick="deleteCurrentItem()" data-tip="Delete Item">🗑</button>
     <button class="btn-delete-item" id="btn-delete-list" style="display:none" onclick="deleteCurrentList()" data-tip="Delete List">🗑</button>
@@ -1981,7 +1982,7 @@ function setPanelReadOnly(readOnly) {
   // Disable category and location selects
   document.querySelectorAll('#pd-category, #pd-location').forEach(el => el.disabled = readOnly);
   // Hide/show edit-only controls
-  ['btn-save','btn-delete-item','btn-duplicate','save-flash'].forEach(id => {
+  ['btn-save','btn-save-close','btn-delete-item','btn-duplicate','save-flash'].forEach(id => {
     const el = document.getElementById(id);
     if (el) el.style.display = readOnly ? 'none' : '';
   });
@@ -2323,6 +2324,12 @@ function showQR(itemId) {
 function panelSave() {
   if (document.getElementById('list-panel-body').style.display !== 'none') saveList();
   else saveItem();
+}
+
+async function panelSaveAndClose() {
+  const isListPanel = document.getElementById('list-panel-body').style.display !== 'none';
+  await (isListPanel ? saveList() : saveItem());
+  closePanel();
 }
 
 function panelShowQR() {
