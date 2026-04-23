@@ -153,25 +153,26 @@ main { max-width: 1100px; margin: 0 auto; padding: 20px 20px 80px; }
 .empty-icon { font-size: 36px; margin-bottom: 12px; opacity: 0.3; }
 .empty-msg { font-size: 12px; letter-spacing: 2px; }
 
-/* ── FAB ── */
-.fab { position: fixed; bottom: 28px; right: 28px; background: var(--accent); color: var(--bg); border: none; width: 54px; height: 54px; font-size: 28px; cursor: pointer; display: flex; align-items: center; justify-content: center; z-index: 150; box-shadow: 0 4px 20px rgba(34,212,90,0.35); transition: all 0.15s; line-height: 1; }
+/* ── FAB (mobile only) ── */
+.fab { position: fixed; bottom: 28px; right: 28px; background: var(--accent); color: var(--bg); border: none; width: 54px; height: 54px; font-size: 28px; cursor: pointer; display: none; align-items: center; justify-content: center; z-index: 150; box-shadow: 0 4px 20px rgba(34,212,90,0.35); transition: all 0.15s; line-height: 1; }
 .fab:hover { opacity: 0.85; transform: translateY(-2px); box-shadow: 0 6px 24px rgba(34,212,90,0.45); }
 
 /* ── PANEL (MODAL) ── */
-.overlay { display: none; position: fixed; inset: 0; background: rgba(0,5,3,0.82); z-index: 499; }
-body.panel-open .overlay { display: block; }
+.overlay { display: none; position: fixed; inset: 0; background: rgba(0,5,3,0.82); z-index: 499; align-items: center; justify-content: center; overflow-y: auto; }
+body.panel-open .overlay { display: flex; }
 .detail-panel {
-  position: fixed; top: 50%; left: 50%;
-  transform: translate(-50%, -48%) scale(0.97);
+  position: relative;
+  transform: scale(0.97);
   width: min(700px, 96vw);
-  max-height: 90vh;
+  max-height: calc(100dvh - 40px);
   background: var(--paper); border: 1px solid var(--rule); border-top: 2px solid var(--accent);
   z-index: 500; display: flex; flex-direction: column; overflow: hidden;
   opacity: 0; pointer-events: none;
   transition: transform 0.25s cubic-bezier(.4,0,.2,1), opacity 0.2s;
   border-radius: 5px;
+  margin: auto; flex-shrink: 0;
 }
-body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opacity: 1; pointer-events: all; }
+body.panel-open .detail-panel { transform: scale(1); opacity: 1; pointer-events: all; }
 .panel-header { background: #050807; padding: 14px 16px; display: flex; align-items: center; gap: 10px; border-bottom: 2px solid var(--accent); flex-shrink: 0; }
 .panel-header-title { flex: 1; font-size: 11px; letter-spacing: 3px; color: var(--muted); }
 .panel-header-title span { color: var(--accent); }
@@ -432,10 +433,11 @@ body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opaci
   .panel-row-3 { grid-template-columns: 1fr 1fr; }
 
   /* ── Bottom sheet panel ── */
+  .overlay { align-items: flex-end; }
   .detail-panel {
-    top: auto; bottom: 0; left: 0;
+    margin: 0;
     transform: translateY(32px);
-    width: 100%; max-height: 92vh;
+    width: 100%; max-height: 92dvh;
     border-radius: 14px 14px 0 0;
     border-left: none; border-right: none; border-bottom: none;
   }
@@ -741,6 +743,7 @@ body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opaci
   <div class="header-right">
     <button class="btn-scan-header" id="btn-ai-scan" onclick="openPhotoModal()" data-tip="Add Item with AI Photo" data-tip-dir="below" style="background:none;border:1px solid var(--accent);color:var(--accent)">✦ AI SCAN</button>
     <button class="btn-scan-header" id="btn-add-item" onclick="openAddPanel()" data-tip="Add Item" data-tip-dir="below">+ ADD ITEM</button>
+    <button class="btn-scan-header" id="btn-new-list" onclick="openAddListPanel()" data-tip="Create New List" data-tip-dir="below" style="display:none">+ NEW LIST</button>
     <button class="btn-scan-header" onclick="openScanner()" data-tip="Scan QR Code" data-tip-dir="below">⊹ SCAN QR</button>
     <button class="btn-icon" onclick="openUserModal()" data-tip="Account &amp; Settings" data-tip-dir="below">⚙</button>
   </div>
@@ -804,8 +807,8 @@ body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opaci
 </footer>
 
 <!-- ══ PANEL ══ -->
-<div class="overlay" onclick="closePanel()"></div>
-<div class="detail-panel" id="detail-panel">
+<div class="overlay" onclick="closePanel()">
+<div class="detail-panel" id="detail-panel" onclick="event.stopPropagation()">
   <div class="panel-header">
     <span class="panel-header-title" id="panel-mode-label"><span>▌</span> ADD ITEM</span>
     <button class="btn-close-panel" id="btn-close-panel" data-tip="Close" data-tip-dir="below">✕</button>
@@ -1043,6 +1046,7 @@ body.panel-open .detail-panel { transform: translate(-50%, -50%) scale(1); opaci
     <button class="btn-delete-item" id="btn-delete-list" style="display:none" onclick="deleteCurrentList()" data-tip="Delete List">🗑</button>
     <button class="btn-delete-item" id="btn-leave-list" style="display:none" onclick="leaveSharedList()" data-tip="Remove from My Lists" style="font-size:10px;letter-spacing:1px">LEAVE</button>
   </div>
+</div>
 </div>
 
 <!-- ══ DOC IMAGE LIGHTBOX ══ -->
@@ -1648,6 +1652,7 @@ function setView(v) {
   document.getElementById('list-grid').style.display           = v === 'lists' ? '' : 'none';
   document.getElementById('btn-add-item').style.display        = v === 'items' ? '' : 'none';
   document.getElementById('btn-ai-scan').style.display         = v === 'items' ? '' : 'none';
+  document.getElementById('btn-new-list').style.display        = v === 'lists' ? '' : 'none';
   document.getElementById('fab').style.display                 = v === 'lists' ? 'flex' : 'none';
   closePanel();
 }
