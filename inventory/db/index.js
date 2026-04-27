@@ -1,4 +1,9 @@
-const { Pool } = require('pg');
+const { Pool, types } = require('pg');
+
+// pg returns BIGINT/BIGSERIAL (OID 20) as strings to avoid overflow.
+// For this app IDs will never exceed MAX_SAFE_INTEGER, so parse as numbers
+// so that === comparisons against card dataset values work correctly.
+types.setTypeParser(20, val => parseInt(val, 10));
 
 const pool = new Pool({
   connectionString: process.env.DATABASE_URL,
