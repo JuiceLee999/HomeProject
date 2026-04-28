@@ -52,9 +52,12 @@ app.use(helmet({
   }
 }));
 app.use(express.json({ limit: '25mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
 
-app.get('/lib/jsqr.js', (req, res) => {
+const BASE = process.env.BASE_PATH || '/shit';
+const router = express.Router();
+router.use(express.static(path.join(__dirname, 'public')));
+
+router.get('/lib/jsqr.js', (req, res) => {
   res.sendFile(path.join(__dirname, 'node_modules', 'jsqr', 'dist', 'jsQR.js'));
 });
 
@@ -115,7 +118,7 @@ function requireJSON(req, res, next) {
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-app.post('/api/register', authLimiter, requireJSON, ar(async (req, res) => {
+router.post('/api/register', authLimiter, requireJSON, ar(async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !isValidEmail(email)) return res.status(400).json({ error: 'Valid email required' });
   if (!isStrongPassword(password)) return res.status(400).json({ error: 'Password must be 12+ characters, or 8+ characters with at least one number or symbol' });
@@ -132,7 +135,7 @@ app.post('/api/register', authLimiter, requireJSON, ar(async (req, res) => {
   res.json({ token, email: email.toLowerCase() });
 }));
 
-app.post('/api/login', authLimiter, requireJSON, ar(async (req, res) => {
+router.post('/api/login', authLimiter, requireJSON, ar(async (req, res) => {
   const { email, password } = req.body || {};
   if (!email || !password) return res.status(400).json({ error: 'Email and password required' });
 
@@ -149,13 +152,13 @@ app.post('/api/login', authLimiter, requireJSON, ar(async (req, res) => {
   res.json({ token, email: user.email });
 }));
 
-app.post('/api/logout', verifyToken, requireJSON, ar(async (req, res) => {
+router.post('/api/logout', verifyToken, requireJSON, ar(async (req, res) => {
   await db.query('UPDATE users SET last_logout_at = $1 WHERE id = $2', [Date.now(), req.user.userId]);
   res.json({ ok: true });
 }));
 
 // ── Items ─────────────────────────────────────────────────────────────────────
-app.get('/api/items', verifyToken, ar(async (req, res) => {
+router.get('/api/items', verifyToken, ar(async (req, res) => {
   const rows = await db.getAll(
     'SELECT * FROM items WHERE user_id = $1 ORDER BY modified_at DESC',
     [req.user.userId]
@@ -163,7 +166,7 @@ app.get('/api/items', verifyToken, ar(async (req, res) => {
   res.json(rows.map(itemToJSON));
 }));
 
-app.post('/api/items', verifyToken, requireJSON, ar(async (req, res) => {
+router.post('/api/items', verifyToken, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const {
     name, description = '', category = '', location = '',
@@ -199,7 +202,7 @@ app.post('/api/items', verifyToken, requireJSON, ar(async (req, res) => {
   res.status(201).json(itemToJSON(item));
 }));
 
-app.get('/api/items/:id', verifyToken, ar(async (req, res) => {
+router.get('/api/items/:id', verifyToken, ar(async (req, res) => {
   const item = await db.getOne(
     'SELECT * FROM items WHERE id = $1 AND user_id = $2',
     [Number(req.params.id), req.user.userId]
@@ -208,7 +211,7 @@ app.get('/api/items/:id', verifyToken, ar(async (req, res) => {
   res.json(itemToJSON(item));
 }));
 
-app.put('/api/items/:id', verifyToken, requireJSON, ar(async (req, res) => {
+router.put('/api/items/:id', verifyToken, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const itemId = Number(req.params.id);
   const existing = await db.getOne('SELECT id FROM items WHERE id = $1 AND user_id = $2', [itemId, userId]);
@@ -249,7 +252,7 @@ app.put('/api/items/:id', verifyToken, requireJSON, ar(async (req, res) => {
   res.json(itemToJSON(item));
 }));
 
-app.delete('/api/items/:id', verifyToken, ar(async (req, res) => {
+router.delete('/api/items/:id', verifyToken, ar(async (req, res) => {
   await db.query(
     'DELETE FROM items WHERE id = $1 AND user_id = $2',
     [Number(req.params.id), req.user.userId]
@@ -258,7 +261,7 @@ app.delete('/api/items/:id', verifyToken, ar(async (req, res) => {
 }));
 
 // ── Checkout / check-in ───────────────────────────────────────────────────────
-app.post('/api/items/:id/checkout', verifyToken, requireJSON, ar(async (req, res) => {
+router.post('/api/items/:id/checkout', verifyToken, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const itemId = Number(req.params.id);
   const item = await db.getOne('SELECT * FROM items WHERE id = $1 AND user_id = $2', [itemId, userId]);
@@ -285,7 +288,7 @@ app.post('/api/items/:id/checkout', verifyToken, requireJSON, ar(async (req, res
   res.json(itemToJSON(updated));
 }));
 
-app.post('/api/items/:id/checkin', verifyToken, requireJSON, ar(async (req, res) => {
+router.post('/api/items/:id/checkin', verifyToken, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const itemId = Number(req.params.id);
   const item = await db.getOne('SELECT * FROM items WHERE id = $1 AND user_id = $2', [itemId, userId]);
@@ -306,7 +309,7 @@ app.post('/api/items/:id/checkin', verifyToken, requireJSON, ar(async (req, res)
   res.json(itemToJSON(updated));
 }));
 
-app.get('/api/items/:id/checkouts', verifyToken, ar(async (req, res) => {
+router.get('/api/items/:id/checkouts', verifyToken, ar(async (req, res) => {
   const { userId } = req.user;
   const itemId = Number(req.params.id);
   const item = await db.getOne('SELECT id FROM items WHERE id = $1 AND user_id = $2', [itemId, userId]);
@@ -319,7 +322,7 @@ app.get('/api/items/:id/checkouts', verifyToken, ar(async (req, res) => {
 }));
 
 // ── Documents ─────────────────────────────────────────────────────────────────
-app.get('/api/items/:id/documents', verifyToken, ar(async (req, res) => {
+router.get('/api/items/:id/documents', verifyToken, ar(async (req, res) => {
   const itemId = Number(req.params.id);
   const item = await db.getOne('SELECT id FROM items WHERE id = $1 AND user_id = $2', [itemId, req.user.userId]);
   if (!item) return res.status(404).json({ error: 'Not found' });
@@ -330,7 +333,7 @@ app.get('/api/items/:id/documents', verifyToken, ar(async (req, res) => {
   res.json(docs);
 }));
 
-app.post('/api/items/:id/documents', verifyToken, docUploadLimiter, requireJSON, ar(async (req, res) => {
+router.post('/api/items/:id/documents', verifyToken, docUploadLimiter, requireJSON, ar(async (req, res) => {
   const itemId = Number(req.params.id);
   const item = await db.getOne('SELECT id FROM items WHERE id = $1 AND user_id = $2', [itemId, req.user.userId]);
   if (!item) return res.status(404).json({ error: 'Not found' });
@@ -348,7 +351,7 @@ app.post('/api/items/:id/documents', verifyToken, docUploadLimiter, requireJSON,
   res.status(201).json(doc);
 }));
 
-app.get('/api/documents/:id/download', verifyToken, ar(async (req, res) => {
+router.get('/api/documents/:id/download', verifyToken, ar(async (req, res) => {
   const doc = await db.getOne(
     'SELECT * FROM documents WHERE id = $1 AND user_id = $2',
     [Number(req.params.id), req.user.userId]
@@ -362,7 +365,7 @@ app.get('/api/documents/:id/download', verifyToken, ar(async (req, res) => {
   res.send(buf);
 }));
 
-app.delete('/api/documents/:id', verifyToken, ar(async (req, res) => {
+router.delete('/api/documents/:id', verifyToken, ar(async (req, res) => {
   await db.query(
     'DELETE FROM documents WHERE id = $1 AND user_id = $2',
     [Number(req.params.id), req.user.userId]
@@ -371,7 +374,7 @@ app.delete('/api/documents/:id', verifyToken, ar(async (req, res) => {
 }));
 
 // ── AI item analysis ──────────────────────────────────────────────────────────
-app.post('/api/ai/analyze-item', verifyToken, aiLimiter, requireJSON, async (req, res) => {
+router.post('/api/ai/analyze-item', verifyToken, aiLimiter, requireJSON, async (req, res) => {
   const apiKey = process.env.ANTHROPIC_API_KEY;
   if (!apiKey) return res.status(503).json({ error: 'AI not configured on this server' });
 
@@ -417,7 +420,7 @@ Be concise. If unsure about a field, use empty string or 0. Estimate value in US
 });
 
 // ── QR code generation ────────────────────────────────────────────────────────
-app.get('/api/items/:id/qr', verifyToken, ar(async (req, res) => {
+router.get('/api/items/:id/qr', verifyToken, ar(async (req, res) => {
   const item = await db.getOne(
     'SELECT qr_token FROM items WHERE id = $1 AND user_id = $2',
     [Number(req.params.id), req.user.userId]
@@ -439,7 +442,7 @@ app.get('/api/items/:id/qr', verifyToken, ar(async (req, res) => {
 }));
 
 // ── Public item page (no auth — for QR scan) ──────────────────────────────────
-app.get('/i/:token', qrLimiter, ar(async (req, res) => {
+router.get('/i/:token', qrLimiter, ar(async (req, res) => {
   const item = await db.getOne('SELECT * FROM items WHERE qr_token = $1', [req.params.token]);
 
   if (!item) return res.status(404).send(`
@@ -510,7 +513,7 @@ body{background:#080c09;color:#b4e8b0;font-family:'Share Tech Mono',monospace;mi
 }));
 
 // ── Lists ─────────────────────────────────────────────────────────────────────
-app.get('/api/lists', verifyToken, ar(async (req, res) => {
+router.get('/api/lists', verifyToken, ar(async (req, res) => {
   const { userId } = req.user;
 
   const ownRows  = await db.getAll('SELECT * FROM lists WHERE user_id = $1 ORDER BY modified_at DESC', [userId]);
@@ -542,7 +545,7 @@ app.get('/api/lists', verifyToken, ar(async (req, res) => {
   res.json([...ownLists, ...sharedLists]);
 }));
 
-app.post('/api/lists', verifyToken, requireJSON, ar(async (req, res) => {
+router.post('/api/lists', verifyToken, requireJSON, ar(async (req, res) => {
   const { name, description = '', item_ids = [] } = req.body || {};
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name required' });
 
@@ -563,7 +566,7 @@ app.post('/api/lists', verifyToken, requireJSON, ar(async (req, res) => {
   res.status(201).json(await listWithItems(list));
 }));
 
-app.put('/api/lists/:id', verifyToken, requireJSON, ar(async (req, res) => {
+router.put('/api/lists/:id', verifyToken, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const listId = Number(req.params.id);
   if (!await db.getOne('SELECT id FROM lists WHERE id = $1 AND user_id = $2', [listId, userId]))
@@ -589,13 +592,13 @@ app.put('/api/lists/:id', verifyToken, requireJSON, ar(async (req, res) => {
   res.json(await listWithItems(list));
 }));
 
-app.delete('/api/lists/:id', verifyToken, ar(async (req, res) => {
+router.delete('/api/lists/:id', verifyToken, ar(async (req, res) => {
   const listId = Number(req.params.id);
   await db.query('DELETE FROM lists WHERE id = $1 AND user_id = $2', [listId, req.user.userId]);
   res.json({ ok: true });
 }));
 
-app.post('/api/lists/:id/shares', verifyToken, requireJSON, ar(async (req, res) => {
+router.post('/api/lists/:id/shares', verifyToken, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const listId = Number(req.params.id);
   if (!await db.getOne('SELECT id FROM lists WHERE id = $1 AND user_id = $2', [listId, userId]))
@@ -619,7 +622,7 @@ app.post('/api/lists/:id/shares', verifyToken, requireJSON, ar(async (req, res) 
   }
 }));
 
-app.delete('/api/lists/:id/shares/:sharedWithId', verifyToken, ar(async (req, res) => {
+router.delete('/api/lists/:id/shares/:sharedWithId', verifyToken, ar(async (req, res) => {
   const { userId } = req.user;
   const listId = Number(req.params.id);
   if (!await db.getOne('SELECT id FROM lists WHERE id = $1 AND user_id = $2', [listId, userId]))
@@ -632,7 +635,7 @@ app.delete('/api/lists/:id/shares/:sharedWithId', verifyToken, ar(async (req, re
   res.json({ ok: true });
 }));
 
-app.delete('/api/shared-lists/:listId', verifyToken, ar(async (req, res) => {
+router.delete('/api/shared-lists/:listId', verifyToken, ar(async (req, res) => {
   await db.query(
     'DELETE FROM list_shares WHERE list_id = $1 AND shared_with_id = $2',
     [Number(req.params.listId), req.user.userId]
@@ -640,7 +643,7 @@ app.delete('/api/shared-lists/:listId', verifyToken, ar(async (req, res) => {
   res.json({ ok: true });
 }));
 
-app.get('/api/lists/:id/qr', verifyToken, ar(async (req, res) => {
+router.get('/api/lists/:id/qr', verifyToken, ar(async (req, res) => {
   const { userId } = req.user;
   const listId = Number(req.params.id);
 
@@ -667,7 +670,7 @@ app.get('/api/lists/:id/qr', verifyToken, ar(async (req, res) => {
 }));
 
 // ── Public list page ──────────────────────────────────────────────────────────
-app.get('/l/:token', qrLimiter, ar(async (req, res) => {
+router.get('/l/:token', qrLimiter, ar(async (req, res) => {
   const list = await db.getOne('SELECT * FROM lists WHERE qr_token = $1', [req.params.token]);
   if (!list) return res.status(404).send(`
     <!DOCTYPE html><html><head><meta charset="UTF-8">
@@ -745,7 +748,7 @@ ${listItems.map(item => {
 }));
 
 // ── Categories ────────────────────────────────────────────────────────────────
-app.get('/api/categories', verifyToken, ar(async (req, res) => {
+router.get('/api/categories', verifyToken, ar(async (req, res) => {
   const rows = await db.getAll(
     'SELECT id, name FROM categories WHERE user_id = $1 ORDER BY name',
     [req.user.userId]
@@ -753,7 +756,7 @@ app.get('/api/categories', verifyToken, ar(async (req, res) => {
   res.json(rows);
 }));
 
-app.post('/api/categories', verifyToken, requireJSON, ar(async (req, res) => {
+router.post('/api/categories', verifyToken, requireJSON, ar(async (req, res) => {
   const { name } = req.body || {};
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name required' });
   try {
@@ -767,7 +770,7 @@ app.post('/api/categories', verifyToken, requireJSON, ar(async (req, res) => {
   }
 }));
 
-app.delete('/api/categories/:id', verifyToken, ar(async (req, res) => {
+router.delete('/api/categories/:id', verifyToken, ar(async (req, res) => {
   await db.query(
     'DELETE FROM categories WHERE id = $1 AND user_id = $2',
     [Number(req.params.id), req.user.userId]
@@ -776,7 +779,7 @@ app.delete('/api/categories/:id', verifyToken, ar(async (req, res) => {
 }));
 
 // ── Locations ─────────────────────────────────────────────────────────────────
-app.get('/api/locations', verifyToken, ar(async (req, res) => {
+router.get('/api/locations', verifyToken, ar(async (req, res) => {
   const rows = await db.getAll(
     'SELECT id, name FROM locations WHERE user_id = $1 ORDER BY name',
     [req.user.userId]
@@ -784,7 +787,7 @@ app.get('/api/locations', verifyToken, ar(async (req, res) => {
   res.json(rows);
 }));
 
-app.post('/api/locations', verifyToken, requireJSON, ar(async (req, res) => {
+router.post('/api/locations', verifyToken, requireJSON, ar(async (req, res) => {
   const { name } = req.body || {};
   if (!name || !name.trim()) return res.status(400).json({ error: 'Name required' });
   try {
@@ -798,7 +801,7 @@ app.post('/api/locations', verifyToken, requireJSON, ar(async (req, res) => {
   }
 }));
 
-app.delete('/api/locations/:id', verifyToken, ar(async (req, res) => {
+router.delete('/api/locations/:id', verifyToken, ar(async (req, res) => {
   await db.query(
     'DELETE FROM locations WHERE id = $1 AND user_id = $2',
     [Number(req.params.id), req.user.userId]
@@ -807,7 +810,7 @@ app.delete('/api/locations/:id', verifyToken, ar(async (req, res) => {
 }));
 
 // ── Account ───────────────────────────────────────────────────────────────────
-app.post('/api/account/password', verifyToken, authLimiter, requireJSON, ar(async (req, res) => {
+router.post('/api/account/password', verifyToken, authLimiter, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const { currentPassword, newPassword } = req.body || {};
   if (!currentPassword || !newPassword) return res.status(400).json({ error: 'Both passwords required' });
@@ -822,7 +825,7 @@ app.post('/api/account/password', verifyToken, authLimiter, requireJSON, ar(asyn
   res.json({ ok: true });
 }));
 
-app.delete('/api/account', verifyToken, authLimiter, requireJSON, ar(async (req, res) => {
+router.delete('/api/account', verifyToken, authLimiter, requireJSON, ar(async (req, res) => {
   const { userId } = req.user;
   const { password } = req.body || {};
   const user  = await db.getOne('SELECT password_hash FROM users WHERE id = $1', [userId]);
@@ -835,13 +838,13 @@ app.delete('/api/account', verifyToken, authLimiter, requireJSON, ar(async (req,
 }));
 
 // ── Export / Import ───────────────────────────────────────────────────────────
-app.get('/api/export', verifyToken, ar(async (req, res) => {
+router.get('/api/export', verifyToken, ar(async (req, res) => {
   const items = (await db.getAll('SELECT * FROM items WHERE user_id = $1', [req.user.userId])).map(itemToJSON);
   res.setHeader('Content-Disposition', 'attachment; filename="shit-export.json"');
   res.json({ version: 1, exported: new Date().toISOString(), items });
 }));
 
-app.post('/api/import', verifyToken, requireJSON, ar(async (req, res) => {
+router.post('/api/import', verifyToken, requireJSON, ar(async (req, res) => {
   const { items = [] } = req.body || {};
   const { userId }     = req.user;
   const now = Math.floor(Date.now() / 1000);
@@ -872,7 +875,7 @@ app.post('/api/import', verifyToken, requireJSON, ar(async (req, res) => {
 }));
 
 // ── White Paper PDF ───────────────────────────────────────────────────────────
-app.get('/whitepaper.pdf', (req, res) => {
+router.get('/whitepaper.pdf', (req, res) => {
   const doc = new PDFDocument({ margin: 72, size: 'LETTER', info: {
     Title: 'SHIT: Simple Home Item Tracker — White Paper',
     Author: 'Juice Lee Productions',
@@ -953,7 +956,8 @@ async function start() {
     }
   }
 
-  app.listen(PORT, () => console.log(`SHIT running → http://localhost:${PORT}`));
+  app.use(BASE, router);
+  app.listen(PORT, () => console.log(`SHIT running → http://localhost:${PORT} (base: ${BASE})`));
 }
 
 start().catch(err => {

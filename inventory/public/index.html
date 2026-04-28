@@ -1146,6 +1146,8 @@ let listItemIds = [];
 let listIsShared = false;
 let listSharedWith = []; // [{id, email}] — for owned lists
 
+const BASE = '/shit';
+
 // ── API helper ────────────────────────────────────────────────────────────────
 async function api(method, path, body) {
   const opts = {
@@ -1153,7 +1155,7 @@ async function api(method, path, body) {
     headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` }
   };
   if (body !== undefined) opts.body = JSON.stringify(body);
-  const res = await fetch(path, opts);
+  const res = await fetch(BASE + path, opts);
   const data = await res.json().catch(() => ({}));
   if (!res.ok) throw new Error(data.error || `HTTP ${res.status}`);
   return data;
@@ -1436,7 +1438,7 @@ async function authSubmit() {
 
   btn.disabled = true;
   try {
-    const path = authMode === 'login' ? '/api/login' : '/api/register';
+    const path = BASE + (authMode === 'login' ? '/api/login' : '/api/register');
     const data = await fetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -2390,7 +2392,7 @@ async function printQRLabel() {
   if (!item) return;
   let qrHtml = '<div style="width:200px;height:200px;margin:0 auto 10px;background:#eee"></div>';
   try {
-    const res = await fetch(`/api/items/${qrItemId}/qr`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await fetch(`${BASE}/api/items/${qrItemId}/qr`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (res.ok) {
       const svg = await res.text();
       qrHtml = `<div style="width:200px;height:200px;margin:0 auto 10px">${svg}</div>`;
@@ -2423,7 +2425,7 @@ async function printListQRLabel() {
   if (!list) return;
   let qrHtml = '<div style="width:200px;height:200px;margin:0 auto 10px;background:#eee"></div>';
   try {
-    const res = await fetch(`/api/lists/${qrListId}/qr`, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await fetch(`${BASE}/api/lists/${qrListId}/qr`, { headers: { 'Authorization': `Bearer ${token}` } });
     if (res.ok) { const svg = await res.text(); qrHtml = `<div style="width:200px;height:200px;margin:0 auto 10px">${svg}</div>`; }
   } catch {}
   const win = window.open('', '_blank', 'width=400,height=500');
@@ -2999,7 +3001,7 @@ async function handleDocUpload(input) {
 
 async function downloadDoc(id, filename) {
   try {
-    const res = await fetch(`/api/documents/${id}/download`, {
+    const res = await fetch(`${BASE}/api/documents/${id}/download`, {
       headers: { Authorization: `Bearer ${token}` }
     });
     if (!res.ok) throw new Error('Download failed');
@@ -3029,7 +3031,7 @@ async function deleteDoc(id) {
 // ── Export / Import ───────────────────────────────────────────────────────────
 async function exportData() {
   try {
-    const res = await fetch('/api/export', { headers: { Authorization: `Bearer ${token}` } });
+    const res = await fetch(BASE + '/api/export', { headers: { Authorization: `Bearer ${token}` } });
     const blob = await res.blob();
     const a = document.createElement('a');
     a.href = URL.createObjectURL(blob);
