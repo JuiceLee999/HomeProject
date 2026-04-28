@@ -9,11 +9,19 @@ const helmet      = require('helmet');
 const QRCode      = require('qrcode');
 const Anthropic   = require('@anthropic-ai/sdk');
 const PDFDocument = require('pdfkit');
+const nodemailer  = require('nodemailer');
 const db          = require('./db/index');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
 let JWT_SECRET;
+
+const mailer = nodemailer.createTransport({
+  host:   process.env.EMAIL_HOST,
+  port:   Number(process.env.EMAIL_PORT) || 587,
+  secure: process.env.EMAIL_SECURE === 'true',
+  auth:   { user: process.env.EMAIL_USER, pass: process.env.EMAIL_PASS },
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────────
 function escHtml(s) {
@@ -83,6 +91,12 @@ const docUploadLimiter = rateLimit({
   windowMs: 60 * 60 * 1000, max: 30,
   standardHeaders: true, legacyHeaders: false,
   message: { error: 'Upload limit reached, please try again later.' }
+});
+
+const resetLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, max: 5,
+  standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Too many attempts, please try again later.' }
 });
 
 // ── Auth helpers ──────────────────────────────────────────────────────────────
@@ -155,6 +169,62 @@ router.post('/api/login', authLimiter, requireJSON, ar(async (req, res) => {
 router.post('/api/logout', verifyToken, requireJSON, ar(async (req, res) => {
   await db.query('UPDATE users SET last_logout_at = $1 WHERE id = $2', [Date.now(), req.user.userId]);
   res.json({ ok: true });
+}));
+
+router.post('/api/auth/forgot-password', resetLimiter, requireJSON, ar(async (req, res) => {
+  const { email } = req.body || {};
+  if (!email || !isValidEmail(email)) return res.status(400).json({ error: 'Valid email required' });
+
+  const user = await db.getOne('SELECT id FROM users WHERE LOWER(email) = LOWER($1)', [email]);
+  if (user) {
+    const rawToken  = crypto.randomBytes(32).toString('hex');
+    const tokenHash = crypto.createHash('sha256').update(rawToken).digest('hex');
+    const expiresAt = Date.now() + 60 * 60 * 1000; // 1 hour
+
+    await db.query('DELETE FROM password_resets WHERE user_id = $1', [user.id]);
+    await db.query(
+      'INSERT INTO password_resets (token_hash, user_id, expires_at) VALUES ($1,$2,$3)',
+      [tokenHash, user.id, expiresAt]
+    );
+
+    const proto    = req.headers['x-forwarded-proto'] || req.protocol;
+    const host     = req.headers['x-forwarded-host']  || req.get('host');
+    const basePath = process.env.BASE_PATH || '';
+    const resetUrl = `${proto}://${host}${basePath}?reset=${rawToken}`;
+
+    await mailer.sendMail({
+      from:    process.env.EMAIL_FROM || process.env.EMAIL_USER,
+      to:      email,
+      subject: 'Password reset — SHIT Inventory',
+      text:    `You requested a password reset.\n\nClick the link below to set a new password. This link expires in 1 hour.\n\n${resetUrl}\n\nIf you didn't request this, ignore this email.`,
+      html:    `<p>You requested a password reset for your SHIT Inventory account.</p><p><a href="${resetUrl}">Reset your password →</a></p><p>This link expires in 1 hour. If you didn't request this, ignore this email.</p>`,
+    }).catch(() => {}); // non-fatal — don't leak send failures
+  }
+
+  res.json({ ok: true }); // always succeed to prevent user enumeration
+}));
+
+router.post('/api/auth/reset-password', resetLimiter, requireJSON, ar(async (req, res) => {
+  const { token, password } = req.body || {};
+  if (!token || !password) return res.status(400).json({ error: 'Token and password required' });
+  if (!isStrongPassword(password)) return res.status(400).json({ error: 'Password must be 12+ characters, or 8+ characters with at least one number or symbol' });
+
+  const tokenHash = crypto.createHash('sha256').update(token).digest('hex');
+  const row = await db.getOne('SELECT * FROM password_resets WHERE token_hash = $1', [tokenHash]);
+
+  if (!row) return res.status(400).json({ error: 'Invalid or expired reset link' });
+  if (Date.now() > row.expires_at) {
+    await db.query('DELETE FROM password_resets WHERE token_hash = $1', [tokenHash]);
+    return res.status(400).json({ error: 'Reset link has expired — please request a new one' });
+  }
+
+  const hash = await bcrypt.hash(password, 10);
+  await db.query('UPDATE users SET password_hash = $1, last_logout_at = $2 WHERE id = $3', [hash, Date.now(), row.user_id]);
+  await db.query('DELETE FROM password_resets WHERE token_hash = $1', [tokenHash]);
+
+  const user = await db.getOne('SELECT id, email FROM users WHERE id = $1', [row.user_id]);
+  const newToken = jwt.sign({ userId: user.id, email: user.email }, JWT_SECRET, { expiresIn: '7d' });
+  res.json({ token: newToken, email: user.email });
 }));
 
 // ── Items ─────────────────────────────────────────────────────────────────────
