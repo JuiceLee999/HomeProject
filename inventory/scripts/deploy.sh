@@ -18,6 +18,7 @@ npm install --omit=dev
 echo "==> Restarting app..."
 if command -v pm2 &> /dev/null; then
   pm2 delete cache-inventory 2>/dev/null || true
+  BASE_PATH=/shit \
   ANTHROPIC_API_KEY=$(grep 'ANTHROPIC_API_KEY' /root/.bashrc | cut -d'"' -f2) \
   JWT_SECRET=$(grep 'JWT_SECRET' /root/.bashrc | cut -d'"' -f2) \
   DATABASE_URL=$(grep 'DATABASE_URL' /root/.bashrc | cut -d'"' -f2) \
