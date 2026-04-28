@@ -764,6 +764,7 @@ body.panel-open .detail-panel { transform: scale(1); opacity: 1; pointer-events:
   </div>
   <div class="header-right">
     <button class="btn-scan-header" id="btn-ai-scan" onclick="openPhotoModal()" data-tip="Add Item with AI Photo" data-tip-dir="below" style="background:none;border:1px solid var(--accent);color:var(--accent)">✦ AI SCAN</button>
+    <button class="btn-scan-header" id="btn-qr-sheet" onclick="downloadQRSheet()" data-tip="Download QR Sheet for displayed items" data-tip-dir="below" style="background:none;border:1px solid var(--rule);color:var(--muted)">⊞ QR SHEET</button>
     <button class="btn-scan-header" id="btn-add-item" onclick="openAddPanel()" data-tip="Add Item" data-tip-dir="below">+ ADD ITEM</button>
     <button class="btn-scan-header" id="btn-new-list" onclick="openAddListPanel()" data-tip="Create New List" data-tip-dir="below" style="display:none">+ NEW LIST</button>
     <button class="btn-scan-header" onclick="openScanner()" data-tip="Scan QR Code" data-tip-dir="below">⊹ SCAN QR</button>
@@ -1677,6 +1678,7 @@ function setView(v) {
   document.getElementById('list-grid').style.display           = v === 'lists' ? '' : 'none';
   document.getElementById('btn-add-item').style.display        = v === 'items' ? '' : 'none';
   document.getElementById('btn-ai-scan').style.display         = v === 'items' ? '' : 'none';
+  document.getElementById('btn-qr-sheet').style.display        = v === 'items' ? '' : 'none';
   document.getElementById('btn-new-list').style.display        = v === 'lists' ? '' : 'none';
   document.getElementById('fab').style.display                 = v === 'lists' ? 'flex' : 'none';
   closePanel();
@@ -2376,6 +2378,35 @@ function showQR(itemId) {
   document.getElementById('qr-loc').textContent = item.location ? '⊹ ' + item.location : '';
   loadQRInto(document.getElementById('qr-img'), itemId);
   document.getElementById('qr-modal').classList.add('open');
+}
+
+async function downloadQRSheet() {
+  const btn = document.getElementById('btn-qr-sheet');
+  const ids = getFiltered().map(i => i.id);
+  if (!ids.length) return;
+  const prev = btn.textContent;
+  btn.textContent = 'GENERATING...';
+  btn.disabled = true;
+  try {
+    const res = await fetch(BASE + '/api/items/qr-sheet', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
+      body: JSON.stringify({ item_ids: ids }),
+    });
+    if (!res.ok) throw new Error('Failed');
+    const blob = await res.blob();
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'qr-sheet.pdf';
+    a.click();
+    URL.revokeObjectURL(url);
+  } catch (e) {
+    alert('QR sheet failed: ' + e.message);
+  } finally {
+    btn.textContent = prev;
+    btn.disabled = false;
+  }
 }
 
 function panelSave() {
