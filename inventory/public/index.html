@@ -2529,13 +2529,13 @@ async function openPhotoModal() {
   document.getElementById('photo-preview').style.display = 'none';
   document.getElementById('photo-video').style.display = '';
   document.getElementById('btn-photo-analyze').style.display = 'none';
+  document.getElementById('btn-photo-analyze').disabled = false;
   document.getElementById('btn-photo-capture').style.display = '';
   document.getElementById('btn-photo-retake').style.display = 'none';
   document.getElementById('lbl-photo-upload').style.display = 'flex';
   document.getElementById('btn-flip-camera').style.display = 'none';
-  document.getElementById('photo-status').textContent = 'POINT CAMERA AT ITEM';
+  document.getElementById('photo-status').textContent = 'TAP CAPTURE TO START CAMERA';
   document.getElementById('photo-modal').classList.add('open');
-  await startPhotoStream();
 }
 
 async function flipCamera() {
@@ -2550,7 +2550,11 @@ function closePhotoModal() {
   document.getElementById('photo-modal').classList.remove('open');
 }
 
-function capturePhoto() {
+async function capturePhoto() {
+  if (!photoStream || !photoStream.active) {
+    await startPhotoStream();
+    return;
+  }
   const video = document.getElementById('photo-video');
   const MAX = 1280;
   let w = video.videoWidth, h = video.videoHeight;
