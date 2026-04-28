@@ -781,7 +781,6 @@ body.panel-open .detail-panel { transform: scale(1); opacity: 1; pointer-events:
   </div>
   <div class="header-right">
     <button class="btn-scan-header" id="btn-ai-scan" onclick="openPhotoModal()" data-tip="Add Item with AI Photo" data-tip-dir="below" style="background:none;border:1px solid var(--accent);color:var(--accent)">✦ AI SCAN</button>
-    <button class="btn-scan-header" id="btn-qr-sheet" onclick="downloadQRSheet()" data-tip="Download QR Sheet for displayed items" data-tip-dir="below" style="background:none;border:1px solid var(--rule);color:var(--muted)">⊞ QR SHEET</button>
     <button class="btn-scan-header" id="btn-add-item" onclick="openAddPanel()" data-tip="Add Item" data-tip-dir="below">+ ADD ITEM</button>
     <button class="btn-scan-header" id="btn-new-list" onclick="openAddListPanel()" data-tip="Create New List" data-tip-dir="below" style="display:none">+ NEW LIST</button>
     <button class="btn-scan-header" onclick="openScanner()" data-tip="Scan QR Code" data-tip-dir="below">⊹ SCAN QR</button>
@@ -796,6 +795,7 @@ body.panel-open .detail-panel { transform: scale(1); opacity: 1; pointer-events:
   <div class="view-toggle">
     <button class="view-btn active" id="view-btn-items" onclick="setView('items')">ITEMS</button>
     <button class="view-btn" id="view-btn-lists" onclick="setView('lists')">LISTS</button>
+    <button class="view-btn" id="btn-qr-sheet" onclick="downloadQRSheet()" data-tip="Download QR Sheet for displayed items" data-tip-dir="below">⊞ QR SHEET</button>
   </div>
 
   <!-- Search -->
@@ -1806,7 +1806,6 @@ function setView(v) {
   document.getElementById('list-grid').style.display           = v === 'lists' ? '' : 'none';
   document.getElementById('btn-add-item').style.display        = v === 'items' ? '' : 'none';
   document.getElementById('btn-ai-scan').style.display         = v === 'items' ? '' : 'none';
-  document.getElementById('btn-qr-sheet').style.display        = v === 'items' ? '' : 'none';
   document.getElementById('btn-new-list').style.display        = v === 'lists' ? '' : 'none';
   document.getElementById('fab').style.display                 = v === 'lists' ? 'flex' : 'none';
   closePanel();
