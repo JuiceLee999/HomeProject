@@ -874,6 +874,78 @@ router.post('/api/import', verifyToken, requireJSON, ar(async (req, res) => {
   res.json({ ok: true, imported: count });
 }));
 
+// ── QR Code Sheet PDF ────────────────────────────────────────────────────────
+router.post('/api/items/qr-sheet', verifyToken, requireJSON, ar(async (req, res) => {
+  const { item_ids } = req.body || {};
+  if (!Array.isArray(item_ids) || !item_ids.length)
+    return res.status(400).json({ error: 'item_ids required' });
+
+  const ids = item_ids.map(Number).filter(n => Number.isFinite(n) && n > 0);
+  if (!ids.length) return res.status(400).json({ error: 'No valid IDs' });
+
+  const placeholders = ids.map((_, i) => `$${i + 2}`).join(',');
+  const rows = await db.getAll(
+    `SELECT id, name, qr_token FROM items WHERE id IN (${placeholders}) AND user_id = $1`,
+    [req.user.userId, ...ids]
+  );
+  const byId = Object.fromEntries(rows.map(r => [r.id, r]));
+  const orderedItems = ids.map(id => byId[id]).filter(Boolean);
+  if (!orderedItems.length) return res.status(404).json({ error: 'No matching items' });
+
+  const proto = req.headers['x-forwarded-proto'] || req.protocol;
+  const host  = req.headers['x-forwarded-host']  || req.get('host');
+
+  // Layout constants (1 pt = 1/72 inch)
+  const IN = 72;
+  const MARGIN  = 0.5 * IN;          // 36pt
+  const CELL_W  = 1.5 * IN;          // 108pt  — cell width
+  const QR_SIZE = 1.0 * IN;          // 72pt   — 1" QR
+  const PAD_TOP = 7, PAD_BOT = 7, GAP = 4, NAME_H = 16;
+  const CELL_H  = PAD_TOP + QR_SIZE + GAP + NAME_H + PAD_BOT; // ~106pt ≈ 1.47"
+  const COLS    = Math.floor((8.5 * IN - 2 * MARGIN) / CELL_W);  // 5
+  const ROWS    = Math.floor((11  * IN - 2 * MARGIN) / CELL_H);  // 6
+  const PER_PAGE = COLS * ROWS;
+
+  const doc = new PDFDocument({ size: 'LETTER', margin: 0, info: {
+    Title: 'QR Code Sheet', Author: 'SHIT Inventory',
+  }});
+
+  res.setHeader('Content-Type', 'application/pdf');
+  res.setHeader('Content-Disposition', 'attachment; filename="qr-sheet.pdf"');
+  doc.pipe(res);
+
+  for (let i = 0; i < orderedItems.length; i++) {
+    if (i > 0 && i % PER_PAGE === 0) doc.addPage();
+
+    const pos  = i % PER_PAGE;
+    const col  = pos % COLS;
+    const row  = Math.floor(pos / COLS);
+    const x    = MARGIN + col * CELL_W;
+    const y    = MARGIN + row * CELL_H;
+
+    // Cut border
+    doc.rect(x, y, CELL_W, CELL_H).strokeColor('#bbbbbb').lineWidth(0.5).stroke();
+
+    // QR code (black on white for reliable scanning when printed)
+    const url = `${proto}://${host}/i/${orderedItems[i].qr_token}`;
+    const qrBuf = await QRCode.toBuffer(url, {
+      type: 'png', margin: 1, width: 144,
+      color: { dark: '#000000', light: '#ffffff' },
+    });
+    const qrX = x + (CELL_W - QR_SIZE) / 2;
+    const qrY = y + PAD_TOP;
+    doc.image(qrBuf, qrX, qrY, { width: QR_SIZE, height: QR_SIZE });
+
+    // Item name (truncate to ~24 chars)
+    const name = orderedItems[i].name;
+    const label = name.length > 24 ? name.slice(0, 23) + '…' : name;
+    doc.font('Helvetica').fontSize(7).fillColor('#111111')
+       .text(label, x + 2, qrY + QR_SIZE + GAP, { width: CELL_W - 4, align: 'center', lineBreak: false });
+  }
+
+  doc.end();
+}));
+
 // ── White Paper PDF ───────────────────────────────────────────────────────────
 router.get('/whitepaper.pdf', (req, res) => {
   const doc = new PDFDocument({ margin: 72, size: 'LETTER', info: {
