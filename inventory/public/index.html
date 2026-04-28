@@ -515,16 +515,19 @@ body.panel-open .detail-panel { transform: scale(1); opacity: 1; pointer-events:
   <div class="auth-card">
     <div class="auth-logo"><span class="auth-logomark">▌▌ </span>SHIT</div>
     <div class="auth-sub">SIMPLE HOME ITEM TRACKER</div>
-    <div class="auth-tabs">
+    <div class="auth-tabs" id="auth-tabs">
       <button class="auth-tab active" id="tab-login">SIGN IN</button>
       <button class="auth-tab" id="tab-register">REGISTER</button>
     </div>
-    <div class="auth-field">
+    <div style="display:none;margin-bottom:10px" id="auth-back-wrap">
+      <a href="#" onclick="showLoginView();return false" style="font-size:11px;color:var(--muted);text-decoration:none">← Back to sign in</a>
+    </div>
+    <div class="auth-field" id="auth-email-wrap">
       <label>EMAIL *</label>
-      <div class="field-hint">Your account email address</div>
+      <div class="field-hint" id="email-hint">Your account email address</div>
       <input type="email" id="auth-email" placeholder="you@example.com" autocomplete="email" />
     </div>
-    <div class="auth-field">
+    <div class="auth-field" id="auth-password-wrap">
       <label>PASSWORD *</label>
       <div class="field-hint" id="pw-hint">Enter your password to sign in</div>
       <input type="password" id="auth-password" placeholder="Password" autocomplete="current-password" />
@@ -534,7 +537,21 @@ body.panel-open .detail-panel { transform: scale(1); opacity: 1; pointer-events:
       <div class="field-hint">Re-enter your password to confirm</div>
       <input type="password" id="auth-confirm" placeholder="Repeat password" autocomplete="new-password" />
     </div>
+    <div id="auth-reset-wrap" style="display:none">
+      <div class="auth-field">
+        <label>NEW PASSWORD *</label>
+        <div class="field-hint">Minimum 8 characters</div>
+        <input type="password" id="auth-new-password" placeholder="New password" autocomplete="new-password" />
+      </div>
+      <div class="auth-field">
+        <label>CONFIRM NEW PASSWORD *</label>
+        <input type="password" id="auth-reset-confirm" placeholder="Repeat new password" autocomplete="new-password" />
+      </div>
+    </div>
     <button class="btn-auth" id="btn-auth" onclick="authSubmit()">ACCESS SYSTEM →</button>
+    <div id="auth-forgot-link" style="text-align:center;margin-top:10px">
+      <a href="#" onclick="showForgotView();return false" style="font-size:11px;color:var(--muted);text-decoration:none">Forgot password?</a>
+    </div>
     <div class="auth-err" id="auth-err"></div>
     <div class="auth-copy">© 2025 Juice Lee Productions</div>
   </div>
@@ -1394,20 +1411,132 @@ function locManageKeydown(e) {
 }
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
-let authMode = 'login';
+let authView = 'login'; // 'login' | 'register' | 'forgot' | 'reset'
+let pendingResetToken = null;
 
 function switchTab(mode) {
-  authMode = mode;
+  authView = mode;
   document.getElementById('tab-login').classList.toggle('active', mode === 'login');
   document.getElementById('tab-register').classList.toggle('active', mode === 'register');
+  document.getElementById('auth-tabs').style.display = '';
+  document.getElementById('auth-back-wrap').style.display = 'none';
+  document.getElementById('auth-email-wrap').style.display = '';
+  document.getElementById('email-hint').textContent = 'Your account email address';
+  document.getElementById('auth-password-wrap').style.display = '';
   document.getElementById('auth-confirm-wrap').style.display = mode === 'register' ? '' : 'none';
+  document.getElementById('auth-reset-wrap').style.display = 'none';
+  document.getElementById('auth-forgot-link').style.display = mode === 'login' ? '' : 'none';
   document.getElementById('btn-auth').textContent = mode === 'login' ? 'ACCESS SYSTEM →' : 'CREATE ACCOUNT →';
   document.getElementById('pw-hint').textContent = mode === 'login' ? 'Enter your password to sign in' : 'Minimum 8 characters';
-  document.getElementById('auth-err').textContent = '';
+  const errEl = document.getElementById('auth-err');
+  errEl.textContent = '';
+  errEl.style.color = '';
   ['auth-email','auth-password','auth-confirm'].forEach(id => clearErr(document.getElementById(id)));
 }
 
+function showLoginView() {
+  document.getElementById('btn-auth').style.display = '';
+  switchTab('login');
+}
+
+function showForgotView() {
+  authView = 'forgot';
+  document.getElementById('auth-tabs').style.display = 'none';
+  document.getElementById('auth-back-wrap').style.display = '';
+  document.getElementById('auth-email-wrap').style.display = '';
+  document.getElementById('email-hint').textContent = 'Enter your account email to receive a reset link';
+  document.getElementById('auth-password-wrap').style.display = 'none';
+  document.getElementById('auth-confirm-wrap').style.display = 'none';
+  document.getElementById('auth-reset-wrap').style.display = 'none';
+  document.getElementById('auth-forgot-link').style.display = 'none';
+  document.getElementById('btn-auth').textContent = 'SEND RESET LINK →';
+  const errEl = document.getElementById('auth-err');
+  errEl.textContent = '';
+  errEl.style.color = '';
+  clearErr(document.getElementById('auth-email'));
+}
+
+function showResetView(resetToken) {
+  authView = 'reset';
+  pendingResetToken = resetToken;
+  document.getElementById('auth-tabs').style.display = 'none';
+  document.getElementById('auth-back-wrap').style.display = 'none';
+  document.getElementById('auth-email-wrap').style.display = 'none';
+  document.getElementById('auth-password-wrap').style.display = 'none';
+  document.getElementById('auth-confirm-wrap').style.display = 'none';
+  document.getElementById('auth-reset-wrap').style.display = '';
+  document.getElementById('auth-forgot-link').style.display = 'none';
+  document.getElementById('btn-auth').textContent = 'SET NEW PASSWORD →';
+  const errEl = document.getElementById('auth-err');
+  errEl.textContent = '';
+  errEl.style.color = '';
+}
+
+async function forgotSubmit() {
+  const emailEl = document.getElementById('auth-email');
+  const errEl   = document.getElementById('auth-err');
+  const btn     = document.getElementById('btn-auth');
+  const email   = emailEl.value.trim();
+  errEl.textContent = '';
+  errEl.style.color = '';
+  clearErr(emailEl);
+  if (!email)             { showErr(emailEl, 'Email is required.'); return; }
+  if (!isValidEmail(email)) { showErr(emailEl, 'Enter a valid email address.'); return; }
+  btn.disabled = true;
+  try {
+    await fetch(BASE + '/api/auth/forgot-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ email }),
+    });
+    errEl.style.color = 'var(--green)';
+    errEl.textContent = 'If that email is registered, a reset link has been sent.';
+    btn.style.display = 'none';
+  } catch {
+    errEl.textContent = 'Request failed — please try again.';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
+async function resetSubmit() {
+  const newPwEl = document.getElementById('auth-new-password');
+  const cfEl    = document.getElementById('auth-reset-confirm');
+  const errEl   = document.getElementById('auth-err');
+  const btn     = document.getElementById('btn-auth');
+  const password = newPwEl.value;
+  const confirm  = cfEl.value;
+  errEl.textContent = '';
+  errEl.style.color = '';
+  [newPwEl, cfEl].forEach(clearErr);
+  let valid = true;
+  if (!password || password.length < 8) { showErr(newPwEl, 'Password must be at least 8 characters.'); valid = false; }
+  if (password && confirm !== password)  { showErr(cfEl, 'Passwords do not match.'); valid = false; }
+  if (!valid) return;
+  btn.disabled = true;
+  try {
+    const data = await fetch(BASE + '/api/auth/reset-password', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ token: pendingResetToken, password }),
+    }).then(r => r.json());
+    if (data.error) { errEl.textContent = data.error; return; }
+    token = data.token;
+    currentUserEmail = data.email;
+    localStorage.setItem('cache_token', token);
+    showApp();
+    await loadItems();
+  } catch {
+    errEl.textContent = 'Reset failed — please try again.';
+  } finally {
+    btn.disabled = false;
+  }
+}
+
 async function authSubmit() {
+  if (authView === 'forgot') { await forgotSubmit(); return; }
+  if (authView === 'reset')  { await resetSubmit();  return; }
+
   const emailEl = document.getElementById('auth-email');
   const pwEl    = document.getElementById('auth-password');
   const cfEl    = document.getElementById('auth-confirm');
@@ -1418,7 +1547,6 @@ async function authSubmit() {
   const password = pwEl.value;
   const confirm  = cfEl.value;
 
-  // Clear previous errors
   errEl.textContent = '';
   [emailEl, pwEl, cfEl].forEach(clearErr);
 
@@ -1430,17 +1558,17 @@ async function authSubmit() {
   }
   if (!password) {
     showErr(pwEl, 'Password is required.'); valid = false;
-  } else if (authMode === 'register' && password.length < 8) {
+  } else if (authView === 'register' && password.length < 8) {
     showErr(pwEl, 'Password must be at least 8 characters.'); valid = false;
   }
-  if (authMode === 'register' && password && confirm !== password) {
+  if (authView === 'register' && password && confirm !== password) {
     showErr(cfEl, 'Passwords do not match.'); valid = false;
   }
   if (!valid) return;
 
   btn.disabled = true;
   try {
-    const path = BASE + (authMode === 'login' ? '/api/login' : '/api/register');
+    const path = BASE + (authView === 'login' ? '/api/login' : '/api/register');
     const data = await fetch(path, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
@@ -3191,6 +3319,14 @@ function escHtml(s) {
 // ── Init ──────────────────────────────────────────────────────────────────────
 async function init() {
   if ('serviceWorker' in navigator) navigator.serviceWorker.register('/sw.js').catch(() => {});
+
+  const resetToken = new URLSearchParams(location.search).get('reset');
+  if (resetToken) {
+    history.replaceState(null, '', location.pathname);
+    showAuthScreen();
+    showResetView(resetToken);
+    return;
+  }
 
   if (!token) { showAuthScreen(); return; }
 
