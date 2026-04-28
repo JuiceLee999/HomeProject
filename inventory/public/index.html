@@ -2357,7 +2357,7 @@ async function loadQRInto(imgEl, id, type = 'item') {
   imgEl.src = '';
   const endpoint = type === 'list' ? `/api/lists/${id}/qr` : `/api/items/${id}/qr`;
   try {
-    const res = await fetch(endpoint, { headers: { 'Authorization': `Bearer ${token}` } });
+    const res = await fetch(BASE + endpoint, { headers: { 'Authorization': `Bearer ${token}` } });
     if (!res.ok) return;
     const blob = await res.blob();
     const prev = imgEl.dataset.blobUrl;
