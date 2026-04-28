@@ -1139,6 +1139,7 @@ let lists = [];
 let photoStream = null;
 let photoFacing = 'environment'; // 'environment' = rear, 'user' = front
 let capturedImageData = null;
+let pendingAiPhoto = null;
 let currentView = 'items'; // 'items' | 'lists'
 let openListId = null;
 let listPanelMode = 'add';
@@ -1968,6 +1969,7 @@ function showListQR(listId) {
 
 // ── Panel ─────────────────────────────────────────────────────────────────────
 function openAddPanel() {
+  pendingAiPhoto = null;
   panelMode = 'add';
   openItemId = null;
   itemTags = [];
@@ -2135,6 +2137,23 @@ async function saveItem() {
       document.getElementById('btn-qr-panel').style.display = '';
       document.getElementById('btn-duplicate').style.display = '';
       document.getElementById('btn-delete-item').style.display = '';
+      if (pendingAiPhoto) {
+        try {
+          const [uploadData, thumbData] = await Promise.all([
+            resizeDataUrlOnCanvas(pendingAiPhoto, 2048, 0.85),
+            resizeDataUrlOnCanvas(pendingAiPhoto, 200, 0.75),
+          ]);
+          const doc = await api('POST', `/api/items/${saved.id}/documents`, {
+            filename: `ai-scan-${Date.now()}.jpg`,
+            mime_type: 'image/jpeg',
+            data: uploadData,
+            thumb_data: thumbData,
+          });
+          openItemDocs.unshift(doc);
+          renderDocList();
+        } catch { /* non-fatal */ }
+        pendingAiPhoto = null;
+      }
     } else {
       saved = await api('PUT', `/api/items/${openItemId}`, body);
       const idx = items.findIndex(i => i.id === openItemId);
@@ -2621,8 +2640,10 @@ async function analyzePhoto() {
   analyzeBtn.disabled = true;
   try {
     const result = await api('POST', '/api/ai/analyze-item', { image_data: capturedImageData });
+    const photoToSave = capturedImageData;
     closePhotoModal();
     openAddPanel();
+    pendingAiPhoto = photoToSave;
     if (result.name)        document.getElementById('pd-name').value = result.name;
     if (result.brand)       document.getElementById('pd-brand').value = result.brand;
     if (result.model)       document.getElementById('pd-model').value = result.model;
@@ -2958,6 +2979,21 @@ function resizeImageOnCanvas(file, maxPx, quality) {
 
 function resizeImageToThumb(file) { return resizeImageOnCanvas(file, 200, 0.75); }
 function compressImageForUpload(file) { return resizeImageOnCanvas(file, 2048, 0.85); }
+
+function resizeDataUrlOnCanvas(dataUrl, maxPx, quality) {
+  return new Promise((resolve) => {
+    const img = new Image();
+    img.onload = () => {
+      const scale = Math.min(maxPx / img.width, maxPx / img.height, 1);
+      const canvas = document.createElement('canvas');
+      canvas.width  = Math.round(img.width  * scale);
+      canvas.height = Math.round(img.height * scale);
+      canvas.getContext('2d').drawImage(img, 0, 0, canvas.width, canvas.height);
+      resolve(canvas.toDataURL('image/jpeg', quality).split(',')[1]);
+    };
+    img.src = dataUrl;
+  });
+}
 
 async function handleDocUpload(input) {
   const files = Array.from(input.files);
