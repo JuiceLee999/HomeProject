@@ -649,6 +649,11 @@ body.panel-open .detail-panel { transform: scale(1); opacity: 1; pointer-events:
         <div class="field-hint">Name of the person borrowing this item</div>
         <input id="co-borrower-modal" type="text" placeholder="Name of borrower" autocomplete="off" />
       </div>
+      <div class="co-field" id="co-qty-field" style="display:none">
+        <label>HOW MANY</label>
+        <div class="field-hint" id="co-qty-hint">How many to check out</div>
+        <input id="co-qty-modal" type="number" min="1" value="1" style="width:80px" />
+      </div>
       <div class="co-field">
         <label>DATE TAKEN</label>
         <div class="field-hint">When the item is being taken out</div>
@@ -668,6 +673,22 @@ body.panel-open .detail-panel { transform: scale(1); opacity: 1; pointer-events:
     <div class="co-modal-footer">
       <button class="btn-co-submit" onclick="submitCoModal()">CHECK OUT →</button>
       <button class="btn-co-cancel" onclick="closeCoModal()">CANCEL</button>
+    </div>
+  </div>
+</div>
+
+<!-- ══ CHECK-IN SELECTION MODAL ══ -->
+<div class="modal-overlay" id="ci-select-modal" onclick="closeCiSelectModal()">
+  <div class="co-modal" onclick="event.stopPropagation()">
+    <div class="co-modal-header">
+      <span class="co-modal-title">▌ CHECK IN</span>
+      <button class="btn-icon" onclick="closeCiSelectModal()" data-tip="Close">✕</button>
+    </div>
+    <div class="co-modal-item" id="ci-select-item-name">—</div>
+    <div id="ci-select-list" class="co-modal-body" style="padding-top:0;padding-bottom:0"></div>
+    <div class="co-modal-footer">
+      <button class="btn-co-submit" onclick="checkinAll()">CHECK IN ALL →</button>
+      <button class="btn-co-cancel" onclick="closeCiSelectModal()">CANCEL</button>
     </div>
   </div>
 </div>
@@ -1690,7 +1711,7 @@ function getFiltered() {
     list = list.filter(i => i.condition === cond);
   }
   if (currentFilter === 'checkout') {
-    list = list.filter(i => i.checked_out_to);
+    list = list.filter(i => Number(i.qty_checked_out) > 0 || i.checked_out_to);
   }
   if (currentCatFilter) list = list.filter(i => i.category === currentCatFilter);
   if (currentLocFilter) list = list.filter(i => i.location === currentLocFilter);
@@ -1732,8 +1753,8 @@ function renderGrid() {
     return;
   }
 
-  const checkedOut = list.filter(i => i.checked_out_to);
-  const available  = list.filter(i => !i.checked_out_to);
+  const checkedOut = list.filter(i => Number(i.qty_checked_out) > 0 || i.checked_out_to);
+  const available  = list.filter(i => !(Number(i.qty_checked_out) > 0) && !i.checked_out_to);
 
   // No checked-out items — flat list, no sections
   if (!checkedOut.length) {
@@ -1768,7 +1789,7 @@ function itemCardHTML(item) {
   const condClass = `badge-cond-${item.condition || 'good'}`;
   const condLabel = (item.condition || 'good').toUpperCase();
 
-  const coClass = item.checked_out_to ? ' card-co' : '';
+  const coClass = (Number(item.qty_checked_out) > 0 || item.checked_out_to) ? ' card-co' : '';
   return `<div class="item-card${selected}${coClass}" data-cond="${escHtml(item.condition)}" data-card-id="${item.id}">
     <div class="card-top">
       <div class="card-badges">
@@ -1785,12 +1806,22 @@ function itemCardHTML(item) {
       ${valStr ? `<span class="card-val">${escHtml(valStr)}</span>` : ''}
     </div>
     ${item.location ? `<div class="card-loc">⊹ ${escHtml(item.location)}</div>` : ''}
-    ${item.checked_out_to ? `<div class="card-loc" style="color:var(--amber)">→ ${escHtml(item.checked_out_to)}${item.checkout_destination ? ` &nbsp;·&nbsp; ${escHtml(item.checkout_destination)}` : ''}</div>` : ''}
+    ${(() => {
+      const qtyOut = Number(item.qty_checked_out) || 0;
+      if (!qtyOut) return '';
+      const qtyLabel = Number(item.quantity) > 1 ? `${qtyOut} of ${item.quantity} · ` : '';
+      return `<div class="card-loc" style="color:var(--amber)">→ ${qtyLabel}${escHtml(item.checked_out_to)}${item.checkout_destination ? ` &nbsp;·&nbsp; ${escHtml(item.checkout_destination)}` : ''}</div>`;
+    })()}
     <div class="card-actions">
       <button class="btn-card-qr" data-qr-id="${item.id}" onclick="event.stopPropagation();showQR(${item.id})">⊡ QR CODE</button>
-      ${item.checked_out_to
-        ? `<button class="btn-card-ci" onclick="event.stopPropagation();checkinFromCard(${item.id})">✓ CHECK IN</button>`
-        : `<button class="btn-card-co" onclick="event.stopPropagation();openCoModal(${item.id})">⊳ CHECK OUT</button>`}
+      ${(() => {
+        const qtyOut = Number(item.qty_checked_out) || 0;
+        const available = Number(item.quantity) - qtyOut;
+        return `
+          ${qtyOut > 0 ? `<button class="btn-card-ci" onclick="event.stopPropagation();checkinFromCard(${item.id})">✓ CHECK IN</button>` : ''}
+          ${available > 0 ? `<button class="btn-card-co" onclick="event.stopPropagation();openCoModal(${item.id})">⊳ CHECK OUT</button>` : ''}
+        `;
+      })()}
     </div>
   </div>`;
 }
@@ -2335,6 +2366,19 @@ function openCoModal(itemId) {
   document.getElementById('co-date-modal').value = new Date().toISOString().slice(0, 10);
   document.getElementById('co-dest-modal').value = '';
   document.getElementById('co-notes-modal').value = '';
+  const available = Number(item.quantity) - Number(item.qty_checked_out || 0);
+  const qtyField = document.getElementById('co-qty-field');
+  const qtyInput = document.getElementById('co-qty-modal');
+  const qtyHint  = document.getElementById('co-qty-hint');
+  if (Number(item.quantity) > 1) {
+    qtyField.style.display = '';
+    qtyInput.max = available;
+    qtyInput.value = 1;
+    qtyHint.textContent = `${available} of ${item.quantity} available`;
+  } else {
+    qtyField.style.display = 'none';
+    qtyInput.value = 1;
+  }
   document.getElementById('co-modal').classList.add('open');
   setTimeout(() => document.getElementById('co-borrower-modal').focus(), 100);
 }
@@ -2352,13 +2396,13 @@ async function submitCoModal() {
   const checked_out_date = document.getElementById('co-date-modal').value || null;
   const destination      = document.getElementById('co-dest-modal').value.trim();
   const notes            = document.getElementById('co-notes-modal').value.trim();
+  const quantity         = Number(document.getElementById('co-qty-modal').value) || 1;
 
   try {
     const updated = await api('POST', `/api/items/${coModalItemId}/checkout`,
-      { borrower, checked_out_date, destination, notes });
+      { borrower, checked_out_date, destination, notes, quantity });
     const idx = items.findIndex(i => i.id === coModalItemId);
     if (idx !== -1) items[idx] = updated;
-    // Update panel if this item is open
     if (openItemId === coModalItemId) renderCheckoutSection(updated);
     closeCoModal();
     render();
@@ -2370,13 +2414,21 @@ async function submitCoModal() {
 // Check in directly from card
 async function checkinFromCard(itemId) {
   const item = items.find(i => i.id === itemId);
-  if (!confirm(`Check in "${item?.name}"?`)) return;
   try {
-    const updated = await api('POST', `/api/items/${itemId}/checkin`, {});
-    const idx = items.findIndex(i => i.id === itemId);
-    if (idx !== -1) items[idx] = updated;
-    if (openItemId === itemId) renderCheckoutSection(updated);
-    render();
+    const history = await api('GET', `/api/items/${itemId}/checkouts`);
+    const active = history.filter(r => !r.checked_in);
+    if (active.length === 0) return;
+    if (active.length === 1) {
+      const label = active[0].quantity > 1 ? ` (×${active[0].quantity})` : '';
+      if (!confirm(`Check in "${item?.name}"${label} from ${active[0].borrower}?`)) return;
+      const updated = await api('POST', `/api/items/${itemId}/checkin`, { checkout_id: active[0].id });
+      const idx = items.findIndex(i => i.id === itemId);
+      if (idx !== -1) items[idx] = updated;
+      if (openItemId === itemId) renderCheckoutSection(updated);
+      render();
+    } else {
+      openCiSelectModal(itemId, active);
+    }
   } catch (e) {
     alert('Check-in failed: ' + e.message);
   }
@@ -2386,17 +2438,19 @@ async function checkinFromCard(itemId) {
 function renderCheckoutSection(item) {
   const section = document.getElementById('panel-checkout-section');
   const box = document.getElementById('checkout-box-content');
+  const qtyOut = Number(item.qty_checked_out) || (item.checked_out_to ? 1 : 0);
 
-  if (!item.checked_out_to) {
+  if (!qtyOut) {
     section.style.display = 'none';
     return;
   }
 
   section.style.display = '';
   const overdue = item.due_back && item.due_back < Math.floor(Date.now() / 1000);
+  const qtyLabel = Number(item.quantity) > 1 ? `${qtyOut} of ${item.quantity} ` : '';
   box.innerHTML = `
     <div class="checkout-box active" style="border-radius:0;border-left:none;border-right:none;border-top:none;margin:0 -16px;padding:12px 18px">
-      <div style="font-size:9px;letter-spacing:3px;color:var(--amber);margin-bottom:8px">CHECKED OUT</div>
+      <div style="font-size:9px;letter-spacing:3px;color:var(--amber);margin-bottom:8px">${qtyLabel}CHECKED OUT</div>
       <div class="checkout-who">→ ${escHtml(item.checked_out_to)}</div>
       <div class="checkout-meta">
         ${item.checked_out_at ? `Taken ${fmtTs(item.checked_out_at)}` : ''}
@@ -2410,12 +2464,83 @@ function renderCheckoutSection(item) {
 async function checkinItem() {
   if (!openItemId) return;
   const item = items.find(i => i.id === openItemId);
-  if (!confirm(`Check in "${item?.name}"? This will mark it as returned.`)) return;
   try {
-    const updated = await api('POST', `/api/items/${openItemId}/checkin`, {});
-    const idx = items.findIndex(i => i.id === openItemId);
+    const history = await api('GET', `/api/items/${openItemId}/checkouts`);
+    const active = history.filter(r => !r.checked_in);
+    if (active.length === 0) return;
+    if (active.length === 1) {
+      const label = active[0].quantity > 1 ? ` (×${active[0].quantity})` : '';
+      if (!confirm(`Check in "${item?.name}"${label}? This will mark it as returned.`)) return;
+      const updated = await api('POST', `/api/items/${openItemId}/checkin`, { checkout_id: active[0].id });
+      const idx = items.findIndex(i => i.id === openItemId);
+      if (idx !== -1) items[idx] = updated;
+      renderCheckoutSection(updated);
+      render();
+    } else {
+      openCiSelectModal(openItemId, active);
+    }
+  } catch (e) {
+    alert('Check-in failed: ' + e.message);
+  }
+}
+
+// ── Check-in selection modal (for multiple active checkouts) ──────────────────
+let ciSelectItemId = null;
+
+function openCiSelectModal(itemId, records) {
+  const item = items.find(i => i.id === itemId);
+  ciSelectItemId = itemId;
+  document.getElementById('ci-select-item-name').textContent = item?.name || '';
+  const listEl = document.getElementById('ci-select-list');
+  listEl.innerHTML = records.map(r => `
+    <div style="border-bottom:1px solid var(--rule);padding:10px 0;display:flex;align-items:center;justify-content:space-between;gap:8px">
+      <div>
+        <div style="color:var(--amber);font-size:12px">→ ${escHtml(r.borrower)}${r.quantity > 1 ? ` &nbsp;×${r.quantity}` : ''}</div>
+        <div style="color:var(--muted);font-size:10px">${fmtTs(r.checked_out)}${r.destination ? ' · ' + escHtml(r.destination) : ''}</div>
+      </div>
+      <button class="btn-checkin" onclick="checkinRecord(${r.id})">CHECK IN</button>
+    </div>
+  `).join('');
+  document.getElementById('ci-select-modal').classList.add('open');
+}
+
+function closeCiSelectModal() {
+  document.getElementById('ci-select-modal').classList.remove('open');
+  ciSelectItemId = null;
+}
+
+async function checkinRecord(checkoutId) {
+  try {
+    const updated = await api('POST', `/api/items/${ciSelectItemId}/checkin`, { checkout_id: checkoutId });
+    const idx = items.findIndex(i => i.id === ciSelectItemId);
     if (idx !== -1) items[idx] = updated;
-    renderCheckoutSection(updated);
+    if (openItemId === ciSelectItemId) renderCheckoutSection(updated);
+    render();
+    // Refresh modal or close if nothing left out
+    if (Number(updated.qty_checked_out) > 0) {
+      const history = await api('GET', `/api/items/${ciSelectItemId}/checkouts`);
+      const remaining = history.filter(r => !r.checked_in);
+      if (remaining.length > 1) {
+        openCiSelectModal(ciSelectItemId, remaining);
+      } else {
+        closeCiSelectModal();
+      }
+    } else {
+      closeCiSelectModal();
+    }
+  } catch (e) {
+    alert('Check-in failed: ' + e.message);
+  }
+}
+
+async function checkinAll() {
+  if (!ciSelectItemId) return;
+  try {
+    const updated = await api('POST', `/api/items/${ciSelectItemId}/checkin`, {});
+    const idx = items.findIndex(i => i.id === ciSelectItemId);
+    if (idx !== -1) items[idx] = updated;
+    if (openItemId === ciSelectItemId) renderCheckoutSection(updated);
+    closeCiSelectModal();
     render();
   } catch (e) {
     alert('Check-in failed: ' + e.message);
