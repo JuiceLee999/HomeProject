@@ -2361,6 +2361,7 @@ function openCoModal(itemId) {
   const item = items.find(i => i.id === itemId);
   if (!item) return;
   coModalItemId = itemId;
+  closePanel();
   document.getElementById('co-modal-item-name').textContent = item.name;
   document.getElementById('co-borrower-modal').value = '';
   document.getElementById('co-date-modal').value = new Date().toISOString().slice(0, 10);
