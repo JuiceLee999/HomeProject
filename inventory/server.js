@@ -336,23 +336,28 @@ router.post('/api/items/:id/checkout', verifyToken, requireJSON, ar(async (req, 
   const itemId = Number(req.params.id);
   const item = await db.getOne('SELECT * FROM items WHERE id = $1 AND user_id = $2', [itemId, userId]);
   if (!item) return res.status(404).json({ error: 'Not found' });
-  if (item.checked_out_to) return res.status(409).json({ error: 'Item is already checked out' });
 
-  const { borrower, destination = '', checked_out_date = null, due_back = null, notes = '' } = req.body || {};
+  const { borrower, destination = '', checked_out_date = null, due_back = null, notes = '', quantity = 1 } = req.body || {};
   if (!borrower || !borrower.trim()) return res.status(400).json({ error: 'Borrower name is required' });
+
+  const qty = Math.max(1, Math.round(Number(quantity) || 1));
+  const available = Number(item.quantity) - Number(item.qty_checked_out || 0);
+  if (qty > available) return res.status(400).json({ error: `Only ${available} available to check out` });
 
   const now   = Math.floor(Date.now() / 1000);
   const coTs  = checked_out_date ? Math.floor(new Date(checked_out_date).getTime() / 1000) : now;
   const dueTs = due_back ? Math.floor(new Date(due_back).getTime() / 1000) : null;
+  const newQtyOut = Number(item.qty_checked_out || 0) + qty;
 
   const updated = await db.getOne(`
-    UPDATE items SET checked_out_to=$1, checked_out_at=$2, due_back=$3, checkout_destination=$4, modified_at=$5
-    WHERE id=$6 RETURNING *
-  `, [borrower.trim(), coTs, dueTs, destination.trim(), now, itemId]);
+    UPDATE items SET checked_out_to=$1, checked_out_at=$2, due_back=$3, checkout_destination=$4,
+      qty_checked_out=$5, modified_at=$6
+    WHERE id=$7 RETURNING *
+  `, [borrower.trim(), coTs, dueTs, destination.trim(), newQtyOut, now, itemId]);
 
   await db.query(
-    'INSERT INTO checkouts (item_id, user_id, borrower, destination, checked_out, due_back, notes) VALUES ($1,$2,$3,$4,$5,$6,$7)',
-    [itemId, userId, borrower.trim(), destination.trim(), coTs, dueTs, notes]
+    'INSERT INTO checkouts (item_id, user_id, borrower, destination, checked_out, due_back, notes, quantity) VALUES ($1,$2,$3,$4,$5,$6,$7,$8)',
+    [itemId, userId, borrower.trim(), destination.trim(), coTs, dueTs, notes, qty]
   );
 
   res.json(itemToJSON(updated));
@@ -363,18 +368,42 @@ router.post('/api/items/:id/checkin', verifyToken, requireJSON, ar(async (req, r
   const itemId = Number(req.params.id);
   const item = await db.getOne('SELECT * FROM items WHERE id = $1 AND user_id = $2', [itemId, userId]);
   if (!item) return res.status(404).json({ error: 'Not found' });
-  if (!item.checked_out_to) return res.status(409).json({ error: 'Item is not checked out' });
+  if (!(Number(item.qty_checked_out) > 0) && !item.checked_out_to) return res.status(409).json({ error: 'Item is not checked out' });
 
   const now = Math.floor(Date.now() / 1000);
-  const updated = await db.getOne(`
-    UPDATE items SET checked_out_to=NULL, checked_out_at=NULL, due_back=NULL, checkout_destination=NULL, modified_at=$1
-    WHERE id=$2 RETURNING *
-  `, [now, itemId]);
+  const { checkout_id } = req.body || {};
+  let updated;
 
-  await db.query(
-    'UPDATE checkouts SET checked_in=$1 WHERE item_id=$2 AND checked_in IS NULL',
-    [now, itemId]
-  );
+  if (checkout_id) {
+    const coRecord = await db.getOne(
+      'SELECT * FROM checkouts WHERE id=$1 AND item_id=$2 AND checked_in IS NULL',
+      [Number(checkout_id), itemId]
+    );
+    if (!coRecord) return res.status(404).json({ error: 'Checkout record not found' });
+    await db.query('UPDATE checkouts SET checked_in=$1 WHERE id=$2', [now, coRecord.id]);
+    const remaining = Math.max(0, Number(item.qty_checked_out) - Number(coRecord.quantity || 1));
+    if (remaining === 0) {
+      updated = await db.getOne(`
+        UPDATE items SET checked_out_to=NULL, checked_out_at=NULL, due_back=NULL,
+          checkout_destination=NULL, qty_checked_out=0, modified_at=$1 WHERE id=$2 RETURNING *
+      `, [now, itemId]);
+    } else {
+      const nextActive = await db.getOne(
+        'SELECT * FROM checkouts WHERE item_id=$1 AND checked_in IS NULL ORDER BY checked_out DESC LIMIT 1',
+        [itemId]
+      );
+      updated = await db.getOne(`
+        UPDATE items SET qty_checked_out=$1, checked_out_to=$2, checked_out_at=$3,
+          due_back=$4, checkout_destination=$5, modified_at=$6 WHERE id=$7 RETURNING *
+      `, [remaining, nextActive.borrower, nextActive.checked_out, nextActive.due_back, nextActive.destination, now, itemId]);
+    }
+  } else {
+    await db.query('UPDATE checkouts SET checked_in=$1 WHERE item_id=$2 AND checked_in IS NULL', [now, itemId]);
+    updated = await db.getOne(`
+      UPDATE items SET checked_out_to=NULL, checked_out_at=NULL, due_back=NULL,
+        checkout_destination=NULL, qty_checked_out=0, modified_at=$1 WHERE id=$2 RETURNING *
+    `, [now, itemId]);
+  }
 
   res.json(itemToJSON(updated));
 }));

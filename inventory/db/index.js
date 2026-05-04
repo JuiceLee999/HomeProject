@@ -97,6 +97,7 @@ async function initialize() {
         checked_out_at       BIGINT DEFAULT NULL,
         due_back             BIGINT DEFAULT NULL,
         checkout_destination TEXT DEFAULT NULL,
+        qty_checked_out      NUMERIC NOT NULL DEFAULT 0,
         created_at           BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())::BIGINT,
         modified_at          BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())::BIGINT
       )
@@ -157,7 +158,8 @@ async function initialize() {
         checked_out BIGINT NOT NULL,
         due_back    BIGINT DEFAULT NULL,
         checked_in  BIGINT DEFAULT NULL,
-        notes       TEXT NOT NULL DEFAULT ''
+        notes       TEXT NOT NULL DEFAULT '',
+        quantity    NUMERIC NOT NULL DEFAULT 1
       )
     `);
 
@@ -168,6 +170,10 @@ async function initialize() {
         expires_at  BIGINT NOT NULL
       )
     `);
+
+    // migrations for existing databases
+    await client.query(`ALTER TABLE items     ADD COLUMN IF NOT EXISTS qty_checked_out NUMERIC NOT NULL DEFAULT 0`);
+    await client.query(`ALTER TABLE checkouts ADD COLUMN IF NOT EXISTS quantity        NUMERIC NOT NULL DEFAULT 1`);
 
     await client.query('COMMIT');
   } catch (err) {
