@@ -1704,8 +1704,8 @@ function updateHeaderStats() {
 }
 
 function updateFilterSelects() {
-  const cats = allCatNames();
-  const locs = allLocNames();
+  const cats = customCategories.map(c => c.name).sort();
+  const locs = customLocations.map(l => l.name).sort();
 
   const catSel = document.getElementById('cat-filter');
   const curCat = catSel.value;
@@ -3480,7 +3480,8 @@ async function importData(input) {
     if (!itemsToImport.length) { alert('No items found in file.'); return; }
     const result = await api('POST', '/api/import', { items: itemsToImport });
     alert(`Imported ${result.imported} items.`);
-    await loadItems();
+    await Promise.all([loadItems(), loadCategories(), loadLocations()]);
+    updateFilterSelects();
     closeUserModal();
   } catch (e) { alert('Import failed: ' + e.message); }
   input.value = '';
