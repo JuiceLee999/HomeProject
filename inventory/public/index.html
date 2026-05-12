@@ -350,6 +350,21 @@ body.panel-open .detail-panel { transform: scale(1); opacity: 1; pointer-events:
   .scanner-modal { width: 100vw; border-left: none; border-right: none; border-radius: 14px 14px 0 0; }
 }
 
+/* ── AUTO-CAPTURE RING ── */
+#photo-capture-ring {
+  position: absolute; inset: 0; width: 100%; height: 100%;
+  pointer-events: none; opacity: 0; transition: opacity 0.2s;
+}
+#photo-capture-ring.active { opacity: 1; }
+#photo-capture-ring .ring-track { stroke: rgba(255,255,255,0.15); stroke-width: 4; fill: none; }
+#photo-capture-ring .ring-progress {
+  stroke: #4ade80; stroke-width: 4; fill: none; stroke-linecap: round;
+  stroke-dasharray: 295.31; stroke-dashoffset: 295.31;
+  transform-origin: 50% 50%; transform: rotate(-90deg);
+  transition: stroke-dashoffset 0.08s linear;
+}
+#btn-photo-capture { opacity: 0.6; }
+
 /* ── USER MENU MODAL ── */
 .user-modal { background: var(--paper); border: 1px solid var(--rule); border-top: 2px solid var(--accent); width: 340px; max-width: 95vw; border-radius: 5px; max-height: calc(100dvh - 40px); overflow-y: auto; margin: auto; }
 .user-modal-header { padding: 14px 16px; border-bottom: 1px solid var(--rule); font-size: 10px; letter-spacing: 2px; color: var(--muted); }
@@ -620,10 +635,14 @@ body.panel-open .detail-panel { transform: scale(1); opacity: 1; pointer-events:
     <div class="scanner-viewport">
       <video id="photo-video" autoplay playsinline muted></video>
       <img id="photo-preview" style="display:none;width:100%;height:100%;object-fit:cover;position:absolute;top:0;left:0" />
+      <svg id="photo-capture-ring" viewBox="0 0 100 100">
+        <circle class="ring-track" cx="50" cy="50" r="47"/>
+        <circle class="ring-progress" cx="50" cy="50" r="47"/>
+      </svg>
     </div>
     <div class="scanner-status" id="photo-status">POINT CAMERA AT ITEM</div>
     <div style="display:flex;width:100%">
-      <button class="btn-scan-cancel" id="btn-photo-capture" onclick="capturePhoto()" style="flex:1;color:var(--accent);border-right:1px solid #1a3020">📷 CAPTURE</button>
+      <button class="btn-scan-cancel" id="btn-photo-capture" onclick="capturePhoto()" style="flex:1;color:var(--accent);border-right:1px solid #1a3020">📷 CAPTURE NOW</button>
       <button class="btn-scan-cancel" id="btn-photo-retake" onclick="retakePhoto()" style="flex:1;color:var(--muted);border-right:1px solid #1a3020;display:none">↺ RETAKE</button>
       <label class="btn-scan-cancel" id="lbl-photo-upload" style="flex:1;cursor:pointer;text-align:center;display:flex;align-items:center;justify-content:center">
         ⬆ UPLOAD
@@ -1179,6 +1198,17 @@ let photoStream = null;
 let photoFacing = 'environment'; // 'environment' = rear, 'user' = front
 let capturedImageData = null;
 let pendingAiPhoto = null;
+let autoCaptureActive = false;
+let autoCaptureRaf = null;
+let autoCaptureStableMs = 0;
+let autoCaptureLastData = null;
+let autoCaptureCanvas = null;
+let autoCaptureCtx = null;
+let autoCaptureLastTime = 0;
+const AUTO_CAPTURE_THRESHOLD = 10;
+const AUTO_CAPTURE_HOLD_MS = 1500;
+const AUTO_CAPTURE_W = 160;
+const AUTO_CAPTURE_H = 120;
 let currentView = 'items'; // 'items' | 'lists'
 let openListId = null;
 let listPanelMode = 'add';
@@ -1649,7 +1679,7 @@ async function loadItems() {
     ]);
     render();
   } catch (e) {
-    if (e.message === 'Unauthorized' || e.message === 'Token revoked') {
+    if (e.message === 'Unauthorized' || e.message === 'Token revoked' || e.message === 'Invalid token') {
       token = '';
       localStorage.removeItem('cache_token');
       showAuthScreen();
@@ -2800,6 +2830,7 @@ function closeScanner() {
 
 // ── AI Photo Modal ────────────────────────────────────────────────────────────
 async function startPhotoStream() {
+  stopAutoCapture();
   const statusEl = document.getElementById('photo-status');
   try {
     if (photoFacing === 'environment' && sharedCameraStream && sharedCameraStream.active) {
@@ -2818,12 +2849,83 @@ async function startPhotoStream() {
     const videoDevices = devices.filter(d => d.kind === 'videoinput');
     document.getElementById('btn-flip-camera').style.display = videoDevices.length > 1 ? '' : 'none';
 
-    statusEl.textContent = photoFacing === 'environment' ? 'POINT CAMERA AT ITEM' : 'FRONT CAMERA ACTIVE';
+    statusEl.textContent = 'POINT CAMERA AT ITEM';
+    startAutoCapture();
   } catch {
     statusEl.textContent = 'CAMERA UNAVAILABLE — USE UPLOAD';
     document.getElementById('btn-photo-capture').style.display = 'none';
     document.getElementById('btn-flip-camera').style.display = 'none';
   }
+}
+
+function startAutoCapture() {
+  if (!autoCaptureCanvas) {
+    autoCaptureCanvas = document.createElement('canvas');
+    autoCaptureCanvas.width = AUTO_CAPTURE_W;
+    autoCaptureCanvas.height = AUTO_CAPTURE_H;
+    autoCaptureCtx = autoCaptureCanvas.getContext('2d', { willReadFrequently: true });
+  }
+  autoCaptureActive = true;
+  autoCaptureStableMs = 0;
+  autoCaptureLastData = null;
+  autoCaptureLastTime = performance.now();
+  document.getElementById('photo-capture-ring').classList.add('active');
+  autoCaptureRaf = requestAnimationFrame(autoCaptureTick);
+}
+
+function stopAutoCapture() {
+  autoCaptureActive = false;
+  if (autoCaptureRaf) { cancelAnimationFrame(autoCaptureRaf); autoCaptureRaf = null; }
+  autoCaptureStableMs = 0;
+  autoCaptureLastData = null;
+  const ring = document.getElementById('photo-capture-ring');
+  if (ring) { ring.classList.remove('active'); setRingProgress(0); }
+}
+
+function setRingProgress(fraction) {
+  const el = document.querySelector('#photo-capture-ring .ring-progress');
+  if (el) el.style.strokeDashoffset = 295.31 * (1 - fraction);
+}
+
+function autoCaptureTick(now) {
+  if (!autoCaptureActive) return;
+  const video = document.getElementById('photo-video');
+  if (!video || video.readyState < 2) {
+    autoCaptureLastTime = now;
+    autoCaptureRaf = requestAnimationFrame(autoCaptureTick);
+    return;
+  }
+  const dt = Math.min(now - autoCaptureLastTime, 100);
+  autoCaptureLastTime = now;
+
+  autoCaptureCtx.drawImage(video, 0, 0, AUTO_CAPTURE_W, AUTO_CAPTURE_H);
+  const frame = autoCaptureCtx.getImageData(0, 0, AUTO_CAPTURE_W, AUTO_CAPTURE_H).data;
+
+  let isStable = false;
+  if (autoCaptureLastData) {
+    let diff = 0;
+    // sample every 4th pixel, green channel
+    for (let i = 1; i < frame.length; i += 16) diff += Math.abs(frame[i] - autoCaptureLastData[i]);
+    isStable = (diff / (frame.length / 16)) < AUTO_CAPTURE_THRESHOLD;
+  }
+  autoCaptureLastData = new Uint8ClampedArray(frame);
+
+  const statusEl = document.getElementById('photo-status');
+  if (isStable) {
+    autoCaptureStableMs = Math.min(autoCaptureStableMs + dt, AUTO_CAPTURE_HOLD_MS);
+    setRingProgress(autoCaptureStableMs / AUTO_CAPTURE_HOLD_MS);
+    if (statusEl) statusEl.textContent = 'HOLD STEADY…';
+    if (autoCaptureStableMs >= AUTO_CAPTURE_HOLD_MS) {
+      stopAutoCapture();
+      capturePhoto();
+      return;
+    }
+  } else {
+    autoCaptureStableMs = 0;
+    setRingProgress(0);
+    if (statusEl) statusEl.textContent = 'POINT CAMERA AT ITEM';
+  }
+  autoCaptureRaf = requestAnimationFrame(autoCaptureTick);
 }
 
 async function openPhotoModal() {
@@ -2837,8 +2939,9 @@ async function openPhotoModal() {
   document.getElementById('btn-photo-retake').style.display = 'none';
   document.getElementById('lbl-photo-upload').style.display = 'flex';
   document.getElementById('btn-flip-camera').style.display = 'none';
-  document.getElementById('photo-status').textContent = 'TAP CAPTURE TO START CAMERA';
+  document.getElementById('photo-status').textContent = 'STARTING CAMERA…';
   document.getElementById('photo-modal').classList.add('open');
+  await startPhotoStream();
 }
 
 async function flipCamera() {
@@ -2847,6 +2950,7 @@ async function flipCamera() {
 }
 
 function closePhotoModal() {
+  stopAutoCapture();
   photoStream = null;
   const vid = document.getElementById('photo-video');
   vid.srcObject = null;
@@ -2854,6 +2958,7 @@ function closePhotoModal() {
 }
 
 async function capturePhoto() {
+  stopAutoCapture();
   if (!photoStream || !photoStream.active) {
     await startPhotoStream();
     return;
@@ -2904,6 +3009,7 @@ function retakePhoto() {
   document.getElementById('btn-photo-retake').style.display = 'none';
   document.getElementById('lbl-photo-upload').style.display = 'flex';
   document.getElementById('photo-status').textContent = 'POINT CAMERA AT ITEM';
+  startAutoCapture();
 }
 
 function showPhotoPreview() {
