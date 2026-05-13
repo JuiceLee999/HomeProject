@@ -30,10 +30,13 @@ app.use(helmet({
     }
   }
 }));
-app.use(express.json({ limit: '1mb' }));
+app.use(express.json({ limit: '10mb' }));
 
 const BASE = process.env.BASE_PATH || '/sl';
 const router = express.Router();
+
+// Admin page served before static middleware so /admin doesn't fall through to index.html
+router.get('/admin', (req, res) => res.sendFile(path.join(__dirname, 'public', 'admin.html')));
 router.use(express.static(path.join(__dirname, 'public')));
 
 // ── Rate limiters ─────────────────────────────────────────────────────────────
@@ -41,6 +44,11 @@ const authLimiter = rateLimit({
   windowMs: 15 * 60 * 1000, max: 20,
   standardHeaders: true, legacyHeaders: false,
   message: { error: 'Too many attempts, please try again later.' }
+});
+const publicLimiter = rateLimit({
+  windowMs: 60 * 60 * 1000, max: 10,
+  standardHeaders: true, legacyHeaders: false,
+  message: { error: 'Too many submissions, please try again later.' }
 });
 
 // ── Auth middleware ───────────────────────────────────────────────────────────
@@ -98,6 +106,41 @@ router.post('/api/login', authLimiter, ar(async (req, res) => {
 
 router.post('/api/logout', verifyToken, ar(async (req, res) => {
   await db.query('UPDATE users SET last_logout_at = $1 WHERE id = $2', [Date.now(), req.user.id]);
+  res.json({ ok: true });
+}));
+
+// ── Public API routes (no auth) ───────────────────────────────────────────────
+router.get('/api/public/equipment', ar(async (req, res) => {
+  const rows = await db.getAll(
+    'SELECT id, name, category, description FROM equipment ORDER BY category ASC, name ASC'
+  );
+  res.json(rows);
+}));
+
+router.get('/api/public/services', ar(async (req, res) => {
+  const rows = await db.getAll(
+    'SELECT id, name, description, icon FROM services ORDER BY sort_order ASC, name ASC'
+  );
+  res.json(rows);
+}));
+
+router.get('/api/public/gallery', ar(async (req, res) => {
+  const rows = await db.getAll(
+    'SELECT id, image_data, caption FROM gallery ORDER BY sort_order ASC, created_at DESC'
+  );
+  res.json(rows);
+}));
+
+router.post('/api/public/request', publicLimiter, ar(async (req, res) => {
+  const { name, phone = '', email = '', interest = '', start_date, end_date, location = '', notes = '' } = req.body || {};
+  if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
+  if (!phone?.trim() && !email?.trim()) return res.status(400).json({ error: 'Phone or email is required' });
+  await db.query(
+    `INSERT INTO requests (name, phone, email, interest, start_date, end_date, location, notes)
+     VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+    [name.trim(), phone.trim(), email.trim(), interest.trim(),
+     start_date || null, end_date || null, location.trim(), notes.trim()]
+  );
   res.json({ ok: true });
 }));
 
@@ -281,6 +324,99 @@ router.delete('/api/jobs/:id', verifyToken, ar(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// ── Requests routes ───────────────────────────────────────────────────────────
+router.get('/api/requests', verifyToken, ar(async (req, res) => {
+  const rows = await db.getAll('SELECT * FROM requests ORDER BY created_at DESC');
+  res.json(rows);
+}));
+
+router.put('/api/requests/:id', verifyToken, ar(async (req, res) => {
+  const { status } = req.body || {};
+  const valid = ['new','reviewing','converted','declined'];
+  if (!valid.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  const row = await db.getOne(
+    'UPDATE requests SET status=$1 WHERE id=$2 RETURNING *',
+    [status, req.params.id]
+  );
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  res.json(row);
+}));
+
+router.delete('/api/requests/:id', verifyToken, ar(async (req, res) => {
+  await db.query('DELETE FROM requests WHERE id=$1', [req.params.id]);
+  res.json({ ok: true });
+}));
+
+// ── Services routes ───────────────────────────────────────────────────────────
+router.get('/api/services', verifyToken, ar(async (req, res) => {
+  const rows = await db.getAll(
+    'SELECT * FROM services WHERE owner_id=$1 ORDER BY sort_order ASC, name ASC',
+    [req.user.id]
+  );
+  res.json(rows);
+}));
+
+router.post('/api/services', verifyToken, ar(async (req, res) => {
+  const { name, description = '', icon = '', sort_order = 0 } = req.body || {};
+  if (!name?.trim()) return res.status(400).json({ error: 'Name required' });
+  const row = await db.getOne(
+    'INSERT INTO services (owner_id,name,description,icon,sort_order) VALUES ($1,$2,$3,$4,$5) RETURNING *',
+    [req.user.id, name.trim(), description.trim(), icon.trim(), parseInt(sort_order) || 0]
+  );
+  res.status(201).json(row);
+}));
+
+router.put('/api/services/:id', verifyToken, ar(async (req, res) => {
+  const { name, description = '', icon = '', sort_order = 0 } = req.body || {};
+  if (!name?.trim()) return res.status(400).json({ error: 'Name required' });
+  const row = await db.getOne(
+    `UPDATE services SET name=$1,description=$2,icon=$3,sort_order=$4
+     WHERE id=$5 AND owner_id=$6 RETURNING *`,
+    [name.trim(), description.trim(), icon.trim(), parseInt(sort_order) || 0, req.params.id, req.user.id]
+  );
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  res.json(row);
+}));
+
+router.delete('/api/services/:id', verifyToken, ar(async (req, res) => {
+  await db.query('DELETE FROM services WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
+  res.json({ ok: true });
+}));
+
+// ── Gallery routes ────────────────────────────────────────────────────────────
+router.get('/api/gallery', verifyToken, ar(async (req, res) => {
+  const rows = await db.getAll(
+    'SELECT * FROM gallery WHERE owner_id=$1 ORDER BY sort_order ASC, created_at DESC',
+    [req.user.id]
+  );
+  res.json(rows);
+}));
+
+router.post('/api/gallery', verifyToken, ar(async (req, res) => {
+  const { image_data, caption = '', sort_order = 0 } = req.body || {};
+  if (!image_data) return res.status(400).json({ error: 'Image required' });
+  const row = await db.getOne(
+    'INSERT INTO gallery (owner_id,image_data,caption,sort_order) VALUES ($1,$2,$3,$4) RETURNING *',
+    [req.user.id, image_data, caption.trim(), parseInt(sort_order) || 0]
+  );
+  res.status(201).json(row);
+}));
+
+router.put('/api/gallery/:id', verifyToken, ar(async (req, res) => {
+  const { caption = '', sort_order = 0 } = req.body || {};
+  const row = await db.getOne(
+    'UPDATE gallery SET caption=$1,sort_order=$2 WHERE id=$3 AND owner_id=$4 RETURNING *',
+    [caption.trim(), parseInt(sort_order) || 0, req.params.id, req.user.id]
+  );
+  if (!row) return res.status(404).json({ error: 'Not found' });
+  res.json(row);
+}));
+
+router.delete('/api/gallery/:id', verifyToken, ar(async (req, res) => {
+  await db.query('DELETE FROM gallery WHERE id=$1 AND owner_id=$2', [req.params.id, req.user.id]);
+  res.json({ ok: true });
+}));
+
 // ── Error handler ─────────────────────────────────────────────────────────────
 router.use((err, req, res, _next) => {
   console.error(err);
@@ -298,7 +434,6 @@ app.use(BASE, router);
 
   await db.initialize();
 
-  // Load or generate JWT_SECRET
   JWT_SECRET = process.env.JWT_SECRET;
   if (!JWT_SECRET) {
     const stored = await db.getOne("SELECT value FROM store WHERE key = 'jwt_secret'", []);
