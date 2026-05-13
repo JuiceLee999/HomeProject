@@ -109,6 +109,15 @@ router.post('/api/logout', verifyToken, ar(async (req, res) => {
   res.json({ ok: true });
 }));
 
+// ── Contract number generator ─────────────────────────────────────────────────
+router.get('/api/contract-number', verifyToken, ar(async (req, res) => {
+  const raw    = (req.query.prefix || 'JOB').toUpperCase().replace(/[^A-Z]/g, '').slice(0, 3).padEnd(3, 'X');
+  const year   = new Date().getFullYear();
+  const row    = await db.getOne('SELECT COUNT(*) AS cnt FROM jobs WHERE user_id = $1', [req.user.id]);
+  const seq    = (parseInt(row.cnt) + 1).toString().padStart(4, '0');
+  res.json({ number: `${raw}-${year}-${seq}` });
+}));
+
 // ── Public API routes (no auth) ───────────────────────────────────────────────
 router.get('/api/public/equipment', ar(async (req, res) => {
   const rows = await db.getAll(
@@ -135,6 +144,10 @@ router.post('/api/public/request', publicLimiter, ar(async (req, res) => {
   const { name, phone = '', email = '', interest = '', start_date, end_date, location = '', notes = '' } = req.body || {};
   if (!name?.trim()) return res.status(400).json({ error: 'Name is required' });
   if (!phone?.trim() && !email?.trim()) return res.status(400).json({ error: 'Phone or email is required' });
+  const emailRx = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+  if (email?.trim() && !emailRx.test(email.trim())) return res.status(400).json({ error: 'Invalid email address' });
+  if (start_date && end_date && Number(end_date) < Number(start_date)) return res.status(400).json({ error: 'End date must be on or after start date' });
+  if (notes?.length > 2000) return res.status(400).json({ error: 'Notes must be under 2000 characters' });
   await db.query(
     `INSERT INTO requests (name, phone, email, interest, start_date, end_date, location, notes)
      VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
@@ -249,6 +262,8 @@ router.post('/api/jobs', verifyToken, ar(async (req, res) => {
   if (!client_name?.trim()) return res.status(400).json({ error: 'Client name required' });
   const validStatuses = ['active','completed','invoiced','paid'];
   if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  if (start_date && end_date && Number(end_date) < Number(start_date)) return res.status(400).json({ error: 'End date must be on or after start date' });
+  if (parseFloat(rate) < 0) return res.status(400).json({ error: 'Rate cannot be negative' });
 
   const client = await db.pool.connect();
   try {
@@ -287,6 +302,8 @@ router.put('/api/jobs/:id', verifyToken, ar(async (req, res) => {
   if (!client_name?.trim()) return res.status(400).json({ error: 'Client name required' });
   const validStatuses = ['active','completed','invoiced','paid'];
   if (!validStatuses.includes(status)) return res.status(400).json({ error: 'Invalid status' });
+  if (start_date && end_date && Number(end_date) < Number(start_date)) return res.status(400).json({ error: 'End date must be on or after start date' });
+  if (parseFloat(rate) < 0) return res.status(400).json({ error: 'Rate cannot be negative' });
 
   const client = await db.pool.connect();
   try {

@@ -220,6 +220,8 @@
     font-weight: 600; margin-top: 1rem;
   }
   #form-error { color: #dc2626; font-size: 0.85rem; margin-top: 0.5rem; text-align: center; min-height: 1.2em; }
+  .field-err { color: #dc2626; font-size: 0.78rem; margin-top: 0.2rem; display: block; }
+  .input-err { border-color: #dc2626 !important; box-shadow: 0 0 0 3px rgba(220,38,38,0.1) !important; }
 
   /* ── Contact bar ─────────────────────────────────────────────────────────── */
   .contact-bar { background: var(--amber); padding: 1.25rem 1.5rem; }
@@ -282,7 +284,7 @@
 <section class="hero">
   <div class="hero-inner">
     <div class="hero-eyebrow">Professional &bull; Reliable &bull; Local</div>
-    <h1>Equipment Rental &amp;<br><span>Contracting Services</span></h1>
+    <h1>Contracting Services &amp;<br><span>Equipment Rental</span></h1>
     <p>Need the right equipment for your job? We've got the machines and the expertise. Contact us to get started.</p>
     <div class="hero-actions">
       <a href="#request" class="btn-primary">Request a Rental or Service</a>
@@ -553,23 +555,66 @@ function buildInterestList(equip, services) {
   list.innerHTML = html;
 }
 
+// ── Form validation helpers ───────────────────────────────────────────────────
+function setFieldErr(id, msg) {
+  const el = document.getElementById(id);
+  if (!el) return;
+  el.classList.add('input-err');
+  const existing = el.parentElement.querySelector('.field-err');
+  if (existing) { existing.textContent = msg; return; }
+  const span = document.createElement('span');
+  span.className = 'field-err';
+  span.textContent = msg;
+  el.parentElement.appendChild(span);
+}
+function clearFormErrs(formId) {
+  const form = document.getElementById(formId);
+  if (!form) return;
+  form.querySelectorAll('.input-err').forEach(el => el.classList.remove('input-err'));
+  form.querySelectorAll('.field-err').forEach(el => el.remove());
+  document.getElementById('form-error').textContent = '';
+}
+function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+function isValidPhone(p) { return /^[\d\s\(\)\-\+\.]{7,20}$/.test(p); }
+
 // ── Request form ──────────────────────────────────────────────────────────────
 async function submitRequest(event) {
   event.preventDefault();
-  const errEl = document.getElementById('form-error');
-  errEl.textContent = '';
+  clearFormErrs('request-form');
 
-  const name  = document.getElementById('rf-name').value.trim();
-  const phone = document.getElementById('rf-phone').value.trim();
-  const email = document.getElementById('rf-email').value.trim();
-  if (!name)  { errEl.textContent = 'Name is required.'; return; }
-  if (!phone && !email) { errEl.textContent = 'Please provide a phone number or email.'; return; }
+  const name     = document.getElementById('rf-name').value.trim();
+  const phone    = document.getElementById('rf-phone').value.trim();
+  const email    = document.getElementById('rf-email').value.trim();
+  const startVal = document.getElementById('rf-start').value;
+  const endVal   = document.getElementById('rf-end').value;
+  const notes    = document.getElementById('rf-notes').value.trim();
+
+  let valid = true;
+  if (!name) {
+    setFieldErr('rf-name', 'Your name is required'); valid = false;
+  } else if (name.length < 2) {
+    setFieldErr('rf-name', 'Please enter your full name'); valid = false;
+  }
+  if (!phone && !email) {
+    setFieldErr('rf-phone', 'Please provide a phone number or email so we can reach you');
+    valid = false;
+  }
+  if (phone && !isValidPhone(phone)) {
+    setFieldErr('rf-phone', 'Please enter a valid phone number'); valid = false;
+  }
+  if (email && !isValidEmail(email)) {
+    setFieldErr('rf-email', 'Please enter a valid email address'); valid = false;
+  }
+  if (startVal && endVal && new Date(endVal) < new Date(startVal)) {
+    setFieldErr('rf-end', 'End date must be on or after start date'); valid = false;
+  }
+  if (notes.length > 2000) {
+    setFieldErr('rf-notes', 'Please keep notes under 2000 characters'); valid = false;
+  }
+  if (!valid) return;
 
   const checked = [...document.querySelectorAll('#interest-list input[type=checkbox]:checked')]
     .map(cb => cb.value).join(', ');
-
-  const startVal = document.getElementById('rf-start').value;
-  const endVal   = document.getElementById('rf-end').value;
 
   const body = {
     name, phone, email,
@@ -577,7 +622,7 @@ async function submitRequest(event) {
     location: document.getElementById('rf-location').value.trim(),
     start_date: startVal ? Math.floor(new Date(startVal).getTime() / 1000) : null,
     end_date:   endVal   ? Math.floor(new Date(endVal).getTime()   / 1000) : null,
-    notes: document.getElementById('rf-notes').value.trim()
+    notes
   };
 
   const btn = event.target.querySelector('button[type=submit]');
@@ -591,13 +636,15 @@ async function submitRequest(event) {
       body: JSON.stringify(body)
     });
     const data = await res.json();
-    if (data.error) { errEl.textContent = data.error; btn.disabled = false; btn.textContent = 'Send Request →'; return; }
+    if (data.error) {
+      document.getElementById('form-error').textContent = data.error;
+      btn.disabled = false; btn.textContent = 'Send Request →'; return;
+    }
     document.getElementById('request-form').style.display = 'none';
     document.getElementById('form-success').style.display = '';
   } catch {
-    errEl.textContent = 'Network error — please try again.';
-    btn.disabled = false;
-    btn.textContent = 'Send Request →';
+    document.getElementById('form-error').textContent = 'Network error — please try again.';
+    btn.disabled = false; btn.textContent = 'Send Request →';
   }
 }
 

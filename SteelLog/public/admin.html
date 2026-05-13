@@ -216,6 +216,18 @@
   #toast.err  { border-color: var(--red); color: var(--red); }
 
   select option { background: var(--bg2); }
+
+  /* ── Validation ─────────────────────────────────────────────────────────────── */
+  .field-error { color: var(--red); font-size: 0.7rem; margin-top: 0.2rem; display: block; }
+  .input-error { border-color: var(--red) !important; }
+  .auto-btn {
+    background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text2); cursor: pointer; font-family: inherit; font-size: 0.68rem;
+    letter-spacing: 1px; padding: 0.2rem 0.45rem; transition: all 0.2s; flex-shrink: 0;
+  }
+  .auto-btn:hover { border-color: var(--accent); color: var(--accent); }
+  .input-row { display: flex; gap: 0.4rem; align-items: center; }
+  .input-row input { flex: 1; }
 </style>
 </head>
 <body>
@@ -340,7 +352,13 @@
     <input type="hidden" id="jm-id">
     <input type="hidden" id="jm-req-id">
     <div class="form-row">
-      <div class="form-group"><label>CONTRACT #</label><input id="jm-contract" type="text" placeholder="optional"></div>
+      <div class="form-group">
+        <label>CONTRACT #</label>
+        <div class="input-row">
+          <input id="jm-contract" type="text" placeholder="auto-generated">
+          <button type="button" class="auto-btn" onclick="autoContract()">↻ AUTO</button>
+        </div>
+      </div>
       <div class="form-group"><label>STATUS</label>
         <select id="jm-status">
           <option value="active">Active</option>
@@ -734,8 +752,8 @@ function convertRequest(id) {
 }
 
 // ── Job modal ─────────────────────────────────────────────────────────────────
-function openNewJob() {
-  document.getElementById('job-modal-title').textContent = 'NEW JOB';
+function clearJobModal() {
+  clearFieldErrors('job-modal-overlay');
   document.getElementById('jm-id').value       = '';
   document.getElementById('jm-req-id').value   = '';
   document.getElementById('jm-contract').value = '';
@@ -749,12 +767,18 @@ function openNewJob() {
   document.getElementById('jm-rate').value     = '';
   document.getElementById('jm-notes').value    = '';
   buildEquipPicker([]);
+}
+
+async function openNewJob() {
+  document.getElementById('job-modal-title').textContent = 'NEW JOB';
+  clearJobModal();
   document.getElementById('job-modal-overlay').classList.add('open');
+  await autoContract();
 }
 
 function openNewJobFromRequest(reqId, clientName, contact, location, startDate, endDate, interest, notes) {
-  openNewJob();
   document.getElementById('job-modal-title').textContent = 'NEW JOB FROM REQUEST';
+  clearJobModal();
   document.getElementById('jm-req-id').value   = reqId;
   document.getElementById('jm-client').value   = clientName || '';
   document.getElementById('jm-contact').value  = contact || '';
@@ -763,6 +787,7 @@ function openNewJobFromRequest(reqId, clientName, contact, location, startDate, 
   document.getElementById('jm-end').value      = endDate   ? isoDate(endDate)   : '';
   document.getElementById('jm-purpose').value  = interest || '';
   document.getElementById('jm-notes').value    = notes || '';
+  document.getElementById('job-modal-overlay').classList.add('open');
 }
 
 function openEditJob(id) {
@@ -809,20 +834,33 @@ function toggleEquipQty(eid) {
   document.getElementById('epq-' + eid).disabled = !cb.checked;
 }
 
-function closeJobModal() { document.getElementById('job-modal-overlay').classList.remove('open'); }
+function closeJobModal()   { document.getElementById('job-modal-overlay').classList.remove('open'); clearFieldErrors('job-modal-overlay'); }
 
 async function saveJob() {
-  const id        = document.getElementById('jm-id').value;
-  const reqId     = document.getElementById('jm-req-id').value;
+  clearFieldErrors('job-modal-overlay');
+  const id          = document.getElementById('jm-id').value;
+  const reqId       = document.getElementById('jm-req-id').value;
   const client_name = document.getElementById('jm-client').value.trim();
-  if (!client_name) { toast('Client name is required', true); return; }
+  const startVal    = document.getElementById('jm-start').value;
+  const endVal      = document.getElementById('jm-end').value;
+  const rateRaw     = document.getElementById('jm-rate').value;
+
+  let valid = true;
+  if (!client_name) {
+    showFieldError('jm-client', 'Client name is required'); valid = false;
+  }
+  if (startVal && endVal && new Date(endVal) < new Date(startVal)) {
+    showFieldError('jm-end', 'End date must be on or after start date'); valid = false;
+  }
+  if (rateRaw !== '' && (isNaN(parseFloat(rateRaw)) || parseFloat(rateRaw) < 0)) {
+    showFieldError('jm-rate', 'Rate must be a positive number'); valid = false;
+  }
+  if (!valid) return;
 
   const selectedEquip = equip
     .filter(e => document.getElementById('ep-' + e.id)?.checked)
     .map(e => ({ equipment_id: e.id, quantity: parseFloat(document.getElementById('epq-' + e.id)?.value) || 1 }));
 
-  const startVal = document.getElementById('jm-start').value;
-  const endVal   = document.getElementById('jm-end').value;
   const body = {
     contract_number: document.getElementById('jm-contract').value.trim(),
     status:          document.getElementById('jm-status').value,
@@ -867,12 +905,14 @@ function openEquipModal(id) {
   document.getElementById('equip-modal-overlay').classList.add('open');
 }
 function openEditEquip(id) { openEquipModal(id); }
-function closeEquipModal() { document.getElementById('equip-modal-overlay').classList.remove('open'); }
+function closeEquipModal() { document.getElementById('equip-modal-overlay').classList.remove('open'); clearFieldErrors('equip-modal-overlay'); }
 
 async function saveEquipment() {
+  clearFieldErrors('equip-modal-overlay');
   const id   = document.getElementById('em-id').value;
   const name = document.getElementById('em-name').value.trim();
-  if (!name) { toast('Name is required', true); return; }
+  if (!name) { showFieldError('em-name', 'Name is required'); return; }
+  if (name.length < 2) { showFieldError('em-name', 'Name must be at least 2 characters'); return; }
   const body = {
     name, category: document.getElementById('em-category').value.trim(),
     description: document.getElementById('em-desc').value.trim(),
@@ -899,12 +939,18 @@ function openSvcModal(id) {
   document.getElementById('svc-modal-overlay').classList.add('open');
 }
 function openEditSvc(id) { openSvcModal(id); }
-function closeSvcModal() { document.getElementById('svc-modal-overlay').classList.remove('open'); }
+function closeSvcModal() { document.getElementById('svc-modal-overlay').classList.remove('open'); clearFieldErrors('svc-modal-overlay'); }
 
 async function saveService() {
+  clearFieldErrors('svc-modal-overlay');
   const id   = document.getElementById('sm-id').value;
   const name = document.getElementById('sm-name').value.trim();
-  if (!name) { toast('Name is required', true); return; }
+  if (!name) { showFieldError('sm-name', 'Name is required'); return; }
+  if (name.length < 2) { showFieldError('sm-name', 'Name must be at least 2 characters'); return; }
+  const orderVal = document.getElementById('sm-order').value;
+  if (orderVal !== '' && (isNaN(parseInt(orderVal)) || parseInt(orderVal) < 0)) {
+    showFieldError('sm-order', 'Sort order must be a non-negative number'); return;
+  }
   const body = {
     name, description: document.getElementById('sm-desc').value.trim(),
     icon: document.getElementById('sm-icon').value.trim(),
@@ -1043,6 +1089,42 @@ function toast(msg, err = false) {
 
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Validation helpers ────────────────────────────────────────────────────────
+function showFieldError(inputId, msg) {
+  const el = document.getElementById(inputId);
+  if (!el) return;
+  el.classList.add('input-error');
+  const existing = el.parentElement.querySelector('.field-error');
+  if (existing) { existing.textContent = msg; return; }
+  const err = document.createElement('span');
+  err.className = 'field-error';
+  err.textContent = msg;
+  el.parentElement.appendChild(err);
+}
+function clearFieldErrors(modalId) {
+  const modal = document.getElementById(modalId);
+  if (!modal) return;
+  modal.querySelectorAll('.input-error').forEach(el => el.classList.remove('input-error'));
+  modal.querySelectorAll('.field-error').forEach(el => el.remove());
+}
+function isValidEmail(e) { return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(e); }
+
+// ── Contract number auto-generation ──────────────────────────────────────────
+function derivePrefix() {
+  const firstChecked = equip.find(e => document.getElementById('ep-' + e.id)?.checked);
+  if (firstChecked) return firstChecked.name.replace(/[^a-zA-Z]/g,'').slice(0,3).toUpperCase().padEnd(3,'X');
+  const client = document.getElementById('jm-client')?.value.trim();
+  if (client) return client.replace(/[^a-zA-Z]/g,'').slice(0,3).toUpperCase().padEnd(3,'X');
+  const purpose = document.getElementById('jm-purpose')?.value.trim();
+  if (purpose) return purpose.replace(/[^a-zA-Z]/g,'').slice(0,3).toUpperCase().padEnd(3,'X');
+  return 'JOB';
+}
+async function autoContract() {
+  const prefix = derivePrefix();
+  const r = await api('/api/contract-number?prefix=' + prefix);
+  if (r.number) document.getElementById('jm-contract').value = r.number;
 }
 
 // ── Boot ──────────────────────────────────────────────────────────────────────
