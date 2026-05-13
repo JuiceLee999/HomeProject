@@ -1,0 +1,1059 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>SteelLog Admin</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg:       #0a0e17;
+    --bg2:      #111827;
+    --bg3:      #1a2333;
+    --border:   #1e3a5f;
+    --accent:   #3b82f6;
+    --accent2:  #1d4ed8;
+    --text:     #c8d8f0;
+    --text2:    #6b8db5;
+    --green:    #22c55e;
+    --yellow:   #eab308;
+    --orange:   #f97316;
+    --blue:     #3b82f6;
+    --gray:     #64748b;
+    --red:      #ef4444;
+    --radius:   4px;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--text); font-family: 'Share Tech Mono', monospace; min-height: 100vh; }
+
+  /* ── Auth ─────────────────────────────────────────────────────────────────── */
+  #auth-screen {
+    display: flex; align-items: center; justify-content: center;
+    min-height: 100vh; padding: 1rem;
+  }
+  .auth-box {
+    background: var(--bg2); border: 1px solid var(--border);
+    border-radius: var(--radius); padding: 2rem; width: 100%; max-width: 380px;
+  }
+  .auth-logo { text-align: center; margin-bottom: 1.5rem; }
+  .auth-logo h1 { font-size: 1.6rem; color: var(--accent); letter-spacing: 4px; }
+  .auth-logo p  { color: var(--text2); font-size: 0.75rem; margin-top: 0.25rem; }
+  .tab-row { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
+  .tab-btn {
+    flex: 1; background: none; border: none; border-bottom: 2px solid transparent;
+    color: var(--text2); cursor: pointer; font-family: inherit; font-size: 0.85rem;
+    padding: 0.5rem; margin-bottom: -1px; letter-spacing: 2px; transition: color 0.2s;
+  }
+  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
+  .form-group { margin-bottom: 1rem; }
+  .form-group label { display: block; color: var(--text2); font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 0.35rem; }
+  .form-group input, .form-group select, .form-group textarea {
+    width: 100%; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: var(--radius); color: var(--text); font-family: inherit;
+    font-size: 0.85rem; padding: 0.55rem 0.75rem; outline: none; transition: border-color 0.2s;
+  }
+  .form-group input:focus, .form-group select:focus, .form-group textarea:focus { border-color: var(--accent); }
+  .form-group textarea { resize: vertical; min-height: 70px; }
+  .btn {
+    background: var(--accent); border: none; border-radius: var(--radius);
+    color: #fff; cursor: pointer; font-family: inherit; font-size: 0.85rem;
+    letter-spacing: 2px; padding: 0.6rem 1.2rem; transition: background 0.2s;
+  }
+  .btn:hover { background: var(--accent2); }
+  .btn-full { width: 100%; }
+  .btn-sm { font-size: 0.75rem; padding: 0.3rem 0.7rem; }
+  .btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); }
+  .btn-danger:hover { background: var(--red); color: #fff; }
+  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text2); }
+  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
+  .btn-warn { background: transparent; border: 1px solid var(--orange); color: var(--orange); }
+  .btn-warn:hover { background: var(--orange); color: #fff; }
+  .btn-success { background: transparent; border: 1px solid var(--green); color: var(--green); }
+  .btn-success:hover { background: var(--green); color: #000; }
+  .auth-err { color: var(--red); font-size: 0.78rem; margin-top: 0.75rem; text-align: center; min-height: 1.2em; }
+
+  /* ── App shell ────────────────────────────────────────────────────────────── */
+  #app { display: none; flex-direction: column; min-height: 100vh; }
+  header {
+    background: var(--bg2); border-bottom: 1px solid var(--border);
+    display: flex; align-items: center; gap: 1rem; padding: 0.7rem 1.2rem; flex-wrap: wrap;
+  }
+  header h1 { color: var(--accent); font-size: 1.1rem; letter-spacing: 4px; flex: 1; }
+  .header-email { color: var(--text2); font-size: 0.75rem; }
+  .nav-row {
+    display: flex; gap: 0.4rem; padding: 0.6rem 1.2rem;
+    background: var(--bg2); border-bottom: 1px solid var(--border); align-items: center; flex-wrap: wrap;
+  }
+  .nav-btn {
+    background: none; border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text2); cursor: pointer; font-family: inherit; font-size: 0.72rem;
+    letter-spacing: 1px; padding: 0.3rem 0.7rem; transition: all 0.2s; position: relative;
+  }
+  .nav-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .nav-btn:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
+  .badge {
+    background: var(--orange); border-radius: 8px; color: #fff; font-size: 0.65rem;
+    min-width: 16px; padding: 0 4px; position: absolute; right: -6px; top: -6px;
+    text-align: center; line-height: 16px; height: 16px;
+  }
+  .nav-spacer { flex: 1; }
+
+  /* ── Filter bar ───────────────────────────────────────────────────────────── */
+  .filter-bar {
+    display: flex; gap: 0.5rem; padding: 0.7rem 1.2rem;
+    background: var(--bg); border-bottom: 1px solid var(--border); flex-wrap: wrap; align-items: center;
+  }
+  .filter-bar input, .filter-bar select {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text); font-family: inherit; font-size: 0.8rem; padding: 0.35rem 0.7rem; outline: none;
+  }
+  .filter-bar input:focus, .filter-bar select:focus { border-color: var(--accent); }
+  .filter-bar input { flex: 1; min-width: 160px; }
+
+  /* ── Content ──────────────────────────────────────────────────────────────── */
+  main { flex: 1; padding: 1rem 1.2rem; }
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 0.75rem; }
+  .empty-state { color: var(--text2); text-align: center; margin-top: 4rem; font-size: 0.85rem; letter-spacing: 1px; }
+
+  /* ── Job card ─────────────────────────────────────────────────────────────── */
+  .job-card {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1rem; transition: border-color 0.2s;
+  }
+  .job-card:hover { border-color: var(--accent); }
+  .job-card-header { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.6rem; }
+  .contract-num { color: var(--text2); font-size: 0.75rem; flex: 1; letter-spacing: 1px; }
+  .status-badge {
+    border-radius: 2px; font-size: 0.7rem; letter-spacing: 1px; padding: 0.15rem 0.45rem;
+    text-transform: uppercase; white-space: nowrap;
+  }
+  .status-active    { background: rgba(34,197,94,0.15);  color: var(--green);  border: 1px solid var(--green);  }
+  .status-completed { background: rgba(234,179,8,0.15);  color: var(--yellow); border: 1px solid var(--yellow); }
+  .status-invoiced  { background: rgba(59,130,246,0.15); color: var(--blue);   border: 1px solid var(--blue);   }
+  .status-paid      { background: rgba(100,116,139,0.2); color: var(--gray);   border: 1px solid var(--gray);   }
+  .status-new       { background: rgba(249,115,22,0.15); color: var(--orange); border: 1px solid var(--orange); }
+  .status-reviewing { background: rgba(234,179,8,0.15);  color: var(--yellow); border: 1px solid var(--yellow); }
+  .status-converted { background: rgba(34,197,94,0.15);  color: var(--green);  border: 1px solid var(--green);  }
+  .status-declined  { background: rgba(100,116,139,0.2); color: var(--gray);   border: 1px solid var(--gray);   }
+  .job-client { color: var(--text); font-size: 1rem; margin-bottom: 0.5rem; }
+  .job-meta { color: var(--text2); font-size: 0.78rem; line-height: 1.7; }
+  .job-meta .label { color: var(--accent); margin-right: 0.4rem; }
+  .job-equip { margin-top: 0.5rem; color: var(--text2); font-size: 0.78rem; }
+  .job-equip-tag {
+    display: inline-block; background: var(--bg3); border: 1px solid var(--border);
+    border-radius: 2px; font-size: 0.72rem; margin: 0.15rem 0.15rem 0 0; padding: 0.1rem 0.4rem;
+  }
+  .job-actions { display: flex; gap: 0.4rem; margin-top: 0.75rem; justify-content: flex-end; flex-wrap: wrap; }
+
+  /* ── Equipment table ──────────────────────────────────────────────────────── */
+  .equip-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
+  .equip-table th {
+    border-bottom: 1px solid var(--border); color: var(--text2);
+    font-weight: normal; letter-spacing: 1px; padding: 0.5rem 0.75rem; text-align: left;
+  }
+  .equip-table td { border-bottom: 1px solid var(--border); padding: 0.55rem 0.75rem; }
+  .equip-table tr:hover td { background: var(--bg3); }
+  .equip-cat { color: var(--text2); font-size: 0.75rem; }
+
+  /* ── Gallery grid ─────────────────────────────────────────────────────────── */
+  .gallery-admin-grid {
+    display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 0.75rem;
+  }
+  .gallery-thumb {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius); overflow: hidden;
+  }
+  .gallery-thumb img { width: 100%; height: 160px; object-fit: cover; display: block; }
+  .gallery-thumb-footer { padding: 0.5rem; }
+  .gallery-thumb-caption { color: var(--text2); font-size: 0.75rem; margin-bottom: 0.4rem; min-height: 1em; }
+  .gallery-thumb-actions { display: flex; gap: 0.3rem; }
+
+  /* ── Modal ────────────────────────────────────────────────────────────────── */
+  .modal-overlay {
+    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
+    display: none; align-items: center; justify-content: center;
+    padding: 1rem; z-index: 100;
+  }
+  .modal-overlay.open { display: flex; }
+  .modal {
+    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
+    max-height: 90vh; overflow-y: auto; padding: 1.5rem; width: 100%; max-width: 560px;
+  }
+  .modal h2 { color: var(--accent); font-size: 0.95rem; letter-spacing: 2px; margin-bottom: 1.25rem; }
+  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
+  .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
+
+  /* ── Equipment picker ─────────────────────────────────────────────────────── */
+  .equip-picker { border: 1px solid var(--border); border-radius: var(--radius); padding: 0.5rem; max-height: 180px; overflow-y: auto; }
+  .equip-picker-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0; }
+  .equip-picker-row label { flex: 1; font-size: 0.82rem; cursor: pointer; }
+  .equip-picker-row input[type=checkbox] { accent-color: var(--accent); cursor: pointer; }
+  .equip-picker-qty {
+    background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
+    color: var(--text); font-family: inherit; font-size: 0.78rem;
+    padding: 0.15rem 0.4rem; width: 52px; text-align: center;
+  }
+  .equip-picker-qty:focus { border-color: var(--accent); outline: none; }
+
+  /* ── Gallery upload preview ───────────────────────────────────────────────── */
+  #gallery-preview-wrap { margin: 0.5rem 0; display: none; }
+  #gallery-preview { max-width: 100%; max-height: 200px; object-fit: contain; border: 1px solid var(--border); border-radius: var(--radius); }
+  .file-drop-zone {
+    border: 2px dashed var(--border); border-radius: var(--radius); cursor: pointer;
+    padding: 1.5rem; text-align: center; color: var(--text2); font-size: 0.82rem;
+    transition: border-color 0.2s;
+  }
+  .file-drop-zone:hover { border-color: var(--accent); color: var(--accent); }
+
+  /* ── Toast ────────────────────────────────────────────────────────────────── */
+  #toast {
+    background: var(--bg3); border: 1px solid var(--accent); border-radius: var(--radius);
+    bottom: 1.5rem; color: var(--text); font-size: 0.82rem; letter-spacing: 1px;
+    opacity: 0; padding: 0.6rem 1rem; position: fixed; right: 1.5rem;
+    transition: opacity 0.3s; z-index: 200; pointer-events: none;
+  }
+  #toast.show { opacity: 1; }
+  #toast.err  { border-color: var(--red); color: var(--red); }
+
+  select option { background: var(--bg2); }
+</style>
+</head>
+<body>
+
+<!-- ── Auth screen ─────────────────────────────────────────────────────────── -->
+<div id="auth-screen">
+  <div class="auth-box">
+    <div class="auth-logo">
+      <h1>STEELLOG</h1>
+      <p>admin</p>
+    </div>
+    <div class="tab-row">
+      <button class="tab-btn active" onclick="switchTab('login')">LOGIN</button>
+      <button class="tab-btn" onclick="switchTab('register')">REGISTER</button>
+    </div>
+    <div id="login-form">
+      <div class="form-group"><label>EMAIL</label><input id="l-email" type="email" autocomplete="email"></div>
+      <div class="form-group"><label>PASSWORD</label><input id="l-pass" type="password" autocomplete="current-password"></div>
+      <button class="btn btn-full" onclick="doLogin()">LOGIN</button>
+    </div>
+    <div id="register-form" style="display:none">
+      <div class="form-group"><label>EMAIL</label><input id="r-email" type="email" autocomplete="email"></div>
+      <div class="form-group"><label>PASSWORD</label><input id="r-pass" type="password" autocomplete="new-password"></div>
+      <button class="btn btn-full" onclick="doRegister()">CREATE ACCOUNT</button>
+    </div>
+    <div class="auth-err" id="auth-err"></div>
+  </div>
+</div>
+
+<!-- ── App ─────────────────────────────────────────────────────────────────── -->
+<div id="app">
+  <header>
+    <h1>STEELLOG <span style="color:var(--text2);font-size:0.7rem;letter-spacing:1px">ADMIN</span></h1>
+    <span class="header-email" id="header-email"></span>
+    <button class="btn btn-sm btn-ghost" onclick="doLogout()">LOGOUT</button>
+  </header>
+  <div class="nav-row">
+    <button class="nav-btn active" id="nav-jobs"     onclick="showView('jobs')">JOBS</button>
+    <button class="nav-btn"        id="nav-equip"    onclick="showView('equipment')">EQUIPMENT</button>
+    <button class="nav-btn"        id="nav-services" onclick="showView('services')">SERVICES</button>
+    <button class="nav-btn"        id="nav-gallery"  onclick="showView('gallery')">GALLERY</button>
+    <button class="nav-btn" style="position:relative" id="nav-requests" onclick="showView('requests')">
+      REQUESTS<span class="badge" id="req-badge" style="display:none">0</span>
+    </button>
+    <div class="nav-spacer"></div>
+    <button class="btn btn-sm" id="new-btn" onclick="handleNewBtn()">+ NEW JOB</button>
+  </div>
+
+  <!-- Jobs view -->
+  <div id="view-jobs">
+    <div class="filter-bar">
+      <input id="search-input" type="text" placeholder="search client / contract / location..." oninput="renderJobs()">
+      <select id="status-filter" onchange="renderJobs()">
+        <option value="">ALL STATUS</option>
+        <option value="active">ACTIVE</option>
+        <option value="completed">COMPLETED</option>
+        <option value="invoiced">INVOICED</option>
+        <option value="paid">PAID</option>
+      </select>
+    </div>
+    <main>
+      <div class="grid" id="jobs-grid"></div>
+      <div class="empty-state" id="jobs-empty" style="display:none">NO JOBS FOUND</div>
+    </main>
+  </div>
+
+  <!-- Equipment view -->
+  <div id="view-equipment" style="display:none">
+    <div class="filter-bar"><div class="nav-spacer"></div></div>
+    <main>
+      <table class="equip-table" id="equip-table">
+        <thead><tr><th>NAME</th><th>CATEGORY</th><th>DESCRIPTION</th><th></th></tr></thead>
+        <tbody id="equip-tbody"></tbody>
+      </table>
+      <div class="empty-state" id="equip-empty" style="display:none">NO EQUIPMENT — ADD SOME</div>
+    </main>
+  </div>
+
+  <!-- Services view -->
+  <div id="view-services" style="display:none">
+    <div class="filter-bar"><div class="nav-spacer"></div></div>
+    <main>
+      <table class="equip-table" id="svc-table">
+        <thead><tr><th>ICON</th><th>NAME</th><th>DESCRIPTION</th><th>ORDER</th><th></th></tr></thead>
+        <tbody id="svc-tbody"></tbody>
+      </table>
+      <div class="empty-state" id="svc-empty" style="display:none">NO SERVICES — ADD SOME</div>
+    </main>
+  </div>
+
+  <!-- Gallery view -->
+  <div id="view-gallery" style="display:none">
+    <div class="filter-bar"><div class="nav-spacer"></div></div>
+    <main>
+      <div class="gallery-admin-grid" id="gallery-grid"></div>
+      <div class="empty-state" id="gallery-empty" style="display:none">NO PHOTOS — UPLOAD SOME</div>
+    </main>
+  </div>
+
+  <!-- Requests view -->
+  <div id="view-requests" style="display:none">
+    <div class="filter-bar">
+      <select id="req-status-filter" onchange="renderRequests()">
+        <option value="">ALL STATUS</option>
+        <option value="new">NEW</option>
+        <option value="reviewing">REVIEWING</option>
+        <option value="converted">CONVERTED</option>
+        <option value="declined">DECLINED</option>
+      </select>
+    </div>
+    <main>
+      <div class="grid" id="requests-grid"></div>
+      <div class="empty-state" id="requests-empty" style="display:none">NO REQUESTS YET</div>
+    </main>
+  </div>
+</div>
+
+<!-- ── Job modal ──────────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="job-modal-overlay" onclick="overlayClose(event,'job-modal-overlay')">
+  <div class="modal">
+    <h2 id="job-modal-title">NEW JOB</h2>
+    <input type="hidden" id="jm-id">
+    <input type="hidden" id="jm-req-id">
+    <div class="form-row">
+      <div class="form-group"><label>CONTRACT #</label><input id="jm-contract" type="text" placeholder="optional"></div>
+      <div class="form-group"><label>STATUS</label>
+        <select id="jm-status">
+          <option value="active">Active</option>
+          <option value="completed">Completed</option>
+          <option value="invoiced">Invoiced</option>
+          <option value="paid">Paid</option>
+        </select>
+      </div>
+    </div>
+    <div class="form-row">
+      <div class="form-group"><label>WHO — CLIENT NAME *</label><input id="jm-client" type="text" placeholder="required"></div>
+      <div class="form-group"><label>CLIENT CONTACT</label><input id="jm-contact" type="text" placeholder="phone / email"></div>
+    </div>
+    <div class="form-group"><label>WHERE — JOB SITE LOCATION</label><input id="jm-location" type="text"></div>
+    <div class="form-row">
+      <div class="form-group"><label>WHEN — START DATE</label><input id="jm-start" type="date"></div>
+      <div class="form-group"><label>WHEN — END DATE</label><input id="jm-end" type="date"></div>
+    </div>
+    <div class="form-group"><label>WHY — PURPOSE / PROJECT</label><input id="jm-purpose" type="text"></div>
+    <div class="form-group"><label>RATE ($)</label><input id="jm-rate" type="number" min="0" step="0.01"></div>
+    <div class="form-group">
+      <label>WHAT — EQUIPMENT USED</label>
+      <div class="equip-picker" id="equip-picker"><span style="color:var(--text2);font-size:0.78rem">loading...</span></div>
+    </div>
+    <div class="form-group"><label>NOTES</label><textarea id="jm-notes" rows="3"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeJobModal()">CANCEL</button>
+      <button class="btn btn-sm" onclick="saveJob()">SAVE JOB</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Equipment modal ────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="equip-modal-overlay" onclick="overlayClose(event,'equip-modal-overlay')">
+  <div class="modal" style="max-width:420px">
+    <h2 id="equip-modal-title">ADD EQUIPMENT</h2>
+    <input type="hidden" id="em-id">
+    <div class="form-group"><label>NAME *</label><input id="em-name" type="text"></div>
+    <div class="form-group"><label>CATEGORY</label><input id="em-category" type="text" placeholder="e.g. Excavator, Truck, Crane"></div>
+    <div class="form-group"><label>DESCRIPTION</label><input id="em-desc" type="text"></div>
+    <div class="form-group"><label>NOTES</label><textarea id="em-notes" rows="2"></textarea></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeEquipModal()">CANCEL</button>
+      <button class="btn btn-sm" onclick="saveEquipment()">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Service modal ──────────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="svc-modal-overlay" onclick="overlayClose(event,'svc-modal-overlay')">
+  <div class="modal" style="max-width:420px">
+    <h2 id="svc-modal-title">ADD SERVICE</h2>
+    <input type="hidden" id="sm-id">
+    <div class="form-group"><label>NAME *</label><input id="sm-name" type="text"></div>
+    <div class="form-group"><label>DESCRIPTION</label><textarea id="sm-desc" rows="3" placeholder="What does this service include?"></textarea></div>
+    <div class="form-row">
+      <div class="form-group"><label>ICON (emoji)</label><input id="sm-icon" type="text" placeholder="🚜"></div>
+      <div class="form-group"><label>SORT ORDER</label><input id="sm-order" type="number" value="0" min="0"></div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeSvcModal()">CANCEL</button>
+      <button class="btn btn-sm" onclick="saveService()">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Gallery upload modal ───────────────────────────────────────────────── -->
+<div class="modal-overlay" id="gallery-modal-overlay" onclick="overlayClose(event,'gallery-modal-overlay')">
+  <div class="modal" style="max-width:440px">
+    <h2 id="gallery-modal-title">UPLOAD PHOTO</h2>
+    <input type="hidden" id="gm-id">
+    <div id="gallery-upload-section">
+      <div class="file-drop-zone" onclick="document.getElementById('gallery-file-input').click()">
+        CLICK TO SELECT PHOTO
+      </div>
+      <input type="file" id="gallery-file-input" accept="image/*" style="display:none" onchange="onGalleryFile(event)">
+    </div>
+    <div id="gallery-preview-wrap"><img id="gallery-preview" src="" alt="preview"></div>
+    <div class="form-group" style="margin-top:0.75rem"><label>CAPTION</label><input id="gm-caption" type="text" placeholder="optional"></div>
+    <div class="form-group"><label>SORT ORDER</label><input id="gm-order" type="number" value="0" min="0"></div>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeGalleryModal()">CANCEL</button>
+      <button class="btn btn-sm" onclick="saveGallery()">SAVE</button>
+    </div>
+  </div>
+</div>
+
+<!-- ── Delete confirm modal ────────────────────────────────────────────────── -->
+<div class="modal-overlay" id="del-modal-overlay">
+  <div class="modal" style="max-width:360px">
+    <h2>CONFIRM DELETE</h2>
+    <p id="del-msg" style="color:var(--text2);font-size:0.85rem;margin-bottom:1.25rem"></p>
+    <div class="modal-actions">
+      <button class="btn btn-ghost btn-sm" onclick="closeDelModal()">CANCEL</button>
+      <button class="btn btn-danger btn-sm" id="del-confirm-btn">DELETE</button>
+    </div>
+  </div>
+</div>
+
+<div id="toast"></div>
+
+<script>
+const BASE = '/' + window.location.pathname.split('/').filter(Boolean)[0];
+
+let token    = localStorage.getItem('sl_token') || '';
+let email    = localStorage.getItem('sl_email') || '';
+let jobs     = [];
+let equip    = [];
+let services = [];
+let gallery  = [];
+let requests = [];
+let curView  = 'jobs';
+let galleryImageData = null;
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
+function switchTab(tab) {
+  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', (i===0) === (tab==='login')));
+  document.getElementById('login-form').style.display    = tab === 'login'    ? '' : 'none';
+  document.getElementById('register-form').style.display = tab === 'register' ? '' : 'none';
+  document.getElementById('auth-err').textContent = '';
+}
+
+async function doLogin() {
+  const e = document.getElementById('l-email').value.trim();
+  const p = document.getElementById('l-pass').value;
+  const r = await api('/api/login', 'POST', { email: e, password: p }, true);
+  if (r.error) { document.getElementById('auth-err').textContent = r.error; return; }
+  setAuth(r.token, r.email);
+}
+
+async function doRegister() {
+  const e = document.getElementById('r-email').value.trim();
+  const p = document.getElementById('r-pass').value;
+  const r = await api('/api/register', 'POST', { email: e, password: p }, true);
+  if (r.error) { document.getElementById('auth-err').textContent = r.error; return; }
+  setAuth(r.token, r.email);
+}
+
+async function doLogout() {
+  await api('/api/logout', 'POST');
+  localStorage.removeItem('sl_token');
+  localStorage.removeItem('sl_email');
+  token = ''; email = '';
+  document.getElementById('app').style.display = 'none';
+  document.getElementById('auth-screen').style.display = 'flex';
+}
+
+function setAuth(t, em) {
+  token = t; email = em;
+  localStorage.setItem('sl_token', t);
+  localStorage.setItem('sl_email', em);
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('header-email').textContent = em;
+  loadAll();
+}
+
+// ── API helper ────────────────────────────────────────────────────────────────
+async function api(path, method = 'GET', body = null, noAuth = false) {
+  const headers = { 'Content-Type': 'application/json' };
+  if (!noAuth && token) headers['Authorization'] = 'Bearer ' + token;
+  try {
+    const res = await fetch(BASE + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
+    const data = await res.json();
+    if (res.status === 401 && !noAuth) { doLogout(); return {}; }
+    return data;
+  } catch { return { error: 'Network error' }; }
+}
+
+// ── Load data ─────────────────────────────────────────────────────────────────
+async function loadAll() {
+  const [j, e, s, g, r] = await Promise.all([
+    api('/api/jobs'), api('/api/equipment'), api('/api/services'),
+    api('/api/gallery'), api('/api/requests')
+  ]);
+  jobs     = Array.isArray(j) ? j : [];
+  equip    = Array.isArray(e) ? e : [];
+  services = Array.isArray(s) ? s : [];
+  gallery  = Array.isArray(g) ? g : [];
+  requests = Array.isArray(r) ? r : [];
+  renderJobs();
+  renderEquip();
+  renderServices();
+  renderGallery();
+  renderRequests();
+  updateReqBadge();
+}
+
+// ── Views ─────────────────────────────────────────────────────────────────────
+const VIEWS = ['jobs','equipment','services','gallery','requests'];
+function showView(v) {
+  curView = v;
+  VIEWS.forEach(id => document.getElementById('view-' + id).style.display = id === v ? '' : 'none');
+  VIEWS.forEach(id => document.getElementById('nav-' + id)?.classList.toggle('active', id === v));
+  const labels = { jobs:'+ NEW JOB', equipment:'+ ADD EQUIPMENT', services:'+ ADD SERVICE', gallery:'+ UPLOAD PHOTO', requests:null };
+  const nb = document.getElementById('new-btn');
+  if (labels[v]) { nb.textContent = labels[v]; nb.style.display = ''; }
+  else { nb.style.display = 'none'; }
+}
+
+function handleNewBtn() {
+  if (curView === 'jobs')      openNewJob();
+  else if (curView === 'equipment') openEquipModal();
+  else if (curView === 'services')  openSvcModal();
+  else if (curView === 'gallery')   openGalleryModal();
+}
+
+// ── Jobs rendering ────────────────────────────────────────────────────────────
+function renderJobs() {
+  const q      = (document.getElementById('search-input').value || '').toLowerCase();
+  const status = document.getElementById('status-filter').value;
+  const grid   = document.getElementById('jobs-grid');
+  const empty  = document.getElementById('jobs-empty');
+  const filtered = jobs.filter(j => {
+    if (status && j.status !== status) return false;
+    if (q) {
+      const hay = [j.client_name, j.contract_number, j.location, j.purpose, j.client_contact].join(' ').toLowerCase();
+      if (!hay.includes(q)) return false;
+    }
+    return true;
+  });
+  grid.innerHTML = '';
+  if (!filtered.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  filtered.forEach(j => grid.appendChild(jobCard(j)));
+}
+
+function fmtDate(unix) {
+  if (!unix) return '';
+  return new Date(unix * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+}
+
+function fmtRate(r) {
+  if (!r) return '';
+  return '$' + Number(r).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+}
+
+function jobCard(j) {
+  const card = document.createElement('div');
+  card.className = 'job-card';
+  const dateRange = [fmtDate(j.start_date), fmtDate(j.end_date)].filter(Boolean).join(' — ');
+  const equipTags = (j.equipment || []).map(e =>
+    `<span class="job-equip-tag">${esc(e.name)}${e.quantity != 1 ? ' ×'+e.quantity : ''}</span>`
+  ).join('');
+  card.innerHTML = `
+    <div class="job-card-header">
+      <span class="contract-num">${j.contract_number ? '#' + esc(j.contract_number) : '&nbsp;'}</span>
+      <span class="status-badge status-${j.status}">${j.status}</span>
+    </div>
+    <div class="job-client">${esc(j.client_name)}</div>
+    <div class="job-meta">
+      ${j.location    ? `<div><span class="label">WHERE</span>${esc(j.location)}</div>` : ''}
+      ${dateRange     ? `<div><span class="label">WHEN</span>${dateRange}</div>` : ''}
+      ${j.purpose     ? `<div><span class="label">WHY</span>${esc(j.purpose)}</div>` : ''}
+      ${j.client_contact ? `<div><span class="label">CONTACT</span>${esc(j.client_contact)}</div>` : ''}
+      ${j.rate > 0    ? `<div><span class="label">RATE</span>${fmtRate(j.rate)}</div>` : ''}
+    </div>
+    ${equipTags ? `<div class="job-equip"><span style="color:var(--text2);font-size:0.72rem">EQUIP: </span>${equipTags}</div>` : ''}
+    <div class="job-actions">
+      <button class="btn btn-sm btn-ghost" onclick="openEditJob(${j.id})">EDIT</button>
+      <button class="btn btn-sm btn-danger" onclick="confirmDeleteJob(${j.id},'${esc(j.client_name)}')">DEL</button>
+    </div>`;
+  return card;
+}
+
+// ── Equipment rendering ───────────────────────────────────────────────────────
+function renderEquip() {
+  const tbody = document.getElementById('equip-tbody');
+  const empty = document.getElementById('equip-empty');
+  tbody.innerHTML = '';
+  if (!equip.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  equip.forEach(e => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td>${esc(e.name)}</td><td class="equip-cat">${esc(e.category)}</td>
+      <td style="color:var(--text2)">${esc(e.description)}</td>
+      <td><div style="display:flex;gap:0.4rem;justify-content:flex-end">
+        <button class="btn btn-sm btn-ghost" onclick="openEditEquip(${e.id})">EDIT</button>
+        <button class="btn btn-sm btn-danger" onclick="confirmDeleteEquip(${e.id},'${esc(e.name)}')">DEL</button>
+      </div></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Services rendering ────────────────────────────────────────────────────────
+function renderServices() {
+  const tbody = document.getElementById('svc-tbody');
+  const empty = document.getElementById('svc-empty');
+  tbody.innerHTML = '';
+  if (!services.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  services.forEach(s => {
+    const tr = document.createElement('tr');
+    tr.innerHTML = `
+      <td style="font-size:1.3rem">${esc(s.icon)}</td>
+      <td>${esc(s.name)}</td>
+      <td style="color:var(--text2);font-size:0.78rem">${esc(s.description)}</td>
+      <td style="color:var(--text2)">${s.sort_order}</td>
+      <td><div style="display:flex;gap:0.4rem;justify-content:flex-end">
+        <button class="btn btn-sm btn-ghost" onclick="openEditSvc(${s.id})">EDIT</button>
+        <button class="btn btn-sm btn-danger" onclick="confirmDeleteSvc(${s.id},'${esc(s.name)}')">DEL</button>
+      </div></td>`;
+    tbody.appendChild(tr);
+  });
+}
+
+// ── Gallery rendering ─────────────────────────────────────────────────────────
+function renderGallery() {
+  const grid  = document.getElementById('gallery-grid');
+  const empty = document.getElementById('gallery-empty');
+  grid.innerHTML = '';
+  if (!gallery.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  gallery.forEach(g => {
+    const div = document.createElement('div');
+    div.className = 'gallery-thumb';
+    div.innerHTML = `
+      <img src="${g.image_data}" alt="${esc(g.caption)}" loading="lazy">
+      <div class="gallery-thumb-footer">
+        <div class="gallery-thumb-caption">${esc(g.caption) || '&nbsp;'}</div>
+        <div class="gallery-thumb-actions">
+          <button class="btn btn-sm btn-ghost" style="flex:1" onclick="openEditGallery(${g.id})">EDIT</button>
+          <button class="btn btn-sm btn-danger" onclick="confirmDeleteGallery(${g.id})">DEL</button>
+        </div>
+      </div>`;
+    grid.appendChild(div);
+  });
+}
+
+// ── Requests rendering ────────────────────────────────────────────────────────
+function renderRequests() {
+  const filter = document.getElementById('req-status-filter').value;
+  const grid   = document.getElementById('requests-grid');
+  const empty  = document.getElementById('requests-empty');
+  const filtered = requests.filter(r => !filter || r.status === filter);
+  grid.innerHTML = '';
+  if (!filtered.length) { empty.style.display = ''; return; }
+  empty.style.display = 'none';
+  filtered.forEach(r => grid.appendChild(requestCard(r)));
+}
+
+function updateReqBadge() {
+  const newCount = requests.filter(r => r.status === 'new').length;
+  const badge = document.getElementById('req-badge');
+  if (newCount > 0) { badge.textContent = newCount; badge.style.display = ''; }
+  else { badge.style.display = 'none'; }
+}
+
+function requestCard(r) {
+  const card = document.createElement('div');
+  card.className = 'job-card';
+  const dateRange = [fmtDate(r.start_date), fmtDate(r.end_date)].filter(Boolean).join(' — ');
+  const ts = new Date(r.created_at * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
+  card.innerHTML = `
+    <div class="job-card-header">
+      <span class="contract-num" style="font-size:0.7rem">${ts}</span>
+      <span class="status-badge status-${r.status}">${r.status}</span>
+    </div>
+    <div class="job-client">${esc(r.name)}</div>
+    <div class="job-meta">
+      ${r.phone ? `<div><span class="label">PHONE</span>${esc(r.phone)}</div>` : ''}
+      ${r.email ? `<div><span class="label">EMAIL</span>${esc(r.email)}</div>` : ''}
+      ${r.interest ? `<div><span class="label">INTEREST</span>${esc(r.interest)}</div>` : ''}
+      ${r.location ? `<div><span class="label">LOCATION</span>${esc(r.location)}</div>` : ''}
+      ${dateRange  ? `<div><span class="label">DATES</span>${dateRange}</div>` : ''}
+      ${r.notes    ? `<div><span class="label">NOTES</span>${esc(r.notes)}</div>` : ''}
+    </div>
+    <div class="job-actions">
+      ${r.status === 'new' ? `<button class="btn btn-sm btn-warn" onclick="setReqStatus(${r.id},'reviewing')">REVIEWING</button>` : ''}
+      ${r.status !== 'converted' && r.status !== 'declined' ? `<button class="btn btn-sm btn-success" onclick="convertRequest(${r.id})">CONVERT TO JOB</button>` : ''}
+      ${r.status !== 'declined' ? `<button class="btn btn-sm btn-ghost" onclick="setReqStatus(${r.id},'declined')">DECLINE</button>` : ''}
+      <button class="btn btn-sm btn-danger" onclick="confirmDeleteReq(${r.id},'${esc(r.name)}')">DEL</button>
+    </div>`;
+  return card;
+}
+
+async function setReqStatus(id, status) {
+  const r = await api('/api/requests/' + id, 'PUT', { status });
+  if (r.error) { toast(r.error, true); return; }
+  requests = requests.map(x => x.id === id ? r : x);
+  renderRequests();
+  updateReqBadge();
+}
+
+function convertRequest(id) {
+  const r = requests.find(x => x.id === id);
+  if (!r) return;
+  const contact = [r.phone, r.email].filter(Boolean).join(' / ');
+  openNewJobFromRequest(r.id, r.name, contact, r.location, r.start_date, r.end_date, r.interest, r.notes);
+}
+
+// ── Job modal ─────────────────────────────────────────────────────────────────
+function openNewJob() {
+  document.getElementById('job-modal-title').textContent = 'NEW JOB';
+  document.getElementById('jm-id').value       = '';
+  document.getElementById('jm-req-id').value   = '';
+  document.getElementById('jm-contract').value = '';
+  document.getElementById('jm-status').value   = 'active';
+  document.getElementById('jm-client').value   = '';
+  document.getElementById('jm-contact').value  = '';
+  document.getElementById('jm-location').value = '';
+  document.getElementById('jm-start').value    = '';
+  document.getElementById('jm-end').value      = '';
+  document.getElementById('jm-purpose').value  = '';
+  document.getElementById('jm-rate').value     = '';
+  document.getElementById('jm-notes').value    = '';
+  buildEquipPicker([]);
+  document.getElementById('job-modal-overlay').classList.add('open');
+}
+
+function openNewJobFromRequest(reqId, clientName, contact, location, startDate, endDate, interest, notes) {
+  openNewJob();
+  document.getElementById('job-modal-title').textContent = 'NEW JOB FROM REQUEST';
+  document.getElementById('jm-req-id').value   = reqId;
+  document.getElementById('jm-client').value   = clientName || '';
+  document.getElementById('jm-contact').value  = contact || '';
+  document.getElementById('jm-location').value = location || '';
+  document.getElementById('jm-start').value    = startDate ? isoDate(startDate) : '';
+  document.getElementById('jm-end').value      = endDate   ? isoDate(endDate)   : '';
+  document.getElementById('jm-purpose').value  = interest || '';
+  document.getElementById('jm-notes').value    = notes || '';
+}
+
+function openEditJob(id) {
+  const j = jobs.find(x => x.id === id);
+  if (!j) return;
+  document.getElementById('job-modal-title').textContent = 'EDIT JOB';
+  document.getElementById('jm-id').value       = j.id;
+  document.getElementById('jm-req-id').value   = '';
+  document.getElementById('jm-contract').value = j.contract_number || '';
+  document.getElementById('jm-status').value   = j.status;
+  document.getElementById('jm-client').value   = j.client_name;
+  document.getElementById('jm-contact').value  = j.client_contact || '';
+  document.getElementById('jm-location').value = j.location || '';
+  document.getElementById('jm-start').value    = j.start_date ? isoDate(j.start_date) : '';
+  document.getElementById('jm-end').value      = j.end_date   ? isoDate(j.end_date)   : '';
+  document.getElementById('jm-purpose').value  = j.purpose || '';
+  document.getElementById('jm-rate').value     = j.rate > 0 ? j.rate : '';
+  document.getElementById('jm-notes').value    = j.notes || '';
+  buildEquipPicker(j.equipment || []);
+  document.getElementById('job-modal-overlay').classList.add('open');
+}
+
+function isoDate(unix) { return new Date(unix * 1000).toISOString().slice(0, 10); }
+
+function buildEquipPicker(selected) {
+  const picker = document.getElementById('equip-picker');
+  if (!equip.length) {
+    picker.innerHTML = '<span style="color:var(--text2);font-size:0.78rem">No equipment — add some in the EQUIPMENT tab first.</span>';
+    return;
+  }
+  picker.innerHTML = equip.map(e => {
+    const sel = selected.find(s => s.id === e.id);
+    const qty = sel ? sel.quantity : 1;
+    return `<div class="equip-picker-row">
+      <input type="checkbox" id="ep-${e.id}" data-eid="${e.id}" ${sel ? 'checked' : ''} onchange="toggleEquipQty(${e.id})">
+      <label for="ep-${e.id}">${esc(e.name)}${e.category ? ' <span style="color:var(--text2);font-size:0.72rem">'+esc(e.category)+'</span>' : ''}</label>
+      <input class="equip-picker-qty" id="epq-${e.id}" type="number" min="1" value="${qty}" ${sel ? '' : 'disabled'}>
+    </div>`;
+  }).join('');
+}
+
+function toggleEquipQty(eid) {
+  const cb = document.getElementById('ep-' + eid);
+  document.getElementById('epq-' + eid).disabled = !cb.checked;
+}
+
+function closeJobModal() { document.getElementById('job-modal-overlay').classList.remove('open'); }
+
+async function saveJob() {
+  const id        = document.getElementById('jm-id').value;
+  const reqId     = document.getElementById('jm-req-id').value;
+  const client_name = document.getElementById('jm-client').value.trim();
+  if (!client_name) { toast('Client name is required', true); return; }
+
+  const selectedEquip = equip
+    .filter(e => document.getElementById('ep-' + e.id)?.checked)
+    .map(e => ({ equipment_id: e.id, quantity: parseFloat(document.getElementById('epq-' + e.id)?.value) || 1 }));
+
+  const startVal = document.getElementById('jm-start').value;
+  const endVal   = document.getElementById('jm-end').value;
+  const body = {
+    contract_number: document.getElementById('jm-contract').value.trim(),
+    status:          document.getElementById('jm-status').value,
+    client_name,
+    client_contact:  document.getElementById('jm-contact').value.trim(),
+    location:        document.getElementById('jm-location').value.trim(),
+    start_date:      startVal ? Math.floor(new Date(startVal).getTime() / 1000) : null,
+    end_date:        endVal   ? Math.floor(new Date(endVal).getTime()   / 1000) : null,
+    purpose:         document.getElementById('jm-purpose').value.trim(),
+    rate:            parseFloat(document.getElementById('jm-rate').value) || 0,
+    notes:           document.getElementById('jm-notes').value.trim(),
+    equipment:       selectedEquip
+  };
+
+  const result = id
+    ? await api('/api/jobs/' + id, 'PUT',  body)
+    : await api('/api/jobs',       'POST', body);
+
+  if (result.error) { toast(result.error, true); return; }
+  if (id) { jobs = jobs.map(j => j.id === result.id ? result : j); }
+  else    { jobs.unshift(result); }
+
+  // Mark source request as converted
+  if (reqId && !id) {
+    await setReqStatus(parseInt(reqId), 'converted');
+  }
+
+  renderJobs();
+  closeJobModal();
+  toast(id ? 'Job updated' : 'Job created');
+}
+
+// ── Equipment modal ───────────────────────────────────────────────────────────
+function openEquipModal(id) {
+  const e = id ? equip.find(x => x.id === id) : null;
+  document.getElementById('equip-modal-title').textContent = e ? 'EDIT EQUIPMENT' : 'ADD EQUIPMENT';
+  document.getElementById('em-id').value       = e ? e.id : '';
+  document.getElementById('em-name').value     = e ? e.name : '';
+  document.getElementById('em-category').value = e ? e.category : '';
+  document.getElementById('em-desc').value     = e ? e.description : '';
+  document.getElementById('em-notes').value    = e ? e.notes : '';
+  document.getElementById('equip-modal-overlay').classList.add('open');
+}
+function openEditEquip(id) { openEquipModal(id); }
+function closeEquipModal() { document.getElementById('equip-modal-overlay').classList.remove('open'); }
+
+async function saveEquipment() {
+  const id   = document.getElementById('em-id').value;
+  const name = document.getElementById('em-name').value.trim();
+  if (!name) { toast('Name is required', true); return; }
+  const body = {
+    name, category: document.getElementById('em-category').value.trim(),
+    description: document.getElementById('em-desc').value.trim(),
+    notes: document.getElementById('em-notes').value.trim()
+  };
+  const result = id ? await api('/api/equipment/'+id,'PUT',body) : await api('/api/equipment','POST',body);
+  if (result.error) { toast(result.error, true); return; }
+  if (id) { equip = equip.map(e => e.id === result.id ? result : e); }
+  else    { equip.push(result); equip.sort((a,b) => a.name.localeCompare(b.name)); }
+  renderEquip();
+  closeEquipModal();
+  toast(id ? 'Equipment updated' : 'Equipment added');
+}
+
+// ── Service modal ─────────────────────────────────────────────────────────────
+function openSvcModal(id) {
+  const s = id ? services.find(x => x.id === id) : null;
+  document.getElementById('svc-modal-title').textContent = s ? 'EDIT SERVICE' : 'ADD SERVICE';
+  document.getElementById('sm-id').value    = s ? s.id : '';
+  document.getElementById('sm-name').value  = s ? s.name : '';
+  document.getElementById('sm-desc').value  = s ? s.description : '';
+  document.getElementById('sm-icon').value  = s ? s.icon : '';
+  document.getElementById('sm-order').value = s ? s.sort_order : 0;
+  document.getElementById('svc-modal-overlay').classList.add('open');
+}
+function openEditSvc(id) { openSvcModal(id); }
+function closeSvcModal() { document.getElementById('svc-modal-overlay').classList.remove('open'); }
+
+async function saveService() {
+  const id   = document.getElementById('sm-id').value;
+  const name = document.getElementById('sm-name').value.trim();
+  if (!name) { toast('Name is required', true); return; }
+  const body = {
+    name, description: document.getElementById('sm-desc').value.trim(),
+    icon: document.getElementById('sm-icon').value.trim(),
+    sort_order: parseInt(document.getElementById('sm-order').value) || 0
+  };
+  const result = id ? await api('/api/services/'+id,'PUT',body) : await api('/api/services','POST',body);
+  if (result.error) { toast(result.error, true); return; }
+  if (id) { services = services.map(s => s.id === result.id ? result : s); }
+  else    { services.push(result); services.sort((a,b) => a.sort_order - b.sort_order || a.name.localeCompare(b.name)); }
+  renderServices();
+  closeSvcModal();
+  toast(id ? 'Service updated' : 'Service added');
+}
+
+// ── Gallery modal ─────────────────────────────────────────────────────────────
+function openGalleryModal() {
+  galleryImageData = null;
+  document.getElementById('gallery-modal-title').textContent = 'UPLOAD PHOTO';
+  document.getElementById('gm-id').value      = '';
+  document.getElementById('gm-caption').value = '';
+  document.getElementById('gm-order').value   = 0;
+  document.getElementById('gallery-upload-section').style.display = '';
+  document.getElementById('gallery-preview-wrap').style.display = 'none';
+  document.getElementById('gallery-preview').src = '';
+  document.getElementById('gallery-file-input').value = '';
+  document.getElementById('gallery-modal-overlay').classList.add('open');
+}
+
+function openEditGallery(id) {
+  const g = gallery.find(x => x.id === id);
+  if (!g) return;
+  galleryImageData = g.image_data;
+  document.getElementById('gallery-modal-title').textContent = 'EDIT PHOTO';
+  document.getElementById('gm-id').value      = g.id;
+  document.getElementById('gm-caption').value = g.caption;
+  document.getElementById('gm-order').value   = g.sort_order;
+  document.getElementById('gallery-upload-section').style.display = 'none';
+  document.getElementById('gallery-preview').src = g.image_data;
+  document.getElementById('gallery-preview-wrap').style.display = '';
+  document.getElementById('gallery-modal-overlay').classList.add('open');
+}
+
+function onGalleryFile(event) {
+  const file = event.target.files[0];
+  if (!file) return;
+  const reader = new FileReader();
+  reader.onload = e => {
+    galleryImageData = e.target.result;
+    document.getElementById('gallery-preview').src = galleryImageData;
+    document.getElementById('gallery-preview-wrap').style.display = '';
+  };
+  reader.readAsDataURL(file);
+}
+
+function closeGalleryModal() { document.getElementById('gallery-modal-overlay').classList.remove('open'); }
+
+async function saveGallery() {
+  const id = document.getElementById('gm-id').value;
+  if (!id && !galleryImageData) { toast('Please select a photo', true); return; }
+  const body = {
+    caption:    document.getElementById('gm-caption').value.trim(),
+    sort_order: parseInt(document.getElementById('gm-order').value) || 0,
+    ...(galleryImageData && !id ? { image_data: galleryImageData } : {})
+  };
+  const result = id ? await api('/api/gallery/'+id,'PUT',body) : await api('/api/gallery','POST',{ ...body, image_data: galleryImageData });
+  if (result.error) { toast(result.error, true); return; }
+  if (id) { gallery = gallery.map(g => g.id === result.id ? { ...g, caption: result.caption, sort_order: result.sort_order } : g); }
+  else    { gallery.unshift(result); }
+  renderGallery();
+  closeGalleryModal();
+  toast(id ? 'Photo updated' : 'Photo uploaded');
+}
+
+// ── Delete modals ─────────────────────────────────────────────────────────────
+function confirmDeleteJob(id, name) {
+  showDelModal(`Delete job for "${name}"?`, async () => {
+    const r = await api('/api/jobs/'+id,'DELETE');
+    if (r.error) { toast(r.error, true); return; }
+    jobs = jobs.filter(j => j.id !== id);
+    renderJobs(); closeDelModal(); toast('Job deleted');
+  });
+}
+function confirmDeleteEquip(id, name) {
+  showDelModal(`Delete "${name}"?`, async () => {
+    const r = await api('/api/equipment/'+id,'DELETE');
+    if (r.error) { toast(r.error, true); return; }
+    equip = equip.filter(e => e.id !== id);
+    renderEquip(); closeDelModal(); toast('Equipment deleted');
+  });
+}
+function confirmDeleteSvc(id, name) {
+  showDelModal(`Delete service "${name}"?`, async () => {
+    const r = await api('/api/services/'+id,'DELETE');
+    if (r.error) { toast(r.error, true); return; }
+    services = services.filter(s => s.id !== id);
+    renderServices(); closeDelModal(); toast('Service deleted');
+  });
+}
+function confirmDeleteGallery(id) {
+  showDelModal('Delete this photo?', async () => {
+    const r = await api('/api/gallery/'+id,'DELETE');
+    if (r.error) { toast(r.error, true); return; }
+    gallery = gallery.filter(g => g.id !== id);
+    renderGallery(); closeDelModal(); toast('Photo deleted');
+  });
+}
+function confirmDeleteReq(id, name) {
+  showDelModal(`Delete request from "${name}"?`, async () => {
+    const r = await api('/api/requests/'+id,'DELETE');
+    if (r.error) { toast(r.error, true); return; }
+    requests = requests.filter(x => x.id !== id);
+    renderRequests(); updateReqBadge(); closeDelModal(); toast('Request deleted');
+  });
+}
+
+function showDelModal(msg, action) {
+  document.getElementById('del-msg').textContent = msg;
+  document.getElementById('del-confirm-btn').onclick = action;
+  document.getElementById('del-modal-overlay').classList.add('open');
+}
+function closeDelModal() { document.getElementById('del-modal-overlay').classList.remove('open'); }
+
+function overlayClose(event, id) {
+  if (event.target.id === id) document.getElementById(id).classList.remove('open');
+}
+
+// ── Toast ─────────────────────────────────────────────────────────────────────
+let toastTimer;
+function toast(msg, err = false) {
+  const el = document.getElementById('toast');
+  el.textContent = msg;
+  el.className = 'show' + (err ? ' err' : '');
+  clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => { el.className = ''; }, 3000);
+}
+
+function esc(s) {
+  return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ── Boot ──────────────────────────────────────────────────────────────────────
+if (token) {
+  document.getElementById('auth-screen').style.display = 'none';
+  document.getElementById('app').style.display = 'flex';
+  document.getElementById('header-email').textContent = email;
+  loadAll();
+}
+document.getElementById('l-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
+document.getElementById('r-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
+</script>
+</body>
+</html>

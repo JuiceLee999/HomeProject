@@ -89,6 +89,45 @@ async function initialize() {
       )
     `);
 
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS requests (
+        id          BIGSERIAL PRIMARY KEY,
+        name        TEXT NOT NULL,
+        phone       TEXT NOT NULL DEFAULT '',
+        email       TEXT NOT NULL DEFAULT '',
+        interest    TEXT NOT NULL DEFAULT '',
+        start_date  BIGINT DEFAULT NULL,
+        end_date    BIGINT DEFAULT NULL,
+        location    TEXT NOT NULL DEFAULT '',
+        notes       TEXT NOT NULL DEFAULT '',
+        status      TEXT NOT NULL DEFAULT 'new',
+        created_at  BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())::BIGINT
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS services (
+        id          BIGSERIAL PRIMARY KEY,
+        owner_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        name        TEXT NOT NULL,
+        description TEXT NOT NULL DEFAULT '',
+        icon        TEXT NOT NULL DEFAULT '',
+        sort_order  INT NOT NULL DEFAULT 0,
+        created_at  BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())::BIGINT
+      )
+    `);
+
+    await client.query(`
+      CREATE TABLE IF NOT EXISTS gallery (
+        id          BIGSERIAL PRIMARY KEY,
+        owner_id    BIGINT NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+        image_data  TEXT NOT NULL,
+        caption     TEXT NOT NULL DEFAULT '',
+        sort_order  INT NOT NULL DEFAULT 0,
+        created_at  BIGINT DEFAULT EXTRACT(EPOCH FROM NOW())::BIGINT
+      )
+    `);
+
     await client.query('COMMIT');
   } catch (err) {
     await client.query('ROLLBACK');

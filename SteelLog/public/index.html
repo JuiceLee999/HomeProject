@@ -3,777 +3,605 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>SteelLog</title>
+<title>Juice Lee Rentals &amp; Services</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link href="https://fonts.googleapis.com/css2?family=Share+Tech+Mono&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
 <style>
   :root {
-    --bg:       #0a0e17;
-    --bg2:      #111827;
-    --bg3:      #1a2333;
-    --border:   #1e3a5f;
-    --accent:   #3b82f6;
-    --accent2:  #1d4ed8;
-    --text:     #c8d8f0;
-    --text2:    #6b8db5;
-    --green:    #22c55e;
-    --yellow:   #eab308;
-    --blue:     #3b82f6;
-    --gray:     #64748b;
-    --red:      #ef4444;
-    --radius:   4px;
+    --navy:    #0f2336;
+    --navy2:   #1a3a5c;
+    --amber:   #e8921a;
+    --amber2:  #c97a10;
+    --light:   #f4f7fb;
+    --white:   #ffffff;
+    --text:    #1a2535;
+    --text2:   #4a6080;
+    --border:  #d1dce8;
+    --radius:  8px;
+    --shadow:  0 2px 12px rgba(15,35,54,0.10);
   }
-  * { box-sizing: border-box; margin: 0; padding: 0; }
-  body { background: var(--bg); color: var(--text); font-family: 'Share Tech Mono', monospace; min-height: 100vh; }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body { background: var(--white); color: var(--text); font-family: 'Inter', sans-serif; line-height: 1.6; }
+  img  { max-width: 100%; display: block; }
+  a    { color: inherit; text-decoration: none; }
 
-  /* ── Auth ─────────────────────────────────────────────────────────────────── */
-  #auth-screen {
-    display: flex; align-items: center; justify-content: center;
-    min-height: 100vh; padding: 1rem;
+  /* ── Navbar ──────────────────────────────────────────────────────────────── */
+  nav {
+    background: var(--navy); position: sticky; top: 0; z-index: 100;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.25);
   }
-  .auth-box {
-    background: var(--bg2); border: 1px solid var(--border);
-    border-radius: var(--radius); padding: 2rem; width: 100%; max-width: 380px;
+  .nav-inner {
+    align-items: center; display: flex; gap: 1.5rem; justify-content: space-between;
+    margin: 0 auto; max-width: 1100px; padding: 0 1.5rem; height: 64px;
   }
-  .auth-logo { text-align: center; margin-bottom: 1.5rem; }
-  .auth-logo h1 { font-size: 1.6rem; color: var(--accent); letter-spacing: 4px; }
-  .auth-logo p  { color: var(--text2); font-size: 0.75rem; margin-top: 0.25rem; }
-  .tab-row { display: flex; gap: 0; margin-bottom: 1.5rem; border-bottom: 1px solid var(--border); }
-  .tab-btn {
-    flex: 1; background: none; border: none; border-bottom: 2px solid transparent;
-    color: var(--text2); cursor: pointer; font-family: inherit; font-size: 0.85rem;
-    padding: 0.5rem; margin-bottom: -1px; letter-spacing: 2px; transition: color 0.2s;
+  .nav-brand {
+    color: var(--white); font-size: 1.05rem; font-weight: 700; letter-spacing: 0.5px;
+    flex-shrink: 0;
   }
-  .tab-btn.active { color: var(--accent); border-bottom-color: var(--accent); }
-  .form-group { margin-bottom: 1rem; }
-  .form-group label { display: block; color: var(--text2); font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 0.35rem; }
-  .form-group input, .form-group select, .form-group textarea {
-    width: 100%; background: var(--bg3); border: 1px solid var(--border);
+  .nav-brand span { color: var(--amber); }
+  .nav-links { display: flex; align-items: center; gap: 0.25rem; }
+  .nav-links a {
+    color: rgba(255,255,255,0.75); font-size: 0.88rem; font-weight: 500;
+    padding: 0.45rem 0.8rem; border-radius: 4px; transition: all 0.2s;
+  }
+  .nav-links a:hover { color: var(--white); background: rgba(255,255,255,0.08); }
+  .nav-cta {
+    background: var(--amber) !important; color: var(--white) !important;
+    font-weight: 600 !important; padding: 0.45rem 1.1rem !important;
+    border-radius: 6px !important;
+  }
+  .nav-cta:hover { background: var(--amber2) !important; }
+  .hamburger {
+    display: none; background: none; border: none; color: var(--white);
+    font-size: 1.4rem; cursor: pointer; padding: 0.25rem;
+  }
+  .mobile-menu {
+    display: none; background: var(--navy); padding: 1rem 1.5rem;
+    border-top: 1px solid rgba(255,255,255,0.1);
+  }
+  .mobile-menu.open { display: block; }
+  .mobile-menu a {
+    color: rgba(255,255,255,0.85); display: block; font-size: 0.95rem;
+    font-weight: 500; padding: 0.65rem 0; border-bottom: 1px solid rgba(255,255,255,0.08);
+  }
+  .mobile-menu a:last-child { border-bottom: none; }
+
+  /* ── Hero ────────────────────────────────────────────────────────────────── */
+  .hero {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+    padding: 5rem 1.5rem 4rem;
+    position: relative; overflow: hidden;
+  }
+  .hero::before {
+    content: ''; position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+  .hero-inner { max-width: 700px; margin: 0 auto; text-align: center; position: relative; }
+  .hero-eyebrow {
+    color: var(--amber); font-size: 0.8rem; font-weight: 700; letter-spacing: 3px;
+    text-transform: uppercase; margin-bottom: 1rem;
+  }
+  .hero h1 {
+    color: var(--white); font-size: clamp(2rem, 5vw, 3.2rem); font-weight: 800;
+    line-height: 1.15; margin-bottom: 1.25rem;
+  }
+  .hero h1 span { color: var(--amber); }
+  .hero p {
+    color: rgba(255,255,255,0.72); font-size: 1.1rem; margin-bottom: 2rem; max-width: 520px;
+    margin-left: auto; margin-right: auto;
+  }
+  .hero-actions { display: flex; gap: 1rem; justify-content: center; flex-wrap: wrap; }
+  .btn-primary {
+    background: var(--amber); border-radius: var(--radius); color: var(--white);
+    display: inline-block; font-size: 1rem; font-weight: 700; padding: 0.85rem 2rem;
+    transition: background 0.2s, transform 0.1s; cursor: pointer; border: none;
+  }
+  .btn-primary:hover { background: var(--amber2); transform: translateY(-1px); }
+  .btn-outline {
+    border: 2px solid rgba(255,255,255,0.4); border-radius: var(--radius); color: var(--white);
+    display: inline-block; font-size: 1rem; font-weight: 600; padding: 0.8rem 2rem;
+    transition: all 0.2s; cursor: pointer; background: transparent;
+  }
+  .btn-outline:hover { border-color: var(--white); background: rgba(255,255,255,0.08); }
+
+  /* ── Sections ────────────────────────────────────────────────────────────── */
+  .section { padding: 5rem 1.5rem; }
+  .section-alt { background: var(--light); }
+  .section-dark { background: var(--navy); color: var(--white); }
+  .container { max-width: 1100px; margin: 0 auto; }
+  .section-header { text-align: center; margin-bottom: 3rem; }
+  .section-header .eyebrow {
+    color: var(--amber); font-size: 0.75rem; font-weight: 700;
+    letter-spacing: 3px; text-transform: uppercase; margin-bottom: 0.5rem;
+  }
+  .section-header h2 { font-size: clamp(1.6rem, 3vw, 2.2rem); font-weight: 800; line-height: 1.2; }
+  .section-header p  { color: var(--text2); margin-top: 0.75rem; max-width: 520px; margin-left: auto; margin-right: auto; }
+  .section-dark .section-header h2 { color: var(--white); }
+  .section-dark .section-header p  { color: rgba(255,255,255,0.6); }
+
+  /* ── Services grid ───────────────────────────────────────────────────────── */
+  .services-grid {
+    display: grid; gap: 1.25rem;
+    grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+  }
+  .service-card {
+    background: var(--white); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 1.75rem 1.5rem; box-shadow: var(--shadow); transition: transform 0.2s, box-shadow 0.2s;
+  }
+  .service-card:hover { transform: translateY(-3px); box-shadow: 0 6px 20px rgba(15,35,54,0.14); }
+  .service-icon { font-size: 2.2rem; margin-bottom: 1rem; line-height: 1; }
+  .service-card h3 { font-size: 1.05rem; font-weight: 700; margin-bottom: 0.5rem; }
+  .service-card p  { color: var(--text2); font-size: 0.88rem; line-height: 1.6; }
+  .services-empty { color: var(--text2); text-align: center; padding: 2rem; font-size: 0.9rem; }
+
+  /* ── Equipment grid ──────────────────────────────────────────────────────── */
+  .equip-grid {
+    display: grid; gap: 1rem;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+  }
+  .equip-card {
+    background: rgba(255,255,255,0.06); border: 1px solid rgba(255,255,255,0.1);
+    border-radius: var(--radius); padding: 1.25rem;
+    transition: background 0.2s, border-color 0.2s;
+  }
+  .equip-card:hover { background: rgba(255,255,255,0.1); border-color: rgba(232,146,26,0.4); }
+  .equip-cat {
+    color: var(--amber); font-size: 0.72rem; font-weight: 700;
+    letter-spacing: 2px; text-transform: uppercase; margin-bottom: 0.4rem;
+  }
+  .equip-card h3 { color: var(--white); font-size: 0.98rem; font-weight: 600; margin-bottom: 0.3rem; }
+  .equip-card p  { color: rgba(255,255,255,0.55); font-size: 0.82rem; }
+
+  /* ── Gallery ─────────────────────────────────────────────────────────────── */
+  .gallery-grid {
+    display: grid; gap: 0.75rem;
+    grid-template-columns: repeat(auto-fill, minmax(250px, 1fr));
+  }
+  .gallery-item { position: relative; border-radius: var(--radius); overflow: hidden; aspect-ratio: 4/3; }
+  .gallery-item img { width: 100%; height: 100%; object-fit: cover; transition: transform 0.3s; display: block; }
+  .gallery-item:hover img { transform: scale(1.04); }
+  .gallery-caption {
+    background: linear-gradient(transparent, rgba(15,35,54,0.85));
+    bottom: 0; color: var(--white); font-size: 0.82rem; font-weight: 500;
+    left: 0; padding: 1.5rem 0.75rem 0.6rem; position: absolute; right: 0;
+    opacity: 0; transition: opacity 0.2s;
+  }
+  .gallery-item:hover .gallery-caption { opacity: 1; }
+
+  /* ── About ───────────────────────────────────────────────────────────────── */
+  .about-grid { display: grid; gap: 3rem; align-items: center; grid-template-columns: 1fr 1fr; }
+  .about-text h2 { font-size: clamp(1.5rem, 3vw, 2rem); font-weight: 800; margin-bottom: 1rem; }
+  .about-text p  { color: var(--text2); margin-bottom: 1rem; line-height: 1.75; }
+  .about-stats { display: flex; gap: 1.5rem; margin-top: 1.5rem; flex-wrap: wrap; }
+  .stat { }
+  .stat-num { color: var(--amber); font-size: 2rem; font-weight: 800; line-height: 1; }
+  .stat-label { color: var(--text2); font-size: 0.82rem; margin-top: 0.2rem; }
+  .about-badge {
+    background: var(--light); border: 1px solid var(--border); border-radius: var(--radius);
+    padding: 2rem; text-align: center;
+  }
+  .about-badge .big { font-size: 3.5rem; font-weight: 800; color: var(--navy); line-height: 1; }
+  .about-badge p { color: var(--text2); margin-top: 0.5rem; font-size: 0.9rem; }
+
+  /* ── Request form ────────────────────────────────────────────────────────── */
+  .request-section { background: var(--light); }
+  .request-wrap { max-width: 700px; margin: 0 auto; }
+  .form-grid { display: grid; gap: 1rem; grid-template-columns: 1fr 1fr; }
+  .form-field { display: flex; flex-direction: column; gap: 0.35rem; }
+  .form-field.full { grid-column: 1 / -1; }
+  .form-field label { color: var(--text); font-size: 0.82rem; font-weight: 600; }
+  .form-field input, .form-field textarea, .form-field select {
+    background: var(--white); border: 1.5px solid var(--border);
     border-radius: var(--radius); color: var(--text); font-family: inherit;
-    font-size: 0.85rem; padding: 0.55rem 0.75rem; outline: none; transition: border-color 0.2s;
+    font-size: 0.92rem; padding: 0.7rem 0.9rem; outline: none;
+    transition: border-color 0.2s, box-shadow 0.2s;
   }
-  .form-group input:focus, .form-group select:focus, .form-group textarea:focus {
-    border-color: var(--accent);
+  .form-field input:focus, .form-field textarea:focus, .form-field select:focus {
+    border-color: var(--navy2); box-shadow: 0 0 0 3px rgba(26,58,92,0.12);
   }
-  .form-group textarea { resize: vertical; min-height: 70px; }
-  .btn {
-    background: var(--accent); border: none; border-radius: var(--radius);
-    color: #fff; cursor: pointer; font-family: inherit; font-size: 0.85rem;
-    letter-spacing: 2px; padding: 0.6rem 1.2rem; transition: background 0.2s;
+  .form-field textarea { resize: vertical; min-height: 100px; }
+  .interest-list {
+    background: var(--white); border: 1.5px solid var(--border); border-radius: var(--radius);
+    max-height: 200px; overflow-y: auto; padding: 0.5rem 0.75rem;
   }
-  .btn:hover { background: var(--accent2); }
-  .btn-full { width: 100%; }
-  .btn-sm { font-size: 0.75rem; padding: 0.3rem 0.7rem; }
-  .btn-danger { background: transparent; border: 1px solid var(--red); color: var(--red); }
-  .btn-danger:hover { background: var(--red); color: #fff; }
-  .btn-ghost { background: transparent; border: 1px solid var(--border); color: var(--text2); }
-  .btn-ghost:hover { border-color: var(--accent); color: var(--accent); }
-  .auth-err { color: var(--red); font-size: 0.78rem; margin-top: 0.75rem; text-align: center; min-height: 1.2em; }
+  .interest-item { align-items: center; display: flex; gap: 0.5rem; padding: 0.3rem 0; }
+  .interest-item label { cursor: pointer; font-size: 0.9rem; }
+  .interest-item input[type=checkbox] { accent-color: var(--amber); cursor: pointer; width: 16px; height: 16px; flex-shrink: 0; }
+  .interest-group-label {
+    color: var(--text2); font-size: 0.72rem; font-weight: 700; letter-spacing: 2px;
+    padding: 0.5rem 0 0.2rem; text-transform: uppercase;
+  }
+  .form-submit { text-align: center; margin-top: 1.5rem; }
+  .form-note { color: var(--text2); font-size: 0.8rem; margin-top: 0.75rem; }
+  #form-success {
+    display: none; background: #ecfdf5; border: 1.5px solid #6ee7b7;
+    border-radius: var(--radius); color: #065f46; padding: 1.25rem; text-align: center;
+    font-weight: 600; margin-top: 1rem;
+  }
+  #form-error { color: #dc2626; font-size: 0.85rem; margin-top: 0.5rem; text-align: center; min-height: 1.2em; }
 
-  /* ── App shell ────────────────────────────────────────────────────────────── */
-  #app { display: none; flex-direction: column; min-height: 100vh; }
-  header {
-    background: var(--bg2); border-bottom: 1px solid var(--border);
-    display: flex; align-items: center; gap: 1rem; padding: 0.7rem 1.2rem;
-    flex-wrap: wrap;
+  /* ── Contact bar ─────────────────────────────────────────────────────────── */
+  .contact-bar { background: var(--amber); padding: 1.25rem 1.5rem; }
+  .contact-bar-inner {
+    max-width: 1100px; margin: 0 auto;
+    display: flex; align-items: center; justify-content: space-between; gap: 1rem; flex-wrap: wrap;
   }
-  header h1 { color: var(--accent); font-size: 1.1rem; letter-spacing: 4px; flex: 1; }
-  .header-email { color: var(--text2); font-size: 0.75rem; }
-  .nav-row {
-    display: flex; gap: 0.5rem; padding: 0.6rem 1.2rem;
-    background: var(--bg2); border-bottom: 1px solid var(--border); align-items: center;
+  .contact-bar p { color: var(--white); font-weight: 600; font-size: 0.95rem; }
+  .contact-links { display: flex; gap: 0.75rem; flex-wrap: wrap; }
+  .contact-link {
+    background: rgba(255,255,255,0.2); border-radius: 6px; color: var(--white);
+    font-size: 0.88rem; font-weight: 600; padding: 0.45rem 1rem; transition: background 0.2s;
   }
-  .nav-btn {
-    background: none; border: 1px solid var(--border); border-radius: var(--radius);
-    color: var(--text2); cursor: pointer; font-family: inherit; font-size: 0.75rem;
-    letter-spacing: 2px; padding: 0.3rem 0.8rem; transition: all 0.2s;
-  }
-  .nav-btn.active { background: var(--accent); border-color: var(--accent); color: #fff; }
-  .nav-btn:hover:not(.active) { border-color: var(--accent); color: var(--accent); }
-  .nav-spacer { flex: 1; }
+  .contact-link:hover { background: rgba(255,255,255,0.35); }
 
-  /* ── Filter bar ───────────────────────────────────────────────────────────── */
-  .filter-bar {
-    display: flex; gap: 0.5rem; padding: 0.7rem 1.2rem;
-    background: var(--bg); border-bottom: 1px solid var(--border); flex-wrap: wrap;
+  /* ── Footer ──────────────────────────────────────────────────────────────── */
+  footer {
+    background: #0a1a28; border-top: 1px solid rgba(255,255,255,0.06);
+    color: rgba(255,255,255,0.45); font-size: 0.82rem; padding: 1.5rem;
+    text-align: center;
   }
-  .filter-bar input, .filter-bar select {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
-    color: var(--text); font-family: inherit; font-size: 0.8rem; padding: 0.35rem 0.7rem;
-    outline: none;
-  }
-  .filter-bar input:focus, .filter-bar select:focus { border-color: var(--accent); }
-  .filter-bar input { flex: 1; min-width: 160px; }
+  footer a { color: rgba(255,255,255,0.6); margin: 0 0.5rem; transition: color 0.2s; }
+  footer a:hover { color: var(--white); }
 
-  /* ── Content ──────────────────────────────────────────────────────────────── */
-  main { flex: 1; padding: 1rem 1.2rem; }
-  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap: 0.75rem; }
-  .empty-state { color: var(--text2); text-align: center; margin-top: 4rem; font-size: 0.85rem; letter-spacing: 1px; }
-
-  /* ── Job card ─────────────────────────────────────────────────────────────── */
-  .job-card {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
-    padding: 1rem; transition: border-color 0.2s;
+  /* ── Responsive ──────────────────────────────────────────────────────────── */
+  @media (max-width: 768px) {
+    .nav-links { display: none; }
+    .hamburger { display: block; }
+    .about-grid { grid-template-columns: 1fr; }
+    .form-grid { grid-template-columns: 1fr; }
+    .form-field.full { grid-column: 1; }
   }
-  .job-card:hover { border-color: var(--accent); }
-  .job-card-header { display: flex; align-items: flex-start; gap: 0.5rem; margin-bottom: 0.6rem; }
-  .contract-num { color: var(--text2); font-size: 0.75rem; flex: 1; letter-spacing: 1px; }
-  .status-badge {
-    border-radius: 2px; font-size: 0.7rem; letter-spacing: 1px; padding: 0.15rem 0.45rem;
-    text-transform: uppercase; white-space: nowrap;
-  }
-  .status-active    { background: rgba(34,197,94,0.15);  color: var(--green);  border: 1px solid var(--green);  }
-  .status-completed { background: rgba(234,179,8,0.15);  color: var(--yellow); border: 1px solid var(--yellow); }
-  .status-invoiced  { background: rgba(59,130,246,0.15); color: var(--blue);   border: 1px solid var(--blue);   }
-  .status-paid      { background: rgba(100,116,139,0.2); color: var(--gray);   border: 1px solid var(--gray);   }
-  .job-client { color: var(--text); font-size: 1rem; margin-bottom: 0.5rem; }
-  .job-meta { color: var(--text2); font-size: 0.78rem; line-height: 1.7; }
-  .job-meta .label { color: var(--accent); margin-right: 0.4rem; }
-  .job-equip { margin-top: 0.5rem; color: var(--text2); font-size: 0.78rem; }
-  .job-equip-tag {
-    display: inline-block; background: var(--bg3); border: 1px solid var(--border);
-    border-radius: 2px; font-size: 0.72rem; margin: 0.15rem 0.15rem 0 0;
-    padding: 0.1rem 0.4rem;
-  }
-  .job-actions { display: flex; gap: 0.5rem; margin-top: 0.75rem; justify-content: flex-end; }
-
-  /* ── Equipment list ───────────────────────────────────────────────────────── */
-  .equip-table { width: 100%; border-collapse: collapse; font-size: 0.82rem; }
-  .equip-table th {
-    border-bottom: 1px solid var(--border); color: var(--text2);
-    font-weight: normal; letter-spacing: 1px; padding: 0.5rem 0.75rem; text-align: left;
-  }
-  .equip-table td { border-bottom: 1px solid var(--border); padding: 0.55rem 0.75rem; }
-  .equip-table tr:hover td { background: var(--bg3); }
-  .equip-cat { color: var(--text2); font-size: 0.75rem; }
-
-  /* ── Modal ────────────────────────────────────────────────────────────────── */
-  .modal-overlay {
-    position: fixed; inset: 0; background: rgba(0,0,0,0.7);
-    display: none; align-items: center; justify-content: center;
-    padding: 1rem; z-index: 100;
-  }
-  .modal-overlay.open { display: flex; }
-  .modal {
-    background: var(--bg2); border: 1px solid var(--border); border-radius: var(--radius);
-    max-height: 90vh; overflow-y: auto; padding: 1.5rem; width: 100%; max-width: 560px;
-  }
-  .modal h2 { color: var(--accent); font-size: 0.95rem; letter-spacing: 2px; margin-bottom: 1.25rem; }
-  .form-row { display: grid; grid-template-columns: 1fr 1fr; gap: 0.75rem; }
-  .modal-actions { display: flex; gap: 0.5rem; justify-content: flex-end; margin-top: 1rem; }
-
-  /* ── Equipment multi-select in job form ────────────────────────────────────── */
-  .equip-picker { border: 1px solid var(--border); border-radius: var(--radius); padding: 0.5rem; max-height: 180px; overflow-y: auto; }
-  .equip-picker-row { display: flex; align-items: center; gap: 0.5rem; padding: 0.25rem 0; }
-  .equip-picker-row label { flex: 1; font-size: 0.82rem; cursor: pointer; }
-  .equip-picker-row input[type=checkbox] { accent-color: var(--accent); cursor: pointer; }
-  .equip-picker-qty {
-    background: var(--bg3); border: 1px solid var(--border); border-radius: var(--radius);
-    color: var(--text); font-family: inherit; font-size: 0.78rem;
-    padding: 0.15rem 0.4rem; width: 52px; text-align: center;
-  }
-  .equip-picker-qty:focus { border-color: var(--accent); outline: none; }
-
-  /* ── Toast ────────────────────────────────────────────────────────────────── */
-  #toast {
-    background: var(--bg3); border: 1px solid var(--accent); border-radius: var(--radius);
-    bottom: 1.5rem; color: var(--text); font-size: 0.82rem; letter-spacing: 1px;
-    opacity: 0; padding: 0.6rem 1rem; position: fixed; right: 1.5rem;
-    transition: opacity 0.3s; z-index: 200; pointer-events: none;
-  }
-  #toast.show { opacity: 1; }
-  #toast.err  { border-color: var(--red); color: var(--red); }
-
-  select option { background: var(--bg2); }
 </style>
 </head>
 <body>
 
-<!-- ── Auth screen ─────────────────────────────────────────────────────────── -->
-<div id="auth-screen">
-  <div class="auth-box">
-    <div class="auth-logo">
-      <h1>STEELLOG</h1>
-      <p>equipment job tracker</p>
+<!-- ── Navbar ──────────────────────────────────────────────────────────────── -->
+<nav>
+  <div class="nav-inner">
+    <div class="nav-brand">JUICE LEE <span>RENTALS</span> &amp; SERVICES</div>
+    <div class="nav-links">
+      <a href="#services">Services</a>
+      <a href="#equipment">Equipment</a>
+      <a href="#gallery">Our Work</a>
+      <a href="#about">About</a>
+      <a href="#request" class="nav-cta">Get a Quote</a>
     </div>
-    <div class="tab-row">
-      <button class="tab-btn active" onclick="switchTab('login')">LOGIN</button>
-      <button class="tab-btn" onclick="switchTab('register')">REGISTER</button>
-    </div>
-    <div id="login-form">
-      <div class="form-group"><label>EMAIL</label><input id="l-email" type="email" autocomplete="email"></div>
-      <div class="form-group"><label>PASSWORD</label><input id="l-pass" type="password" autocomplete="current-password"></div>
-      <button class="btn btn-full" onclick="doLogin()">LOGIN</button>
-    </div>
-    <div id="register-form" style="display:none">
-      <div class="form-group"><label>EMAIL</label><input id="r-email" type="email" autocomplete="email"></div>
-      <div class="form-group"><label>PASSWORD</label><input id="r-pass" type="password" autocomplete="new-password"></div>
-      <button class="btn btn-full" onclick="doRegister()">CREATE ACCOUNT</button>
-    </div>
-    <div class="auth-err" id="auth-err"></div>
+    <button class="hamburger" onclick="toggleMobile()" aria-label="Menu">&#9776;</button>
   </div>
-</div>
-
-<!-- ── App ─────────────────────────────────────────────────────────────────── -->
-<div id="app">
-  <header>
-    <h1>STEELLOG</h1>
-    <span class="header-email" id="header-email"></span>
-    <button class="btn btn-sm btn-ghost" onclick="doLogout()">LOGOUT</button>
-  </header>
-  <div class="nav-row">
-    <button class="nav-btn active" id="nav-jobs" onclick="showView('jobs')">JOBS</button>
-    <button class="nav-btn" id="nav-equip" onclick="showView('equipment')">EQUIPMENT</button>
-    <div class="nav-spacer"></div>
-    <button class="btn btn-sm" id="new-btn" onclick="openNewJob()">+ NEW JOB</button>
+  <div class="mobile-menu" id="mobile-menu">
+    <a href="#services"  onclick="closeMobile()">Services</a>
+    <a href="#equipment" onclick="closeMobile()">Equipment</a>
+    <a href="#gallery"   onclick="closeMobile()">Our Work</a>
+    <a href="#about"     onclick="closeMobile()">About</a>
+    <a href="#request"   onclick="closeMobile()" style="color:var(--amber);font-weight:700">Get a Quote &rarr;</a>
   </div>
+</nav>
 
-  <!-- Jobs view -->
-  <div id="view-jobs">
-    <div class="filter-bar">
-      <input id="search-input" type="text" placeholder="search client / contract / location..." oninput="renderJobs()">
-      <select id="status-filter" onchange="renderJobs()">
-        <option value="">ALL STATUS</option>
-        <option value="active">ACTIVE</option>
-        <option value="completed">COMPLETED</option>
-        <option value="invoiced">INVOICED</option>
-        <option value="paid">PAID</option>
-      </select>
+<!-- ── Hero ────────────────────────────────────────────────────────────────── -->
+<section class="hero">
+  <div class="hero-inner">
+    <div class="hero-eyebrow">Professional &bull; Reliable &bull; Local</div>
+    <h1>Equipment Rental &amp;<br><span>Contracting Services</span></h1>
+    <p>Need the right equipment for your job? We've got the machines and the expertise. Contact us to get started.</p>
+    <div class="hero-actions">
+      <a href="#request" class="btn-primary">Request a Rental or Service</a>
+      <a href="#services" class="btn-outline">See What We Offer</a>
     </div>
-    <main>
-      <div class="grid" id="jobs-grid"></div>
-      <div class="empty-state" id="jobs-empty" style="display:none">NO JOBS FOUND</div>
-    </main>
   </div>
+</section>
 
-  <!-- Equipment view -->
-  <div id="view-equipment" style="display:none">
-    <div class="filter-bar">
-      <div class="nav-spacer"></div>
-      <button class="btn btn-sm" onclick="openEquipModal()">+ ADD EQUIPMENT</button>
+<!-- ── Services ────────────────────────────────────────────────────────────── -->
+<section class="section" id="services">
+  <div class="container">
+    <div class="section-header">
+      <div class="eyebrow">What We Do</div>
+      <h2>Our Services</h2>
+      <p>From equipment rental to full contracting — we have you covered.</p>
     </div>
-    <main>
-      <table class="equip-table" id="equip-table">
-        <thead><tr>
-          <th>NAME</th><th>CATEGORY</th><th>DESCRIPTION</th><th></th>
-        </tr></thead>
-        <tbody id="equip-tbody"></tbody>
-      </table>
-      <div class="empty-state" id="equip-empty" style="display:none">NO EQUIPMENT — ADD SOME ABOVE</div>
-    </main>
+    <div class="services-grid" id="services-grid">
+      <div class="services-empty">Loading services...</div>
+    </div>
   </div>
-</div>
+</section>
 
-<!-- ── Job modal ──────────────────────────────────────────────────────────── -->
-<div class="modal-overlay" id="job-modal-overlay" onclick="overlayClose(event,'job-modal-overlay')">
-  <div class="modal">
-    <h2 id="job-modal-title">NEW JOB</h2>
-    <input type="hidden" id="jm-id">
-    <div class="form-row">
-      <div class="form-group">
-        <label>CONTRACT #</label>
-        <input id="jm-contract" type="text" placeholder="optional">
+<!-- ── Equipment ───────────────────────────────────────────────────────────── -->
+<section class="section section-dark" id="equipment">
+  <div class="container">
+    <div class="section-header">
+      <div class="eyebrow">Available Equipment</div>
+      <h2>Our Fleet</h2>
+      <p>A selection of well-maintained equipment ready for your project.</p>
+    </div>
+    <div class="equip-grid" id="equip-grid">
+      <div style="color:rgba(255,255,255,0.4);text-align:center;grid-column:1/-1;padding:2rem">Loading equipment...</div>
+    </div>
+    <div style="text-align:center;margin-top:2.5rem">
+      <a href="#request" class="btn-primary">Request Equipment &rarr;</a>
+    </div>
+  </div>
+</section>
+
+<!-- ── Gallery ─────────────────────────────────────────────────────────────── -->
+<section class="section" id="gallery">
+  <div class="container">
+    <div class="section-header">
+      <div class="eyebrow">Past Projects</div>
+      <h2>Our Work</h2>
+      <p>A look at some of the jobs we've completed.</p>
+    </div>
+    <div class="gallery-grid" id="gallery-grid">
+      <div style="color:var(--text2);text-align:center;grid-column:1/-1;padding:2rem;font-size:0.9rem">Loading gallery...</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── About ───────────────────────────────────────────────────────────────── -->
+<section class="section section-alt" id="about">
+  <div class="container">
+    <div class="about-grid">
+      <div class="about-text">
+        <h2>About Juice Lee Rentals &amp; Services</h2>
+        <p>We provide professional equipment rental and contracting services to homeowners, contractors, and businesses. Whether you need equipment for a day or a full crew for a multi-week project, we're ready to help.</p>
+        <p>Our equipment is well-maintained and our operators are experienced. We take pride in showing up on time, doing the job right, and leaving the site better than we found it.</p>
+        <div class="about-stats">
+          <div class="stat">
+            <div class="stat-num">Local</div>
+            <div class="stat-label">Family owned &amp; operated</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">Fast</div>
+            <div class="stat-label">Quick quote turnaround</div>
+          </div>
+          <div class="stat">
+            <div class="stat-num">Reliable</div>
+            <div class="stat-label">On time, every time</div>
+          </div>
+        </div>
       </div>
-      <div class="form-group">
-        <label>STATUS</label>
-        <select id="jm-status">
-          <option value="active">Active</option>
-          <option value="completed">Completed</option>
-          <option value="invoiced">Invoiced</option>
-          <option value="paid">Paid</option>
-        </select>
+      <div class="about-badge">
+        <div class="big">JL</div>
+        <p>Juice Lee Rentals &amp; Services</p>
+        <p style="margin-top:0.5rem;font-size:0.8rem">Providing quality equipment &amp; services to our community</p>
       </div>
     </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>WHO — CLIENT NAME *</label>
-        <input id="jm-client" type="text" placeholder="required">
-      </div>
-      <div class="form-group">
-        <label>CLIENT CONTACT</label>
-        <input id="jm-contact" type="text" placeholder="phone / email">
-      </div>
-    </div>
-    <div class="form-group">
-      <label>WHERE — JOB SITE LOCATION</label>
-      <input id="jm-location" type="text" placeholder="address or site name">
-    </div>
-    <div class="form-row">
-      <div class="form-group">
-        <label>WHEN — START DATE</label>
-        <input id="jm-start" type="date">
-      </div>
-      <div class="form-group">
-        <label>WHEN — END DATE</label>
-        <input id="jm-end" type="date">
-      </div>
-    </div>
-    <div class="form-group">
-      <label>WHY — PURPOSE / PROJECT</label>
-      <input id="jm-purpose" type="text" placeholder="project name or description">
-    </div>
-    <div class="form-group">
-      <label>RATE ($)</label>
-      <input id="jm-rate" type="number" min="0" step="0.01" placeholder="0.00">
-    </div>
-    <div class="form-group">
-      <label>WHAT — EQUIPMENT USED</label>
-      <div class="equip-picker" id="equip-picker">
-        <span style="color:var(--text2);font-size:0.78rem">loading...</span>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>NOTES</label>
-      <textarea id="jm-notes" rows="3"></textarea>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost btn-sm" onclick="closeJobModal()">CANCEL</button>
-      <button class="btn btn-sm" onclick="saveJob()">SAVE JOB</button>
+  </div>
+</section>
+
+<!-- ── Contact bar ──────────────────────────────────────────────────────────── -->
+<div class="contact-bar">
+  <div class="contact-bar-inner">
+    <p>Ready to get started? Reach out today.</p>
+    <div class="contact-links">
+      <a href="tel:PLACEHOLDER" class="contact-link">&#128222; Call Us</a>
+      <a href="mailto:lesliej1015@gmail.com" class="contact-link">&#9993; Email Us</a>
     </div>
   </div>
 </div>
 
-<!-- ── Equipment modal ────────────────────────────────────────────────────── -->
-<div class="modal-overlay" id="equip-modal-overlay" onclick="overlayClose(event,'equip-modal-overlay')">
-  <div class="modal" style="max-width:420px">
-    <h2 id="equip-modal-title">ADD EQUIPMENT</h2>
-    <input type="hidden" id="em-id">
-    <div class="form-group">
-      <label>NAME *</label>
-      <input id="em-name" type="text">
+<!-- ── Request form ─────────────────────────────────────────────────────────── -->
+<section class="section request-section" id="request">
+  <div class="container">
+    <div class="section-header">
+      <div class="eyebrow">Get a Quote</div>
+      <h2>Request a Rental or Service</h2>
+      <p>Fill out the form below and we'll get back to you as soon as possible.</p>
     </div>
-    <div class="form-group">
-      <label>CATEGORY</label>
-      <input id="em-category" type="text" placeholder="e.g. Excavator, Truck, Crane">
-    </div>
-    <div class="form-group">
-      <label>DESCRIPTION</label>
-      <input id="em-desc" type="text">
-    </div>
-    <div class="form-group">
-      <label>NOTES</label>
-      <textarea id="em-notes" rows="2"></textarea>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-ghost btn-sm" onclick="closeEquipModal()">CANCEL</button>
-      <button class="btn btn-sm" onclick="saveEquipment()">SAVE</button>
+    <div class="request-wrap">
+      <form id="request-form" onsubmit="submitRequest(event)">
+        <div class="form-grid">
+          <div class="form-field">
+            <label for="rf-name">Your Name *</label>
+            <input id="rf-name" type="text" placeholder="Full name" required>
+          </div>
+          <div class="form-field">
+            <label for="rf-phone">Phone Number</label>
+            <input id="rf-phone" type="tel" placeholder="(555) 000-0000">
+          </div>
+          <div class="form-field">
+            <label for="rf-email">Email Address *</label>
+            <input id="rf-email" type="email" placeholder="you@example.com">
+          </div>
+          <div class="form-field">
+            <label for="rf-location">Job Site Location</label>
+            <input id="rf-location" type="text" placeholder="Address or description">
+          </div>
+          <div class="form-field">
+            <label for="rf-start">Start Date (approx.)</label>
+            <input id="rf-start" type="date">
+          </div>
+          <div class="form-field">
+            <label for="rf-end">End Date (approx.)</label>
+            <input id="rf-end" type="date">
+          </div>
+          <div class="form-field full">
+            <label>What are you interested in? (select all that apply)</label>
+            <div class="interest-list" id="interest-list">
+              <div style="color:var(--text2);font-size:0.85rem;padding:0.5rem 0">Loading options...</div>
+            </div>
+          </div>
+          <div class="form-field full">
+            <label for="rf-notes">Additional Details</label>
+            <textarea id="rf-notes" placeholder="Tell us more about your project, timeline, or any specific requirements..."></textarea>
+          </div>
+        </div>
+        <div class="form-submit">
+          <button type="submit" class="btn-primary">Send Request &rarr;</button>
+          <div class="form-note">We typically respond within one business day.</div>
+          <div id="form-error"></div>
+        </div>
+      </form>
+      <div id="form-success">
+        &#10003; Your request has been sent! We'll be in touch soon.
+      </div>
     </div>
   </div>
-</div>
+</section>
 
-<!-- ── Delete confirm modal ────────────────────────────────────────────────── -->
-<div class="modal-overlay" id="del-modal-overlay">
-  <div class="modal" style="max-width:360px">
-    <h2>CONFIRM DELETE</h2>
-    <p id="del-msg" style="color:var(--text2);font-size:0.85rem;margin-bottom:1.25rem"></p>
-    <div class="modal-actions">
-      <button class="btn btn-ghost btn-sm" onclick="closeDelModal()">CANCEL</button>
-      <button class="btn btn-danger btn-sm" id="del-confirm-btn">DELETE</button>
-    </div>
-  </div>
-</div>
-
-<div id="toast"></div>
+<!-- ── Footer ───────────────────────────────────────────────────────────────── -->
+<footer>
+  <p>
+    &copy; <span id="copy-year"></span> Juice Lee Rentals &amp; Services. All rights reserved.
+    &nbsp;&bull;&nbsp;
+    <a href="admin">Admin</a>
+  </p>
+</footer>
 
 <script>
-const BASE = document.location.pathname.split('/').slice(0,2).join('/') || '';
+const BASE = '/' + window.location.pathname.split('/').filter(Boolean)[0];
+let publicEquip    = [];
+let publicServices = [];
 
-let token = localStorage.getItem('sl_token') || '';
-let email = localStorage.getItem('sl_email') || '';
-let jobs  = [];
-let equip = [];
+document.getElementById('copy-year').textContent = new Date().getFullYear();
 
-// ── Auth ──────────────────────────────────────────────────────────────────────
-function switchTab(tab) {
-  document.querySelectorAll('.tab-btn').forEach((b,i) => b.classList.toggle('active', (i===0) === (tab==='login')));
-  document.getElementById('login-form').style.display    = tab === 'login'    ? '' : 'none';
-  document.getElementById('register-form').style.display = tab === 'register' ? '' : 'none';
-  document.getElementById('auth-err').textContent = '';
+// ── Mobile nav ────────────────────────────────────────────────────────────────
+function toggleMobile() {
+  document.getElementById('mobile-menu').classList.toggle('open');
+}
+function closeMobile() {
+  document.getElementById('mobile-menu').classList.remove('open');
 }
 
-async function doLogin() {
-  const e = document.getElementById('l-email').value.trim();
-  const p = document.getElementById('l-pass').value;
-  const r = await api('/api/login', 'POST', { email: e, password: p }, true);
-  if (r.error) { document.getElementById('auth-err').textContent = r.error; return; }
-  setAuth(r.token, r.email);
+// ── Load public data ──────────────────────────────────────────────────────────
+async function loadPublic() {
+  const [eq, sv, ga] = await Promise.all([
+    fetch(BASE + '/api/public/equipment').then(r => r.json()).catch(() => []),
+    fetch(BASE + '/api/public/services').then(r => r.json()).catch(() => []),
+    fetch(BASE + '/api/public/gallery').then(r => r.json()).catch(() => [])
+  ]);
+  publicEquip    = Array.isArray(eq) ? eq : [];
+  publicServices = Array.isArray(sv) ? sv : [];
+  renderServices(publicServices);
+  renderEquipment(publicEquip);
+  renderGallery(Array.isArray(ga) ? ga : []);
+  buildInterestList(publicEquip, publicServices);
 }
 
-async function doRegister() {
-  const e = document.getElementById('r-email').value.trim();
-  const p = document.getElementById('r-pass').value;
-  const r = await api('/api/register', 'POST', { email: e, password: p }, true);
-  if (r.error) { document.getElementById('auth-err').textContent = r.error; return; }
-  setAuth(r.token, r.email);
-}
-
-async function doLogout() {
-  await api('/api/logout', 'POST');
-  localStorage.removeItem('sl_token');
-  localStorage.removeItem('sl_email');
-  token = ''; email = '';
-  document.getElementById('app').style.display = 'none';
-  document.getElementById('auth-screen').style.display = 'flex';
-}
-
-function setAuth(t, em) {
-  token = t; email = em;
-  localStorage.setItem('sl_token', t);
-  localStorage.setItem('sl_email', em);
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  document.getElementById('header-email').textContent = em;
-  loadAll();
-}
-
-// ── API helper ────────────────────────────────────────────────────────────────
-async function api(path, method = 'GET', body = null, noAuth = false) {
-  const headers = { 'Content-Type': 'application/json' };
-  if (!noAuth && token) headers['Authorization'] = 'Bearer ' + token;
-  try {
-    const res = await fetch(BASE + path, { method, headers, body: body ? JSON.stringify(body) : undefined });
-    const data = await res.json();
-    if (res.status === 401 && !noAuth) { doLogout(); return {}; }
-    return data;
-  } catch { return { error: 'Network error' }; }
-}
-
-// ── Load data ─────────────────────────────────────────────────────────────────
-async function loadAll() {
-  const [j, e] = await Promise.all([api('/api/jobs'), api('/api/equipment')]);
-  jobs  = Array.isArray(j) ? j : [];
-  equip = Array.isArray(e) ? e : [];
-  renderJobs();
-  renderEquip();
-}
-
-// ── Views ─────────────────────────────────────────────────────────────────────
-function showView(v) {
-  document.getElementById('view-jobs').style.display      = v === 'jobs'      ? '' : 'none';
-  document.getElementById('view-equipment').style.display = v === 'equipment' ? '' : 'none';
-  document.getElementById('nav-jobs').classList.toggle('active',  v === 'jobs');
-  document.getElementById('nav-equip').classList.toggle('active', v === 'equipment');
-  document.getElementById('new-btn').textContent = v === 'jobs' ? '+ NEW JOB' : '+ ADD EQUIPMENT';
-  document.getElementById('new-btn').onclick = v === 'jobs' ? openNewJob : openEquipModal;
-}
-
-// ── Jobs rendering ────────────────────────────────────────────────────────────
-function renderJobs() {
-  const q       = (document.getElementById('search-input').value || '').toLowerCase();
-  const status  = document.getElementById('status-filter').value;
-  const grid    = document.getElementById('jobs-grid');
-  const empty   = document.getElementById('jobs-empty');
-
-  const filtered = jobs.filter(j => {
-    if (status && j.status !== status) return false;
-    if (q) {
-      const hay = [j.client_name, j.contract_number, j.location, j.purpose, j.client_contact].join(' ').toLowerCase();
-      if (!hay.includes(q)) return false;
-    }
-    return true;
-  });
-
-  grid.innerHTML = '';
-  if (!filtered.length) { empty.style.display = ''; return; }
-  empty.style.display = 'none';
-  filtered.forEach(j => grid.appendChild(jobCard(j)));
-}
-
-function fmtDate(unix) {
-  if (!unix) return '';
-  return new Date(unix * 1000).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' });
-}
-
-function fmtRate(r) {
-  if (!r) return '';
-  return '$' + Number(r).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-}
-
-function jobCard(j) {
-  const card = document.createElement('div');
-  card.className = 'job-card';
-
-  const dateRange = [fmtDate(j.start_date), fmtDate(j.end_date)].filter(Boolean).join(' — ');
-  const equipTags = (j.equipment || []).map(e =>
-    `<span class="job-equip-tag">${esc(e.name)}${e.quantity != 1 ? ' ×'+e.quantity : ''}</span>`
-  ).join('');
-
-  card.innerHTML = `
-    <div class="job-card-header">
-      <span class="contract-num">${j.contract_number ? '#' + esc(j.contract_number) : '&nbsp;'}</span>
-      <span class="status-badge status-${j.status}">${j.status}</span>
-    </div>
-    <div class="job-client">${esc(j.client_name)}</div>
-    <div class="job-meta">
-      ${j.location    ? `<div><span class="label">WHERE</span>${esc(j.location)}</div>` : ''}
-      ${dateRange     ? `<div><span class="label">WHEN</span>${dateRange}</div>` : ''}
-      ${j.purpose     ? `<div><span class="label">WHY</span>${esc(j.purpose)}</div>` : ''}
-      ${j.client_contact ? `<div><span class="label">CONTACT</span>${esc(j.client_contact)}</div>` : ''}
-      ${j.rate > 0    ? `<div><span class="label">RATE</span>${fmtRate(j.rate)}</div>` : ''}
-    </div>
-    ${equipTags ? `<div class="job-equip"><span style="color:var(--text2);font-size:0.72rem">EQUIP: </span>${equipTags}</div>` : ''}
-    <div class="job-actions">
-      <button class="btn btn-sm btn-ghost" onclick="openEditJob(${j.id})">EDIT</button>
-      <button class="btn btn-sm btn-danger" onclick="confirmDeleteJob(${j.id}, '${esc(j.client_name)}')">DEL</button>
-    </div>
-  `;
-  return card;
-}
-
-// ── Equipment rendering ───────────────────────────────────────────────────────
-function renderEquip() {
-  const tbody = document.getElementById('equip-tbody');
-  const empty = document.getElementById('equip-empty');
-  tbody.innerHTML = '';
-  if (!equip.length) { empty.style.display = ''; return; }
-  empty.style.display = 'none';
-  equip.forEach(e => {
-    const tr = document.createElement('tr');
-    tr.innerHTML = `
-      <td>${esc(e.name)}</td>
-      <td class="equip-cat">${esc(e.category)}</td>
-      <td style="color:var(--text2)">${esc(e.description)}</td>
-      <td>
-        <div style="display:flex;gap:0.4rem;justify-content:flex-end">
-          <button class="btn btn-sm btn-ghost" onclick="openEditEquip(${e.id})">EDIT</button>
-          <button class="btn btn-sm btn-danger" onclick="confirmDeleteEquip(${e.id},'${esc(e.name)}')">DEL</button>
-        </div>
-      </td>
-    `;
-    tbody.appendChild(tr);
-  });
-}
-
-// ── Job modal ─────────────────────────────────────────────────────────────────
-function openNewJob() {
-  document.getElementById('job-modal-title').textContent = 'NEW JOB';
-  document.getElementById('jm-id').value       = '';
-  document.getElementById('jm-contract').value = '';
-  document.getElementById('jm-status').value   = 'active';
-  document.getElementById('jm-client').value   = '';
-  document.getElementById('jm-contact').value  = '';
-  document.getElementById('jm-location').value = '';
-  document.getElementById('jm-start').value    = '';
-  document.getElementById('jm-end').value      = '';
-  document.getElementById('jm-purpose').value  = '';
-  document.getElementById('jm-rate').value     = '';
-  document.getElementById('jm-notes').value    = '';
-  buildEquipPicker([]);
-  document.getElementById('job-modal-overlay').classList.add('open');
-}
-
-function openEditJob(id) {
-  const j = jobs.find(x => x.id === id);
-  if (!j) return;
-  document.getElementById('job-modal-title').textContent = 'EDIT JOB';
-  document.getElementById('jm-id').value       = j.id;
-  document.getElementById('jm-contract').value = j.contract_number || '';
-  document.getElementById('jm-status').value   = j.status;
-  document.getElementById('jm-client').value   = j.client_name;
-  document.getElementById('jm-contact').value  = j.client_contact || '';
-  document.getElementById('jm-location').value = j.location || '';
-  document.getElementById('jm-start').value    = j.start_date ? isoDate(j.start_date) : '';
-  document.getElementById('jm-end').value      = j.end_date   ? isoDate(j.end_date)   : '';
-  document.getElementById('jm-purpose').value  = j.purpose || '';
-  document.getElementById('jm-rate').value     = j.rate > 0 ? j.rate : '';
-  document.getElementById('jm-notes').value    = j.notes || '';
-  buildEquipPicker(j.equipment || []);
-  document.getElementById('job-modal-overlay').classList.add('open');
-}
-
-function isoDate(unix) {
-  return new Date(unix * 1000).toISOString().slice(0, 10);
-}
-
-function buildEquipPicker(selected) {
-  const picker = document.getElementById('equip-picker');
-  if (!equip.length) {
-    picker.innerHTML = '<span style="color:var(--text2);font-size:0.78rem">No equipment added yet — go to the EQUIPMENT tab first.</span>';
-    return;
-  }
-  picker.innerHTML = equip.map(e => {
-    const sel = selected.find(s => s.id === e.id);
-    const checked = sel ? 'checked' : '';
-    const qty = sel ? sel.quantity : 1;
-    return `
-      <div class="equip-picker-row">
-        <input type="checkbox" id="ep-${e.id}" data-eid="${e.id}" ${checked} onchange="toggleEquipQty(${e.id})">
-        <label for="ep-${e.id}">${esc(e.name)}${e.category ? ' <span style="color:var(--text2);font-size:0.72rem">'+esc(e.category)+'</span>' : ''}</label>
-        <input class="equip-picker-qty" id="epq-${e.id}" type="number" min="1" value="${qty}" ${checked ? '' : 'disabled'}>
-      </div>`;
-  }).join('');
-}
-
-function toggleEquipQty(eid) {
-  const cb  = document.getElementById('ep-' + eid);
-  const qty = document.getElementById('epq-' + eid);
-  qty.disabled = !cb.checked;
-}
-
-function closeJobModal() {
-  document.getElementById('job-modal-overlay').classList.remove('open');
-}
-
-async function saveJob() {
-  const id       = document.getElementById('jm-id').value;
-  const client_name = document.getElementById('jm-client').value.trim();
-  if (!client_name) { toast('Client name is required', true); return; }
-
-  const selectedEquip = equip
-    .filter(e => document.getElementById('ep-' + e.id)?.checked)
-    .map(e => ({
-      equipment_id: e.id,
-      quantity: parseFloat(document.getElementById('epq-' + e.id)?.value) || 1
-    }));
-
-  const startVal = document.getElementById('jm-start').value;
-  const endVal   = document.getElementById('jm-end').value;
-
-  const body = {
-    contract_number: document.getElementById('jm-contract').value.trim(),
-    status:          document.getElementById('jm-status').value,
-    client_name,
-    client_contact:  document.getElementById('jm-contact').value.trim(),
-    location:        document.getElementById('jm-location').value.trim(),
-    start_date:      startVal ? Math.floor(new Date(startVal).getTime() / 1000) : null,
-    end_date:        endVal   ? Math.floor(new Date(endVal).getTime()   / 1000) : null,
-    purpose:         document.getElementById('jm-purpose').value.trim(),
-    rate:            parseFloat(document.getElementById('jm-rate').value) || 0,
-    notes:           document.getElementById('jm-notes').value.trim(),
-    equipment:       selectedEquip
-  };
-
-  const result = id
-    ? await api('/api/jobs/' + id, 'PUT', body)
-    : await api('/api/jobs',       'POST', body);
-
-  if (result.error) { toast(result.error, true); return; }
-
-  if (id) {
-    jobs = jobs.map(j => j.id === result.id ? result : j);
-  } else {
-    jobs.unshift(result);
-  }
-  renderJobs();
-  closeJobModal();
-  toast(id ? 'Job updated' : 'Job created');
-}
-
-// ── Equipment modal ───────────────────────────────────────────────────────────
-function openEquipModal(id) {
-  const e = id ? equip.find(x => x.id === id) : null;
-  document.getElementById('equip-modal-title').textContent = e ? 'EDIT EQUIPMENT' : 'ADD EQUIPMENT';
-  document.getElementById('em-id').value       = e ? e.id : '';
-  document.getElementById('em-name').value     = e ? e.name : '';
-  document.getElementById('em-category').value = e ? e.category : '';
-  document.getElementById('em-desc').value     = e ? e.description : '';
-  document.getElementById('em-notes').value    = e ? e.notes : '';
-  document.getElementById('equip-modal-overlay').classList.add('open');
-}
-
-function openEditEquip(id) { openEquipModal(id); }
-
-function closeEquipModal() {
-  document.getElementById('equip-modal-overlay').classList.remove('open');
-}
-
-async function saveEquipment() {
-  const id   = document.getElementById('em-id').value;
-  const name = document.getElementById('em-name').value.trim();
-  if (!name) { toast('Name is required', true); return; }
-
-  const body = {
-    name,
-    category:    document.getElementById('em-category').value.trim(),
-    description: document.getElementById('em-desc').value.trim(),
-    notes:       document.getElementById('em-notes').value.trim()
-  };
-
-  const result = id
-    ? await api('/api/equipment/' + id, 'PUT',  body)
-    : await api('/api/equipment',        'POST', body);
-
-  if (result.error) { toast(result.error, true); return; }
-
-  if (id) {
-    equip = equip.map(e => e.id === result.id ? result : e);
-  } else {
-    equip.push(result);
-    equip.sort((a,b) => a.name.localeCompare(b.name));
-  }
-  renderEquip();
-  closeEquipModal();
-  toast(id ? 'Equipment updated' : 'Equipment added');
-}
-
-// ── Delete modals ─────────────────────────────────────────────────────────────
-let _delAction = null;
-
-function confirmDeleteJob(id, name) {
-  document.getElementById('del-msg').textContent = `Delete job for "${name}"? This cannot be undone.`;
-  _delAction = async () => {
-    const r = await api('/api/jobs/' + id, 'DELETE');
-    if (r.error) { toast(r.error, true); return; }
-    jobs = jobs.filter(j => j.id !== id);
-    renderJobs();
-    closeDelModal();
-    toast('Job deleted');
-  };
-  document.getElementById('del-confirm-btn').onclick = _delAction;
-  document.getElementById('del-modal-overlay').classList.add('open');
-}
-
-function confirmDeleteEquip(id, name) {
-  document.getElementById('del-msg').textContent = `Delete "${name}"? It will be removed from all jobs.`;
-  _delAction = async () => {
-    const r = await api('/api/equipment/' + id, 'DELETE');
-    if (r.error) { toast(r.error, true); return; }
-    equip = equip.filter(e => e.id !== id);
-    renderEquip();
-    closeDelModal();
-    toast('Equipment deleted');
-  };
-  document.getElementById('del-confirm-btn').onclick = _delAction;
-  document.getElementById('del-modal-overlay').classList.add('open');
-}
-
-function closeDelModal() {
-  document.getElementById('del-modal-overlay').classList.remove('open');
-}
-
-// ── Overlay click-outside close ───────────────────────────────────────────────
-function overlayClose(event, id) {
-  if (event.target.id === id) {
-    document.getElementById(id).classList.remove('open');
-  }
-}
-
-// ── Toast ─────────────────────────────────────────────────────────────────────
-let toastTimer;
-function toast(msg, err = false) {
-  const el = document.getElementById('toast');
-  el.textContent = msg;
-  el.className = 'show' + (err ? ' err' : '');
-  clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => { el.className = ''; }, 3000);
-}
-
-// ── Utils ─────────────────────────────────────────────────────────────────────
 function esc(s) {
   return String(s || '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
 }
 
-// ── Boot ──────────────────────────────────────────────────────────────────────
-if (token) {
-  document.getElementById('auth-screen').style.display = 'none';
-  document.getElementById('app').style.display = 'flex';
-  document.getElementById('header-email').textContent = email;
-  loadAll();
+// ── Services ──────────────────────────────────────────────────────────────────
+function renderServices(list) {
+  const grid = document.getElementById('services-grid');
+  if (!list.length) {
+    grid.innerHTML = '<div class="services-empty">Services coming soon — check back or contact us directly.</div>';
+    return;
+  }
+  grid.innerHTML = list.map(s => `
+    <div class="service-card">
+      ${s.icon ? `<div class="service-icon">${esc(s.icon)}</div>` : ''}
+      <h3>${esc(s.name)}</h3>
+      ${s.description ? `<p>${esc(s.description)}</p>` : ''}
+    </div>`).join('');
 }
 
-// Enter key in auth
-document.getElementById('l-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doLogin(); });
-document.getElementById('r-pass').addEventListener('keydown', e => { if (e.key === 'Enter') doRegister(); });
+// ── Equipment ─────────────────────────────────────────────────────────────────
+function renderEquipment(list) {
+  const grid = document.getElementById('equip-grid');
+  if (!list.length) {
+    grid.innerHTML = '<div style="color:rgba(255,255,255,0.4);text-align:center;grid-column:1/-1;padding:2rem;font-size:0.9rem">Equipment list coming soon.</div>';
+    return;
+  }
+  grid.innerHTML = list.map(e => `
+    <div class="equip-card">
+      ${e.category ? `<div class="equip-cat">${esc(e.category)}</div>` : ''}
+      <h3>${esc(e.name)}</h3>
+      ${e.description ? `<p>${esc(e.description)}</p>` : ''}
+    </div>`).join('');
+}
+
+// ── Gallery ───────────────────────────────────────────────────────────────────
+function renderGallery(list) {
+  const grid = document.getElementById('gallery-grid');
+  if (!list.length) {
+    grid.innerHTML = '<div style="color:var(--text2);text-align:center;grid-column:1/-1;padding:2rem;font-size:0.9rem">Gallery coming soon.</div>';
+    return;
+  }
+  grid.innerHTML = list.map(g => `
+    <div class="gallery-item">
+      <img src="${g.image_data}" alt="${esc(g.caption)}" loading="lazy">
+      ${g.caption ? `<div class="gallery-caption">${esc(g.caption)}</div>` : ''}
+    </div>`).join('');
+}
+
+// ── Interest list ─────────────────────────────────────────────────────────────
+function buildInterestList(equip, services) {
+  const list = document.getElementById('interest-list');
+  let html = '';
+  if (services.length) {
+    html += '<div class="interest-group-label">Services</div>';
+    html += services.map(s => `
+      <div class="interest-item">
+        <input type="checkbox" id="int-s-${s.id}" value="${esc(s.name)}">
+        <label for="int-s-${s.id}">${s.icon ? s.icon + ' ' : ''}${esc(s.name)}</label>
+      </div>`).join('');
+  }
+  if (equip.length) {
+    html += '<div class="interest-group-label">Equipment</div>';
+    html += equip.map(e => `
+      <div class="interest-item">
+        <input type="checkbox" id="int-e-${e.id}" value="${esc(e.name)}">
+        <label for="int-e-${e.id}">${esc(e.name)}${e.category ? ' <span style="color:var(--text2);font-size:0.8em">('+esc(e.category)+')</span>' : ''}</label>
+      </div>`).join('');
+  }
+  if (!html) {
+    html = '<div class="interest-item"><input type="checkbox" id="int-other" value="Other"><label for="int-other">Other — please describe below</label></div>';
+  } else {
+    html += '<div class="interest-group-label">Other</div><div class="interest-item"><input type="checkbox" id="int-other" value="Other"><label for="int-other">Other / not listed</label></div>';
+  }
+  list.innerHTML = html;
+}
+
+// ── Request form ──────────────────────────────────────────────────────────────
+async function submitRequest(event) {
+  event.preventDefault();
+  const errEl = document.getElementById('form-error');
+  errEl.textContent = '';
+
+  const name  = document.getElementById('rf-name').value.trim();
+  const phone = document.getElementById('rf-phone').value.trim();
+  const email = document.getElementById('rf-email').value.trim();
+  if (!name)  { errEl.textContent = 'Name is required.'; return; }
+  if (!phone && !email) { errEl.textContent = 'Please provide a phone number or email.'; return; }
+
+  const checked = [...document.querySelectorAll('#interest-list input[type=checkbox]:checked')]
+    .map(cb => cb.value).join(', ');
+
+  const startVal = document.getElementById('rf-start').value;
+  const endVal   = document.getElementById('rf-end').value;
+
+  const body = {
+    name, phone, email,
+    interest: checked,
+    location: document.getElementById('rf-location').value.trim(),
+    start_date: startVal ? Math.floor(new Date(startVal).getTime() / 1000) : null,
+    end_date:   endVal   ? Math.floor(new Date(endVal).getTime()   / 1000) : null,
+    notes: document.getElementById('rf-notes').value.trim()
+  };
+
+  const btn = event.target.querySelector('button[type=submit]');
+  btn.disabled = true;
+  btn.textContent = 'Sending...';
+
+  try {
+    const res  = await fetch(BASE + '/api/public/request', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(body)
+    });
+    const data = await res.json();
+    if (data.error) { errEl.textContent = data.error; btn.disabled = false; btn.textContent = 'Send Request →'; return; }
+    document.getElementById('request-form').style.display = 'none';
+    document.getElementById('form-success').style.display = '';
+  } catch {
+    errEl.textContent = 'Network error — please try again.';
+    btn.disabled = false;
+    btn.textContent = 'Send Request →';
+  }
+}
+
+loadPublic();
 </script>
 </body>
 </html>
