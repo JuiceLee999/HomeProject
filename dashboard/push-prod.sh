@@ -19,7 +19,7 @@ echo "==> Pushing main to GitHub..."
 git push origin main
 
 echo "==> Deploying to production ($PROD_HOST)..."
-ssh "$PROD_USER@$PROD_HOST" "bash $PROD_DIR/dashboard/scripts/deploy.sh"
+ssh "$PROD_USER@$PROD_HOST" "cd $PROD_DIR && git pull origin main && bash $PROD_DIR/dashboard/scripts/deploy.sh"
 
 echo "==> Switching back to dev..."
 git checkout dev
