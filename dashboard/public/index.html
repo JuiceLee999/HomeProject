@@ -1,0 +1,407 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Juice Apps — Dashboard</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --navy:   #0f2336;
+    --navy2:  #1a3a5c;
+    --navy3:  #243f5e;
+    --amber:  #e8921a;
+    --amber2: #c97a10;
+    --light:  #f4f7fb;
+    --white:  #ffffff;
+    --text:   #1a2535;
+    --text2:  #4a6080;
+    --border: #d1dce8;
+    --green:  #22c55e;
+    --yellow: #f59e0b;
+    --gray:   #94a3b8;
+    --radius: 10px;
+    --shadow: 0 2px 16px rgba(15,35,54,0.10);
+  }
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+  html { scroll-behavior: smooth; }
+  body {
+    background: var(--light);
+    color: var(--text);
+    font-family: 'Inter', sans-serif;
+    line-height: 1.6;
+    min-height: 100vh;
+  }
+  a { color: inherit; text-decoration: none; }
+
+  /* ── Header ──────────────────────────────────────────────── */
+  header {
+    background: linear-gradient(135deg, var(--navy) 0%, var(--navy2) 100%);
+    padding: 3.5rem 1.5rem 3rem;
+    text-align: center;
+    position: relative;
+    overflow: hidden;
+  }
+  header::before {
+    content: '';
+    position: absolute; inset: 0;
+    background: url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org/2000/svg'%3E%3Cg fill='none' fill-rule='evenodd'%3E%3Cg fill='%23ffffff' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E");
+  }
+  .header-inner { position: relative; max-width: 700px; margin: 0 auto; }
+  .header-logo {
+    display: inline-flex; align-items: center; gap: 0.6rem;
+    margin-bottom: 1rem;
+  }
+  .logo-mark {
+    width: 44px; height: 44px;
+    background: var(--amber);
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.4rem; font-weight: 800; color: var(--white);
+    letter-spacing: -1px;
+  }
+  .logo-name {
+    font-size: 1.5rem; font-weight: 700; color: var(--white);
+    letter-spacing: 0.3px;
+  }
+  .logo-name span { color: var(--amber); }
+  header h1 {
+    font-size: clamp(1.8rem, 4vw, 2.6rem);
+    font-weight: 800;
+    color: var(--white);
+    margin-bottom: 0.6rem;
+    line-height: 1.2;
+  }
+  header p {
+    color: rgba(255,255,255,0.7);
+    font-size: 1rem;
+    max-width: 480px;
+    margin: 0 auto;
+  }
+
+  /* ── Main layout ──────────────────────────────────────────── */
+  main {
+    max-width: 1100px;
+    margin: 0 auto;
+    padding: 2.5rem 1.5rem 4rem;
+  }
+
+  .section-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    letter-spacing: 1.2px;
+    text-transform: uppercase;
+    color: var(--text2);
+    margin-bottom: 1rem;
+    margin-top: 2.5rem;
+  }
+  .section-label:first-child { margin-top: 0; }
+
+  /* ── App grid ──────────────────────────────────────────────── */
+  .app-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+    gap: 1.25rem;
+  }
+
+  /* ── App card ──────────────────────────────────────────────── */
+  .card {
+    background: var(--white);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    box-shadow: var(--shadow);
+    padding: 1.5rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+    transition: box-shadow 0.2s, transform 0.2s, border-color 0.2s;
+  }
+  .card.clickable { cursor: pointer; }
+  .card.clickable:hover {
+    box-shadow: 0 6px 24px rgba(15,35,54,0.14);
+    transform: translateY(-2px);
+    border-color: var(--amber);
+  }
+  .card.disabled { opacity: 0.6; }
+
+  .card-top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .card-icon {
+    width: 48px; height: 48px; flex-shrink: 0;
+    border-radius: 10px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.5rem;
+  }
+  .icon-navy  { background: rgba(15,35,54,0.08); }
+  .icon-amber { background: rgba(232,146,26,0.12); }
+  .icon-green { background: rgba(34,197,94,0.10); }
+  .icon-blue  { background: rgba(59,130,246,0.10); }
+  .icon-purple{ background: rgba(168,85,247,0.10); }
+
+  .badge {
+    font-size: 0.68rem;
+    font-weight: 600;
+    letter-spacing: 0.4px;
+    text-transform: uppercase;
+    padding: 0.25rem 0.6rem;
+    border-radius: 20px;
+    flex-shrink: 0;
+  }
+  .badge-live   { background: #dcfce7; color: #166534; }
+  .badge-dev    { background: #fef3c7; color: #92400e; }
+  .badge-soon   { background: #f1f5f9; color: #64748b; }
+  .badge-static { background: #ede9fe; color: #6d28d9; }
+
+  .card-name {
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--text);
+    margin-bottom: 0.15rem;
+  }
+  .card-path {
+    font-size: 0.76rem;
+    font-family: 'Courier New', monospace;
+    color: var(--text2);
+    background: var(--light);
+    padding: 0.1rem 0.4rem;
+    border-radius: 4px;
+    display: inline-block;
+  }
+  .card-desc {
+    font-size: 0.875rem;
+    color: var(--text2);
+    line-height: 1.55;
+    flex: 1;
+  }
+
+  .card-footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding-top: 0.75rem;
+    border-top: 1px solid var(--border);
+    margin-top: auto;
+  }
+  .card-port {
+    font-size: 0.72rem;
+    color: var(--gray);
+    font-family: 'Courier New', monospace;
+  }
+  .card-link {
+    font-size: 0.82rem;
+    font-weight: 600;
+    color: var(--amber);
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    transition: color 0.15s;
+  }
+  .card-link:hover { color: var(--amber2); }
+  .card-link svg { width: 14px; height: 14px; }
+
+  .card.disabled .card-link { color: var(--gray); pointer-events: none; }
+
+  /* ── Footer ──────────────────────────────────────────────── */
+  footer {
+    text-align: center;
+    padding: 1.5rem;
+    font-size: 0.78rem;
+    color: var(--gray);
+    border-top: 1px solid var(--border);
+  }
+
+  @media (max-width: 480px) {
+    .app-grid { grid-template-columns: 1fr; }
+    header { padding: 2.5rem 1.25rem 2rem; }
+  }
+</style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-logo">
+      <div class="logo-mark">JL</div>
+      <div class="logo-name">Juice<span>Apps</span></div>
+    </div>
+    <h1>App Dashboard</h1>
+    <p>All apps in one place — click any card to open it.</p>
+  </div>
+</header>
+
+<main>
+
+  <!-- Live apps -->
+  <div class="section-label">Live on honey-do.hopto.org</div>
+  <div class="app-grid">
+
+    <div class="card clickable" onclick="go('/hp')">
+      <div class="card-top">
+        <div class="card-icon icon-amber">🏠</div>
+        <span class="badge badge-live">Live</span>
+      </div>
+      <div>
+        <div class="card-name">Honey Do</div>
+        <code class="card-path">/hp</code>
+      </div>
+      <p class="card-desc">Home improvement project tracker with contractor management, cost tracking, and subtask checklists.</p>
+      <div class="card-footer">
+        <span class="card-port">port 3000</span>
+        <a class="card-link" href="/hp" onclick="event.stopPropagation()">
+          Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="card clickable" onclick="go('/shit')">
+      <div class="card-top">
+        <div class="card-icon icon-green">📦</div>
+        <span class="badge badge-live">Live</span>
+      </div>
+      <div>
+        <div class="card-name">CACHE — Inventory</div>
+        <code class="card-path">/shit</code>
+      </div>
+      <p class="card-desc">Home inventory system for cataloging household items with QR codes, PDF exports, and AI-powered suggestions.</p>
+      <div class="card-footer">
+        <span class="card-port">port 3001</span>
+        <a class="card-link" href="/shit" onclick="event.stopPropagation()">
+          Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="card clickable" onclick="go('/pks/')">
+      <div class="card-top">
+        <div class="card-icon icon-purple">⛺</div>
+        <span class="badge badge-static">Static</span>
+      </div>
+      <div>
+        <div class="card-name">Plotter Kill Camp</div>
+        <code class="card-path">/pks/</code>
+      </div>
+      <p class="card-desc">Marketing landing page for a private pop-up camper rental in Rotterdam, NY overlooking the Mohawk Valley.</p>
+      <div class="card-footer">
+        <span class="card-port">static html</span>
+        <a class="card-link" href="/pks/" onclick="event.stopPropagation()">
+          Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Dev / not yet deployed -->
+  <div class="section-label">Built — Not Yet Deployed</div>
+  <div class="app-grid">
+
+    <div class="card clickable" onclick="go('/sl')">
+      <div class="card-top">
+        <div class="card-icon icon-navy">🔩</div>
+        <span class="badge badge-dev">Dev</span>
+      </div>
+      <div>
+        <div class="card-name">SteelLog</div>
+        <code class="card-path">/sl</code>
+      </div>
+      <p class="card-desc">Equipment job tracking system for contractors — log equipment work, manage jobs, and generate contracts.</p>
+      <div class="card-footer">
+        <span class="card-port">port 3003</span>
+        <a class="card-link" href="/sl" onclick="event.stopPropagation()">
+          Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="card clickable" onclick="go('/civic')">
+      <div class="card-top">
+        <div class="card-icon icon-blue">🏛️</div>
+        <span class="badge badge-dev">Dev</span>
+      </div>
+      <div>
+        <div class="card-name">Civic Guide</div>
+        <code class="card-path">/civic</code>
+      </div>
+      <p class="card-desc">Local and state government resource providing civic education with US Census API integration.</p>
+      <div class="card-footer">
+        <span class="card-port">port 3002</span>
+        <a class="card-link" href="/civic" onclick="event.stopPropagation()">
+          Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+        </a>
+      </div>
+    </div>
+
+    <div class="card clickable" onclick="go('/cashier')">
+      <div class="card-top">
+        <div class="card-icon icon-amber">💵</div>
+        <span class="badge badge-dev">Dev</span>
+      </div>
+      <div>
+        <div class="card-name">Cashier</div>
+        <code class="card-path">/cashier</code>
+      </div>
+      <p class="card-desc">Educational app to practice counting money — four modules covering coin recognition, making change, and more.</p>
+      <div class="card-footer">
+        <span class="card-port">port 3004</span>
+        <a class="card-link" href="/cashier" onclick="event.stopPropagation()">
+          Open <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M7 17L17 7M17 7H7M17 7v10"/></svg>
+        </a>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Placeholders -->
+  <div class="section-label">Coming Soon</div>
+  <div class="app-grid">
+
+    <div class="card disabled">
+      <div class="card-top">
+        <div class="card-icon icon-blue">🧘</div>
+        <span class="badge badge-soon">Coming Soon</span>
+      </div>
+      <div>
+        <div class="card-name">Meditation</div>
+      </div>
+      <p class="card-desc">In development.</p>
+      <div class="card-footer">
+        <span class="card-port">&nbsp;</span>
+        <span class="card-link">—</span>
+      </div>
+    </div>
+
+    <div class="card disabled">
+      <div class="card-top">
+        <div class="card-icon icon-purple">🔊</div>
+        <span class="badge badge-soon">Coming Soon</span>
+      </div>
+      <div>
+        <div class="card-name">Soundboard</div>
+      </div>
+      <p class="card-desc">In development.</p>
+      <div class="card-footer">
+        <span class="card-port">&nbsp;</span>
+        <span class="card-link">—</span>
+      </div>
+    </div>
+
+  </div>
+
+</main>
+
+<footer>
+  JuiceApps &mdash; honey-do.hopto.org
+</footer>
+
+<script>
+  function go(path) { window.location.href = path; }
+</script>
+
+</body>
+</html>
