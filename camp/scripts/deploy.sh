@@ -20,7 +20,7 @@ if command -v pm2 &> /dev/null; then
   pm2 delete himpcamp 2>/dev/null || true
   BASE_PATH=/camp \
   PORT=3006 \
-  DATABASE_URL=$(grep 'DATABASE_URL' /root/.bashrc | cut -d'"' -f2) \
+  DATABASE_URL=$(grep -m1 'export HIMPCAMP_DATABASE_URL=' /root/.bashrc | cut -d'"' -f2) \
   JWT_SECRET=$(grep 'JWT_SECRET' /root/.bashrc | cut -d'"' -f2) \
   STRIPE_SECRET_KEY=$(grep 'STRIPE_SECRET_KEY' /root/.bashrc | cut -d'"' -f2) \
   STRIPE_WEBHOOK_SECRET=$(grep 'STRIPE_WEBHOOK_SECRET' /root/.bashrc | cut -d'"' -f2) \
