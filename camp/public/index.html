@@ -516,7 +516,7 @@ main { max-width: 1100px; margin: 0 auto; padding: 24px 20px 80px; }
   <div id="view-host-listings">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:24px;">
       <h2 class="page-title" style="margin-bottom:0">My Listings</h2>
-      <button class="btn-sm primary" onclick="openListingEditor(null)">+ New Listing</button>
+      <button class="btn-sm primary" onclick="showView('host-listing-editor',{})">+ New Listing</button>
     </div>
     <div id="host-listings-list"></div>
     <div id="host-listings-empty" class="empty-state" style="display:none">
@@ -1485,7 +1485,6 @@ async function openListingEditor(id) {
   }
 
   editorGoTo(0);
-  showView('host-listing-editor');
 }
 
 function editorGoTo(step) {
